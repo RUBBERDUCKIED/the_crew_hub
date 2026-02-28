@@ -1,0 +1,2383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Crew Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --teal: #2a9db5;
+  --teal-dark: #1e7d93;
+  --teal-light: #4dbfd6;
+  --yellow: #f0d000;
+  --yellow-dark: #d4b800;
+  --blue: #1a6ea8;
+  --blue-dark: #145689;
+  --white: #ffffff;
+  --offwhite: #f4fbfc;
+  --gray: #e8f4f7;
+  --text: #1a3a4a;
+  --muted: #6b9aaa;
+  --radius: 14px;
+  --shadow: 0 4px 24px rgba(26,110,168,0.10);
+}
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: var(--offwhite);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ─── HEADER ─── */
+.site-header {
+  background: var(--teal);
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+}
+
+.logo-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-badge {
+  width: 48px; height: 48px;
+  background: var(--yellow);
+  border-radius: 10px;
+  display: grid; place-items: center;
+  border: 2px solid rgba(255,255,255,0.3);
+}
+
+.logo-badge svg { width: 28px; height: 28px; fill: var(--blue-dark); }
+
+.logo-text {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 900;
+  font-size: 17px;
+  color: var(--white);
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+}
+
+.logo-text span { color: var(--yellow); }
+
+.header-nav { display: flex; align-items: center; gap: 24px; }
+
+.header-nav a {
+  color: rgba(255,255,255,0.85);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 14px;
+  transition: color 0.15s;
+}
+
+.header-nav a:hover { color: var(--yellow); }
+
+.btn-contact {
+  background: var(--white);
+  color: var(--blue);
+  border: none;
+  border-radius: 30px;
+  padding: 8px 20px;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-contact:hover { background: var(--yellow); color: var(--blue-dark); }
+
+/* ─── HERO BANNER ─── */
+.hero-banner {
+  background: linear-gradient(135deg, var(--teal) 0%, var(--teal-dark) 60%, var(--blue) 100%);
+  padding: 36px 32px 40px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-banner::before {
+  content: '';
+  position: absolute;
+  bottom: -30px; left: -30px;
+  width: 140px; height: 140px;
+  background: var(--yellow);
+  border-radius: 50%;
+  opacity: 0.25;
+}
+
+.hero-banner::after {
+  content: '';
+  position: absolute;
+  top: -20px; right: 40px;
+  width: 80px; height: 80px;
+  background: var(--yellow);
+  border-radius: 50%;
+  opacity: 0.15;
+}
+
+.hero-title {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 900;
+  font-size: clamp(28px, 5vw, 46px);
+  color: var(--white);
+  letter-spacing: 0.01em;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-title span {
+  color: var(--yellow);
+  display: inline-block;
+  position: relative;
+}
+
+.hero-sub {
+  color: rgba(255,255,255,0.8);
+  font-size: 15px;
+  font-weight: 600;
+  margin-top: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ─── TYPE TABS ─── */
+.type-bar {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  margin: 28px auto 0;
+  background: rgba(255,255,255,0.18);
+  border-radius: 40px;
+  padding: 4px;
+  width: fit-content;
+  position: relative;
+  z-index: 1;
+}
+
+.type-btn {
+  padding: 8px 22px;
+  border-radius: 36px;
+  border: 2px solid var(--gray);
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--muted);
+  background: var(--gray);
+  transition: all 0.2s;
+  letter-spacing: 0.01em;
+}
+
+.type-btn:hover { border-color: var(--teal-light); color: var(--teal); background: #e6f6fa; }
+
+.type-btn.active {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: white;
+  box-shadow: 0 2px 10px rgba(42,157,181,0.3);
+}
+
+/* ─── MAIN LAYOUT ─── */
+.page-wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 28px 16px 60px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .page-wrap { grid-template-columns: 1fr; }
+  .full { grid-column: 1 !important; }
+}
+
+.full { grid-column: span 2; }
+
+/* ─── CARDS ─── */
+.card {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  box-shadow: var(--shadow);
+  border: 1.5px solid rgba(42,157,181,0.10);
+}
+
+.card-title {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--teal-dark);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-title::before {
+  content: '';
+  width: 4px; height: 16px;
+  background: var(--yellow);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ─── INPUTS ─── */
+.field-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 5px;
+}
+
+.input-wrap {
+  position: relative;
+  margin-bottom: 14px;
+}
+
+.input-wrap .pfx {
+  position: absolute;
+  left: 13px; top: 50%;
+  transform: translateY(-50%);
+  font-weight: 700;
+  color: var(--teal);
+  font-size: 15px;
+  pointer-events: none;
+}
+
+input[type="number"], input[type="text"] {
+  width: 100%;
+  background: var(--gray);
+  border: 2px solid transparent;
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+input[type="number"]:focus, input[type="text"]:focus {
+  border-color: var(--teal);
+  background: white;
+}
+
+.pfx-wrap input { padding-left: 28px; }
+
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* ─── CUSTOMER FIELDS ─── */
+.customer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 500px) { .customer-grid { grid-template-columns: 1fr; } }
+
+/* ─── ADDONS ─── */
+.addon {
+  display: flex;
+  align-items: center;
+  background: var(--gray);
+  border: 2px solid transparent;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.addon:hover { border-color: var(--teal-light); background: #edf8fb; }
+
+.addon.on {
+  border-color: var(--teal);
+  background: #e6f6fa;
+}
+
+.addon-info { flex: 1; }
+
+.addon-name {
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.addon-sub {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.addon.on .addon-sub { color: var(--teal-dark); }
+
+.check {
+  width: 24px; height: 24px;
+  border-radius: 6px;
+  border: 2px solid #c5dde5;
+  background: white;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+  margin-left: 12px;
+  transition: all 0.15s;
+}
+
+.check svg { width: 14px; height: 14px; stroke: white; fill: none; stroke-width: 2.5; opacity: 0; transition: opacity 0.15s; }
+
+.addon.on .check { background: var(--teal); border-color: var(--teal); }
+.addon.on .check svg { opacity: 1; }
+
+/* ─── QUOTE RESULT ─── */
+.quote-card {
+  background: linear-gradient(135deg, var(--blue) 0%, var(--teal-dark) 100%);
+  border-radius: var(--radius);
+  padding: 28px 28px 24px;
+  box-shadow: 0 8px 32px rgba(26,110,168,0.22);
+  position: relative;
+  overflow: hidden;
+}
+
+.quote-card::before {
+  content: '';
+  position: absolute;
+  bottom: -40px; right: -40px;
+  width: 160px; height: 160px;
+  background: rgba(240,208,0,0.15);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.quote-card::after {
+  content: '';
+  position: absolute;
+  top: -20px; left: 30%;
+  width: 80px; height: 80px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.qc-label {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.65);
+  margin-bottom: 6px;
+}
+
+.qc-inner {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 20px;
+  align-items: start;
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 560px) { .qc-inner { grid-template-columns: 1fr; } }
+
+.line-items { min-height: 40px; }
+
+.line-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  font-size: 13px;
+}
+
+.line-item:last-child { border-bottom: none; }
+.li-label { color: rgba(255,255,255,0.8); font-weight: 600; }
+.li-amt { color: white; font-weight: 800; font-size: 14px; }
+.line-item.disc .li-amt { color: var(--yellow); }
+.line-item.tax-l .li-amt { color: rgba(255,255,255,0.6); }
+
+.total-block { text-align: right; min-width: 150px; }
+
+.total-lbl {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.6);
+  margin-bottom: 4px;
+}
+
+.total-amt {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 900;
+  font-size: 52px;
+  color: var(--white);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  transition: color 0.2s;
+}
+
+.total-amt.flash { color: var(--yellow); }
+
+.total-sub {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.5);
+  margin-top: 4px;
+}
+
+.total-sub span { color: rgba(255,255,255,0.8); }
+
+/* ─── ACTION BUTTONS ─── */
+.action-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
+}
+
+.btn {
+  padding: 11px 20px;
+  border-radius: 30px;
+  border: none;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-yellow { background: var(--yellow); color: var(--blue-dark); }
+.btn-yellow:hover { background: var(--yellow-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(240,208,0,0.4); }
+
+.btn-white-outline {
+  background: transparent;
+  color: rgba(255,255,255,0.75);
+  border: 2px solid rgba(255,255,255,0.25);
+}
+.btn-white-outline:hover { color: white; border-color: rgba(255,255,255,0.5); }
+
+/* ─── SAVED QUOTES ─── */
+.saved-list {
+  display: flex; flex-direction: column;
+  gap: 8px;
+}
+
+.saved-list::-webkit-scrollbar { width: 4px; }
+.saved-list::-webkit-scrollbar-thumb { background: rgba(42,157,181,0.2); border-radius: 4px; }
+
+.saved-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--gray);
+  border: 2px solid transparent;
+  border-radius: 10px;
+  padding: 11px 14px;
+  transition: border-color 0.15s;
+  cursor: default;
+}
+
+.saved-item:hover { border-color: var(--teal-light); }
+
+.si-badge {
+  background: var(--teal);
+  color: white;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.si-name { flex: 1; font-weight: 800; font-size: 14px; color: var(--text); }
+.si-windows { font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.si-total { font-weight: 900; font-size: 16px; color: var(--blue); white-space: nowrap; }
+.si-date { font-size: 11px; font-weight: 600; color: var(--muted); min-width: 60px; text-align: right; }
+
+.si-gen {
+  background: var(--teal);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.si-gen:hover { background: var(--teal-dark); }
+
+.side-btn {
+  padding: 9px 6px;
+  border-radius: 8px;
+  border: 2px solid var(--gray);
+  background: var(--gray);
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+  line-height: 1.3;
+}
+.side-btn:hover { border-color: var(--teal-light); color: var(--teal); }
+.active-side { background: #e6f6fa !important; border-color: var(--teal) !important; color: var(--teal-dark) !important; }
+
+
+.pipe-filter {
+  padding: 7px 16px;
+  border-radius: 30px;
+  border: 2px solid var(--gray);
+  background: white;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.pipe-filter:hover { border-color: var(--teal-light); color: var(--teal); }
+.active-filter { background: var(--teal) !important; border-color: var(--teal) !important; color: white !important; }
+
+.pipeline-section { margin-bottom: 20px; }
+.pipeline-section-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px; border-radius: 10px 10px 0 0;
+  font-family: 'Montserrat', sans-serif; font-weight: 900;
+  font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.pipeline-section-body {
+  background: white; border: 2px solid var(--gray); border-top: none;
+  border-radius: 0 0 10px 10px; padding: 10px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.pipe-empty { padding: 12px 6px; font-size: 12px; font-weight: 600; color: var(--muted); text-align: center; }
+.pipe-count { background: rgba(255,255,255,0.35); border-radius: 20px; padding: 2px 9px; font-size: 11px; font-weight: 800; }
+
+.won-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.won-btn {
+  border: 2px solid #c5dde5;
+  background: white;
+  border-radius: 30px;
+  padding: 5px 12px;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--muted);
+  transition: all 0.15s;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.won-btn:hover { border-color: #10b981; color: #065f46; background: #f0fdf4; }
+.active-won { background: #10b981 !important; border-color: #10b981 !important; color: white !important; box-shadow: 0 2px 8px rgba(16,185,129,0.3) !important; }
+.lost-btn:hover { border-color: #f87171; color: #dc2626; background: #fff5f5; }
+.active-lost { background: #f87171 !important; border-color: #f87171 !important; color: white !important; box-shadow: 0 2px 8px rgba(248,113,113,0.3) !important; }
+
+.saved-item.won { border-color: #10b981; background: #f0fdf4; }
+.saved-item.lost { border-color: #f87171; background: #fff5f5; opacity: 0.75; }
+
+.si-del {
+  background: none; border: none;
+  color: #c5dde5; font-size: 20px;
+  cursor: pointer; line-height: 1; padding: 0 2px;
+  transition: color 0.15s;
+}
+.si-del:hover { color: #e05; }
+
+.empty-msg {
+  padding: 24px; text-align: center;
+  font-size: 13px; font-weight: 600;
+  color: var(--muted);
+}
+
+/* ─── TAB NAV ─── */
+.tab-nav {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px 24px 0;
+  background: var(--teal-dark);
+}
+
+.tab-btn {
+  padding: 10px 28px;
+  border-radius: 12px 12px 0 0;
+  border: none;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  color: rgba(255,255,255,0.65);
+  background: rgba(255,255,255,0.1);
+  transition: all 0.15s;
+  letter-spacing: 0.02em;
+}
+.tab-btn:hover { color: white; background: rgba(255,255,255,0.18); }
+.tab-btn.active { background: var(--offwhite); color: var(--teal-dark); }
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ─── CRM STYLES ─── */
+.crm-wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 28px 16px 60px;
+}
+
+.crm-toolbar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.crm-search {
+  flex: 1;
+  min-width: 200px;
+  background: white;
+  border: 2px solid var(--gray);
+  border-radius: 30px;
+  padding: 10px 18px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.crm-search:focus { border-color: var(--teal); }
+
+.crm-btn {
+  padding: 10px 20px;
+  border-radius: 30px;
+  border: none;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.crm-btn-teal { background: var(--teal); color: white; }
+.crm-btn-teal:hover { background: var(--teal-dark); }
+.crm-btn-yellow { background: var(--yellow); color: var(--blue-dark); }
+.crm-btn-yellow:hover { background: var(--yellow-dark); }
+.crm-btn-outline { background: white; color: var(--teal); border: 2px solid var(--teal); }
+.crm-btn-outline:hover { background: var(--teal); color: white; }
+.crm-btn-red { background: white; color: #e05; border: 2px solid #fcc; }
+.crm-btn-red:hover { background: #fee2e2; }
+
+.crm-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+@media (max-width: 600px) { .crm-stats { grid-template-columns: 1fr 1fr; } }
+
+.stat-card {
+  background: white;
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  border: 1.5px solid rgba(42,157,181,0.1);
+  box-shadow: var(--shadow);
+}
+.stat-label { font-size: 9px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.stat-val { font-family: 'Montserrat', sans-serif; font-weight: 900; font-size: 28px; color: var(--blue); line-height: 1; }
+.stat-sub { font-size: 11px; font-weight: 600; color: var(--muted); margin-top: 2px; }
+
+.customer-card {
+  background: white;
+  border-radius: var(--radius);
+  border: 1.5px solid rgba(42,157,181,0.1);
+  box-shadow: var(--shadow);
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+
+.customer-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-wrap: wrap;
+}
+.customer-header:hover { background: var(--offwhite); }
+
+.cust-avatar {
+  width: 40px; height: 40px;
+  background: linear-gradient(135deg, var(--teal), var(--blue));
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 900;
+  font-size: 15px;
+  color: white;
+  flex-shrink: 0;
+}
+
+.cust-info { flex: 1; min-width: 0; }
+.cust-name { font-weight: 800; font-size: 15px; color: var(--text); }
+.cust-meta { font-size: 11px; font-weight: 600; color: var(--muted); margin-top: 2px; }
+
+.cust-stats { display: flex; gap: 16px; flex-shrink: 0; }
+.cust-stat { text-align: center; }
+.cust-stat-val { font-family: 'Montserrat', sans-serif; font-weight: 900; font-size: 16px; color: var(--blue); }
+.cust-stat-lbl { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+
+.cust-chevron { color: var(--muted); font-size: 18px; transition: transform 0.2s; flex-shrink: 0; }
+.customer-card.open .cust-chevron { transform: rotate(180deg); }
+
+.customer-body { display: none; border-top: 2px solid var(--gray); }
+.customer-card.open .customer-body { display: block; }
+
+.customer-body-inner { padding: 20px; }
+
+.job-history { margin-bottom: 16px; }
+.job-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  background: var(--offwhite);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+.job-num { font-weight: 800; color: var(--teal-dark); min-width: 80px; }
+.job-date { color: var(--muted); font-weight: 600; }
+.job-type { background: var(--teal); color: white; font-size: 9px; font-weight: 800; padding: 2px 8px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.06em; }
+.job-total { font-weight: 900; color: var(--blue); margin-left: auto; }
+.job-status { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 20px; }
+.job-status.won { background: #d1fae5; color: #065f46; }
+.job-status.lost { background: #fee2e2; color: #991b1b; }
+.job-status.pending { background: #fef3c7; color: #92400e; }
+
+.notes-section { margin-top: 4px; }
+.notes-label { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+
+.note-entry {
+  background: var(--offwhite);
+  border-left: 3px solid var(--teal);
+  border-radius: 0 8px 8px 0;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.note-entry-meta { font-size: 10px; color: var(--muted); font-weight: 600; margin-top: 4px; }
+
+.note-input-row { display: flex; gap: 8px; margin-top: 10px; }
+.note-input {
+  flex: 1;
+  background: white;
+  border: 2px solid var(--gray);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.note-input:focus { border-color: var(--teal); }
+.note-add-btn {
+  background: var(--teal);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.note-add-btn:hover { background: var(--teal-dark); }
+
+/* ─── MOBILE RESPONSIVE ─── */
+@media (max-width: 600px) {
+
+  /* Header */
+  .site-header { padding: 0 16px; height: 54px; }
+  .logo-text { font-size: 14px; }
+  .logo-badge { width: 36px; height: 36px; border-radius: 8px; }
+  .logo-badge svg { width: 20px; height: 20px; }
+  .header-nav, .btn-contact { display: none; }
+
+  /* Hero */
+  .hero-banner { padding: 20px 16px 24px; }
+  .hero-title { font-size: 28px; }
+
+  /* Tab nav */
+  .tab-nav { padding: 10px 10px 0; gap: 4px; }
+  .tab-btn { padding: 8px 12px; font-size: 11px; }
+
+  /* Page layout */
+  .page-wrap { padding: 14px 12px 40px; gap: 12px; }
+  .card { padding: 16px; }
+
+  /* Type buttons */
+  .type-btn { padding: 7px 14px; font-size: 12px; }
+
+  /* Grids → single column */
+  .two { grid-template-columns: 1fr !important; }
+  .customer-grid { grid-template-columns: 1fr !important; }
+
+  /* Quote card */
+  .qc-inner { grid-template-columns: 1fr !important; }
+  .total-amt { font-size: 38px; }
+  .total-block { text-align: left; min-width: unset; }
+
+  /* Action buttons */
+  .action-row { flex-direction: column; gap: 8px; }
+  .action-row .btn { width: 100%; text-align: center; justify-content: center; }
+
+  /* Pipeline job cards */
+  .saved-item { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+  .saved-item .si-badge { flex-shrink: 0; }
+  .saved-item > div[style*="flex:1"] { width: 100%; flex-basis: 100%; order: 1; }
+  .saved-item .si-total { order: 2; font-size: 16px; font-weight: 900; }
+  .saved-item .si-date { display: none; }
+  .saved-item .won-toggle { order: 3; width: 100%; flex-wrap: wrap; gap: 4px; }
+  .saved-item .si-gen { order: 4; padding: 6px 12px; font-size: 11px; }
+  .saved-item .si-del { order: 5; margin-left: auto; }
+  .won-btn { padding: 4px 10px; font-size: 10px; }
+  .si-badge { font-size: 8px; padding: 2px 6px; }
+
+  /* Pipeline filters */
+  #tab-pipeline > div { padding: 14px 12px 40px; }
+  #tab-pipeline > div > div:first-child { flex-direction: column; gap: 8px; }
+  .pipe-filter { padding: 6px 10px; font-size: 11px; }
+  .pipeline-section-header { font-size: 10px; padding: 9px 12px; }
+  .pipeline-section-body { padding: 8px; gap: 6px; }
+
+  /* CRM */
+  .crm-wrap { padding: 14px 12px 40px; }
+  .crm-stats { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-val { font-size: 22px; }
+  .crm-toolbar { flex-direction: column; align-items: stretch; }
+  .crm-search { max-width: 100% !important; }
+  .crm-btn { text-align: center; }
+  .customer-header { padding: 12px 14px; gap: 10px; flex-wrap: wrap; }
+  .cust-avatar { width: 34px; height: 34px; font-size: 12px; }
+  .cust-name { font-size: 13px; }
+  .cust-stats { gap: 10px; }
+  .cust-stat-val { font-size: 14px; }
+  .customer-body-inner { padding: 14px; }
+  .job-row { font-size: 11px; flex-wrap: wrap; gap: 6px; }
+  .note-input-row { flex-direction: column; }
+  .note-add-btn { width: 100%; }
+
+  /* Quote modal */
+  #quoteModal { padding: 14px 10px; }
+  #quoteModal > div > div:first-child { flex-direction: column; gap: 8px; }
+  #quoteModal > div > div:first-child button { width: 100%; }
+}
+
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<div class="hero-banner">
+  <div class="hero-title">The <span>Crew Hub</span></div>
+</div>
+
+<!-- Tab Nav -->
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('quotes', this)">📋 Quoting</button>
+  <button class="tab-btn" onclick="switchTab('pipeline', this)">⚡ Job Pipeline</button>
+  <button class="tab-btn" onclick="switchTab('crm', this)">👥 CRM</button>
+</div>
+
+<!-- ═══ QUOTES TAB ═══ -->
+<div id="tab-quotes" class="tab-panel active">
+
+<!-- Main -->
+<div class="page-wrap">
+
+  <!-- Customer Info -->
+  <div class="card full">
+    <div class="card-title">Customer Details</div>
+    <div class="customer-grid">
+      <div>
+        <label class="field-label">Customer Name</label>
+        <div class="input-wrap">
+          <input type="text" id="custName" placeholder="e.g. Smith Residence">
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Address to be Serviced</label>
+        <div class="input-wrap">
+          <input type="text" id="custAddress" placeholder="e.g. 12 Main St, Penticton">
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Contact Info</label>
+        <div class="input-wrap">
+          <input type="text" id="custContact" placeholder="Phone or email">
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Notes</label>
+        <div class="input-wrap">
+          <input type="text" id="custNotes" placeholder="e.g. Dogs in yard, gate code">
+        </div>
+      </div>
+      <div class="full" style="margin-top:4px;">
+        <label class="field-label">Property Type</label>
+        <div style="display:flex; gap:8px; margin-top:6px;">
+          <button class="type-btn active" data-type="Residential" onclick="setType(this)">Residential</button>
+          <button class="type-btn" data-type="Commercial" onclick="setType(this)">Commercial</button>
+          <button class="type-btn" data-type="Storefront" onclick="setType(this)">Storefront</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Windows -->
+  <div class="card">
+    <div class="card-title">Window Details</div>
+
+    <div class="two">
+      <div>
+        <label class="field-label"># Standard Panes</label>
+        <div class="input-wrap">
+          <input type="number" id="stdCount" value="10" min="0" oninput="calc()">
+        </div>
+      </div>
+      <div>
+        <label class="field-label"># Large Panes</label>
+        <div class="input-wrap">
+          <input type="number" id="largeCount" value="0" min="0" oninput="calc()">
+        </div>
+      </div>
+    </div>
+
+    <label class="field-label">Storeys / Floors</label>
+    <div class="input-wrap">
+      <input type="number" id="storeys" value="1" min="1" oninput="calc()">
+    </div>
+
+    <hr class="divider">
+
+    <div class="addon-name" style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:8px;">Window Condition</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:4px;">
+      <button class="side-btn active-side" id="cond-maintenance" onclick="setCondition('maintenance')">✨ Maintenance</button>
+      <button class="side-btn" id="cond-mild" onclick="setCondition('mild')">🟡 Mildly Soiled</button>
+      <button class="side-btn" id="cond-moderate" onclick="setCondition('moderate')">🟠 Moderately Soiled</button>
+      <button class="side-btn" id="cond-heavy" onclick="setCondition('heavy')">🔴 Heavily Soiled</button>
+    </div>
+    <div style="font-size:10px;font-weight:600;color:var(--muted);margin-bottom:14px;" id="condNote">No surcharge — standard rate</div>
+
+    <hr class="divider">
+
+    <div class="addon-name" style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:8px;">Service Plan</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:4px;">
+      <button class="side-btn active-side" id="plan-oneoff" onclick="setPlan('oneoff')">1× One-Off</button>
+      <button class="side-btn" id="plan-annual" onclick="setPlan('annual')">📅 Annual  −5%</button>
+      <button class="side-btn" id="plan-biannual" onclick="setPlan('biannual')">📅 Twice/Year  −7.5%</button>
+      <button class="side-btn" id="plan-quarterly" onclick="setPlan('quarterly')">📅 Quarterly  −10%</button>
+    </div>
+    <div style="font-size:10px;font-weight:600;color:var(--muted);margin-bottom:6px;" id="planNote">No discount — one-off clean</div>
+
+    <hr class="divider">
+
+    <div class="card-title" style="margin-bottom:12px;">Pricing</div>
+
+    <div class="two">
+      <div>
+        <label class="field-label">Standard ($ / pane)</label>
+        <div class="input-wrap pfx-wrap">
+          <span class="pfx">$</span>
+          <input type="number" id="priceStd" value="4.00" min="0" step="0.50" oninput="calc()">
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Large ($ / pane)</label>
+        <div class="input-wrap pfx-wrap">
+          <span class="pfx">$</span>
+          <input type="number" id="priceLarge" value="7.00" min="0" step="0.50" oninput="calc()">
+        </div>
+      </div>
+    </div>
+
+    <label class="field-label">Upper Storey Surcharge ($ / window)</label>
+    <div class="input-wrap pfx-wrap">
+      <span class="pfx">$</span>
+      <input type="number" id="floorSurcharge" value="3.00" min="0" step="0.50" oninput="calc()">
+    </div>
+
+    <label class="field-label">Minimum Job Charge ($)</label>
+    <div class="input-wrap pfx-wrap">
+      <span class="pfx">$</span>
+      <input type="number" id="minCharge" value="60.00" min="0" oninput="calc()">
+    </div>
+  </div>
+
+  <!-- Add-ons & Adjustments -->
+  <div class="card">
+    <div class="card-title">Add-ons</div>
+
+    <div class="addon-info" style="margin-bottom:8px;">
+      <div class="addon-name" style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:8px;">Cleaning Side</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+        <button class="side-btn active-side" id="side-outside" onclick="setSide('outside')">Outside Only</button>
+        <button class="side-btn" id="side-inside" onclick="setSide('inside')">Inside Only</button>
+        <button class="side-btn" id="side-both" onclick="setSide('both')">Inside &amp; Out</button>
+      </div>
+      <div style="font-size:10px;font-weight:600;color:var(--muted);margin-top:6px;" id="sideNote">Outside only — standard rate</div>
+    </div>
+
+    <div class="addon" id="ao-screens" onclick="toggleAddon(this)">
+      <div class="addon-info">
+        <div class="addon-name">Screen Cleaning</div>
+        <div class="addon-sub" id="screenMeta">$2.00 per screen</div>
+      </div>
+      <div class="check"><svg viewBox="0 0 14 14"><polyline points="2,7 5.5,11 12,3"/></svg></div>
+    </div>
+    <div id="screenCountWrap" style="display:none; margin-top:-4px; margin-bottom:8px; padding: 10px 14px; background:#e6f6fa; border: 2px solid var(--teal); border-top:none; border-radius: 0 0 10px 10px;">
+      <label class="field-label"># of Screens to Clean</label>
+      <div class="input-wrap" style="margin-bottom:0;">
+        <input type="number" id="screenCount" value="0" min="0" oninput="calc()" onclick="event.stopPropagation()">
+      </div>
+    </div>
+
+    <div class="addon" id="ao-hw" onclick="toggleAddon(this)">
+      <div class="addon-info">
+        <div class="addon-name">Hard Water Treatment</div>
+        <div class="addon-sub" id="hwMeta">$6.00 per window</div>
+      </div>
+      <div class="check"><svg viewBox="0 0 14 14"><polyline points="2,7 5.5,11 12,3"/></svg></div>
+    </div>
+
+    <hr class="divider">
+    <div class="card-title" style="margin-bottom:12px;">Add-on Rates</div>
+
+    <div class="two">
+      <div>
+        <label class="field-label">Screen price ($)</label>
+        <div class="input-wrap pfx-wrap">
+          <span class="pfx">$</span>
+          <input type="number" id="screenPrice" value="2.00" min="0" step="0.50" oninput="updateMeta();calc()">
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Hard water ($)</label>
+        <div class="input-wrap pfx-wrap">
+          <span class="pfx">$</span>
+          <input type="number" id="hwPrice" value="6.00" min="0" step="0.50" oninput="updateMeta();calc()">
+        </div>
+      </div>
+    </div>
+
+    <hr class="divider">
+    <div class="card-title" style="margin-bottom:12px;">Adjustments</div>
+
+    <div class="two">
+      <div>
+        <label class="field-label">Travel / Call-out ($)</label>
+        <div class="input-wrap pfx-wrap">
+          <span class="pfx">$</span>
+          <input type="number" id="travel" value="0" min="0" oninput="calc()">
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Discount (%)</label>
+        <div class="input-wrap">
+          <input type="number" id="discount" value="0" min="0" max="100" oninput="calc()">
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Discount ($)</label>
+        <div class="input-wrap pfx-wrap">
+          <span class="pfx">$</span>
+          <input type="number" id="discountDollar" value="0" min="0" oninput="calc()">
+        </div>
+      </div>
+      <div>
+        <label class="field-label">GST / Tax (%)</label>
+        <div class="input-wrap">
+          <input type="number" id="tax" value="0" min="0" oninput="calc()">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Business Info (for quote generation) -->
+  <div class="card full" id="bizInfoCard">
+    <div class="card-title">Your Business Details <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0;">(used on generated quotes)</span></div>
+    <div class="customer-grid">
+      <div>
+        <label class="field-label">Business Name</label>
+        <div class="input-wrap"><input type="text" id="bizName" value="The Window Crew"></div>
+      </div>
+      <div>
+        <label class="field-label">Address</label>
+        <div class="input-wrap"><input type="text" id="bizAddress" value="368 Haynes St, Penticton, BC"></div>
+      </div>
+      <div>
+        <label class="field-label">Phone</label>
+        <div class="input-wrap"><input type="text" id="bizPhone" value="587-220-8775"></div>
+      </div>
+      <div>
+        <label class="field-label">Email</label>
+        <div class="input-wrap"><input type="text" id="bizEmail" value="amadeus@thewindowcrew.ca"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quote Result -->
+  <div class="quote-card full">
+    <div class="qc-label">Live Quote</div>
+    <div class="qc-inner">
+      <div class="line-items" id="lineItems"></div>
+      <div class="total-block">
+        <div class="total-lbl">Total inc. tax</div>
+        <div class="total-amt" id="totalAmt">$0.00</div>
+        <div class="total-sub">Excl. tax: <span id="totalSub">$0.00</span></div>
+      </div>
+    </div>
+    <div class="action-row">
+      <button class="btn btn-yellow" onclick="saveQuote()">💾 Save Quote</button>
+      <button class="btn btn-white-outline" onclick="resetForm()">Reset</button>
+    </div>
+  </div>
+
+
+</div>
+
+</div> <!-- end tab-quotes -->
+
+<!-- ═══ PIPELINE TAB ═══ -->
+<div id="tab-pipeline" class="tab-panel">
+  <div style="max-width:960px; margin:0 auto; padding:28px 16px 60px;">
+
+    <!-- Search + filter bar -->
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:20px;">
+      <input type="text" id="pipelineSearch" class="crm-search" style="margin:0; flex:1; min-width:200px;" placeholder="🔍  Search by name, address, quote #..." oninput="renderSaved()">
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <button class="pipe-filter active-filter" id="pf-all" onclick="setPipeFilter('all',this)">All</button>
+        <button class="pipe-filter" id="pf-quoted" onclick="setPipeFilter('quoted',this)">📋 Quoted</button>
+        <button class="pipe-filter" id="pf-won" onclick="setPipeFilter('won',this)">🏆 Won</button>
+        <button class="pipe-filter" id="pf-invoiced" onclick="setPipeFilter('invoiced',this)">🧾 Invoiced</button>
+        <button class="pipe-filter" id="pf-complete" onclick="setPipeFilter('complete',this)">✅ Complete</button>
+        <button class="pipe-filter" id="pf-lost" onclick="setPipeFilter('lost',this)">✗ Lost</button>
+      </div>
+    </div>
+
+    <div id="savedList"></div>
+
+  </div>
+</div>
+
+<!-- ═══ CRM TAB ═══ -->
+<div id="tab-crm" class="tab-panel">
+  <div class="crm-wrap">
+
+    <!-- Stats row -->
+    <div class="crm-stats">
+      <div class="stat-card">
+        <div class="stat-label">Total Customers</div>
+        <div class="stat-val" id="stat-customers">0</div>
+        <div class="stat-sub">unique contacts</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Quotes</div>
+        <div class="stat-val" id="stat-quotes">0</div>
+        <div class="stat-sub">all time</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Won Bids</div>
+        <div class="stat-val" id="stat-won">0</div>
+        <div class="stat-sub" id="stat-wonpct">win rate</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Revenue</div>
+        <div class="stat-val" id="stat-revenue">$0</div>
+        <div class="stat-sub">won jobs only</div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="crm-toolbar">
+      <input type="text" class="crm-search" id="crmSearch" placeholder="🔍  Search by customer name or address..." oninput="renderCRM()">
+      <button class="crm-btn crm-btn-yellow" onclick="exportJSON()">⬇️ Export Backup</button>
+      <button class="crm-btn crm-btn-outline" onclick="document.getElementById('importFile').click()">⬆️ Import Backup</button>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)">
+      <button class="crm-btn crm-btn-teal" onclick="exportCSV()">📊 Export CSV</button>
+    </div>
+
+    <!-- Customer list -->
+    <div id="crmList"></div>
+
+  </div>
+</div>
+
+<!-- ═══ QUOTE MODAL ═══ -->
+<div id="quoteModal" style="display:none; position:fixed; inset:0; background:rgba(10,30,45,0.7); z-index:1000; overflow-y:auto; padding:30px 16px;">
+  <div style="max-width:680px; margin:0 auto; position:relative;">
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
+      <button onclick="downloadQuoteHTML()" style="background:var(--yellow);color:var(--blue-dark);border:none;border-radius:30px;padding:10px 22px;font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;cursor:pointer;">⬇️ Download to Email</button>
+      <button onclick="printQuote()" style="background:white;color:var(--blue);border:none;border-radius:30px;padding:10px 22px;font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;cursor:pointer;">🖨 Print / Save PDF</button>
+      <button onclick="closeModal()" style="background:rgba(255,255,255,0.15);color:white;border:none;border-radius:30px;padding:10px 22px;font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;cursor:pointer;">✕ Close</button>
+    </div>
+    <div id="quoteDocument" style="background:white; border-radius:16px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.3);"></div>
+  </div>
+</div>
+
+<style>
+@media print {
+  body > *:not(#quoteModal) { display: none !important; }
+  #quoteModal { display: block !important; position: static !important; background: none !important; padding: 0 !important; }
+  #quoteModal > div > div:first-child { display: none !important; }
+  #quoteDocument { box-shadow: none !important; border-radius: 0 !important; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+}
+</style>
+
+<script>
+  let propType = 'Residential';
+  let savedQuotes = JSON.parse(localStorage.getItem('twc_quotes') || '[]');
+  let currentLines = [];
+  let currentGrand = 0;
+  let currentSubtotal = 0;
+
+  function setType(btn) {
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    propType = btn.dataset.type;
+    calc();
+  }
+
+  let cleaningSide = 'outside'; // 'outside' | 'inside' | 'both'
+  let windowCondition = 'maintenance'; // 'maintenance' | 'mild' | 'moderate' | 'heavy'
+  let servicePlan = 'oneoff'; // 'oneoff' | 'annual' | 'biannual' | 'quarterly'
+
+  const conditionMultipliers = { maintenance: 1.0, mild: 1.05, moderate: 1.10, heavy: 1.20 };
+  const conditionNotes = {
+    maintenance: 'No surcharge — standard rate',
+    mild: 'Mildly soiled — +5% surcharge',
+    moderate: 'Moderately soiled — +10% surcharge',
+    heavy: 'Heavily soiled — +20% surcharge'
+  };
+  const planDiscounts = { oneoff: 0, annual: 5, biannual: 7.5, quarterly: 10 };
+  const planNotes = {
+    oneoff: 'No discount — one-off clean',
+    annual: 'Annual plan — 5% discount applied',
+    biannual: 'Twice a year plan — 7.5% discount applied',
+    quarterly: 'Quarterly plan — 10% discount applied'
+  };
+
+  function setCondition(val) {
+    windowCondition = val;
+    document.querySelectorAll('[id^="cond-"]').forEach(b => b.classList.remove('active-side'));
+    document.getElementById('cond-' + val).classList.add('active-side');
+    document.getElementById('condNote').textContent = conditionNotes[val];
+    calc();
+  }
+
+  function setPlan(val) {
+    servicePlan = val;
+    document.querySelectorAll('[id^="plan-"]').forEach(b => b.classList.remove('active-side'));
+    document.getElementById('plan-' + val).classList.add('active-side');
+    document.getElementById('planNote').textContent = planNotes[val];
+    calc();
+  }
+
+  function setSide(val) {
+    cleaningSide = val;
+    document.querySelectorAll('.side-btn').forEach(b => b.classList.remove('active-side'));
+    document.getElementById('side-' + val).classList.add('active-side');
+    const notes = { outside: 'Outside only — standard rate', inside: 'Inside only — standard rate', both: 'Inside & outside — ×1.6 multiplier' };
+    document.getElementById('sideNote').textContent = notes[val];
+    calc();
+  }
+
+  function toggleAddon(el) {
+    el.classList.toggle('on');
+    if (el.id === 'ao-screens') {
+      const wrap = document.getElementById('screenCountWrap');
+      const isOn = el.classList.contains('on');
+      wrap.style.display = isOn ? 'block' : 'none';
+      el.style.borderRadius = isOn ? '10px 10px 0 0' : '10px';
+      if (isOn) document.getElementById('screenCount').focus();
+    }
+    calc();
+  }
+  function isOn(id) { return document.getElementById(id).classList.contains('on'); }
+  function v(id) { return parseFloat(document.getElementById(id).value) || 0; }
+  function s(id) { return document.getElementById(id).value.trim(); }
+
+  function updateMeta() {
+    document.getElementById('screenMeta').textContent = `$${v('screenPrice').toFixed(2)} per screen`;
+    document.getElementById('hwMeta').textContent = `$${v('hwPrice').toFixed(2)} per window`;
+  }
+
+  function calc() {
+    const std = Math.max(0, v('stdCount'));
+    const large = Math.max(0, v('largeCount'));
+    const total = std + large;
+    const storeys = Math.max(1, v('storeys'));
+
+    const upperWindows = total * (1 - 1 / storeys);
+    const surch = upperWindows * v('floorSurcharge');
+
+    let base = std * v('priceStd') + large * v('priceLarge') + surch;
+    if (cleaningSide === 'both') base *= 1.6;
+
+    // Apply window condition multiplier
+    base *= conditionMultipliers[windowCondition] || 1.0;
+
+    const preMin = base;
+    base = Math.max(base, total > 0 ? v('minCharge') : 0);
+    const hitMin = total > 0 && base === v('minCharge') && preMin < v('minCharge');
+
+    let lines = [];
+    if (std > 0)   lines.push({ l: `${std} standard pane${std>1?'s':''}  ×  $${v('priceStd').toFixed(2)}`, a: std * v('priceStd'), c: '' });
+    if (large > 0) lines.push({ l: `${large} large pane${large>1?'s':''}  ×  $${v('priceLarge').toFixed(2)}`, a: large * v('priceLarge'), c: '' });
+    if (surch > 0) lines.push({ l: `Upper storey surcharge`, a: surch, c: '' });
+    if (cleaningSide === 'outside') lines.push({ l: 'Outside only', a: 0, c: '' });
+    if (cleaningSide === 'inside') lines.push({ l: 'Inside only', a: 0, c: '' });
+    if (cleaningSide === 'both') lines.push({ l: 'Inside & outside  ×1.6', a: base / (conditionMultipliers[windowCondition]||1) - base / (conditionMultipliers[windowCondition]||1) / 1.6, c: '' });
+    if (windowCondition !== 'maintenance') lines.push({ l: `${windowCondition.charAt(0).toUpperCase()+windowCondition.slice(1)} soiled  +${Math.round((conditionMultipliers[windowCondition]-1)*100)}%`, a: base - base / (conditionMultipliers[windowCondition]||1), c: '' });
+    if (hitMin) lines.push({ l: 'Minimum job charge applied', a: v('minCharge') - preMin, c: '' });
+
+    let subtotal = base;
+
+    if (isOn('ao-screens')) {
+      const screenCount = Math.max(0, v('screenCount'));
+      const sc = screenCount * v('screenPrice');
+      subtotal += sc;
+      lines.push({ l: `Screen cleaning  (${screenCount} screen${screenCount!==1?'s':''})`, a: sc, c: '' });
+    }
+    if (isOn('ao-hw')) {
+      const hwAmt = total * v('hwPrice');
+      subtotal += hwAmt;
+      lines.push({ l: `Hard water treatment  (${total} windows)`, a: hwAmt, c: '' });
+    }
+    if (v('travel') > 0) {
+      subtotal += v('travel');
+      lines.push({ l: 'Travel / call-out fee', a: v('travel'), c: '' });
+    }
+
+    // Service plan discount
+    const planDisc = planDiscounts[servicePlan] || 0;
+    if (planDisc > 0) {
+      const d = subtotal * planDisc / 100;
+      subtotal -= d;
+      const planLabel = { annual: 'Annual plan', biannual: 'Twice/year plan', quarterly: 'Quarterly plan' }[servicePlan];
+      lines.push({ l: `${planLabel}  −${planDisc}%`, a: -d, c: 'disc' });
+    }
+
+    if (v('discount') > 0) {
+      const d = subtotal * v('discount') / 100;
+      subtotal -= d;
+      lines.push({ l: `Discount  −${v('discount')}%`, a: -d, c: 'disc' });
+    }
+    if (v('discountDollar') > 0) {
+      const d = Math.min(v('discountDollar'), subtotal);
+      subtotal -= d;
+      lines.push({ l: `Discount  −$${d.toFixed(2)}`, a: -d, c: 'disc' });
+    }
+    const taxAmt = subtotal * v('tax') / 100;
+    if (v('tax') > 0) lines.push({ l: `GST  ${v('tax')}%`, a: taxAmt, c: 'tax-l' });
+
+    const grand = subtotal + taxAmt;
+    currentLines = lines;
+    currentGrand = grand;
+    currentSubtotal = subtotal;
+
+    document.getElementById('lineItems').innerHTML = lines.length
+      ? lines.map(l => `
+        <div class="line-item ${l.c}">
+          <span class="li-label">${l.l}</span>
+          <span class="li-amt">${l.a < 0 ? '−' : ''}$${Math.abs(l.a).toFixed(2)}</span>
+        </div>`).join('')
+      : '<div style="color:rgba(255,255,255,0.4);font-size:13px;padding:8px 0;">Enter window details above to build your quote.</div>';
+
+    const el = document.getElementById('totalAmt');
+    el.textContent = `$${grand.toFixed(2)}`;
+    el.classList.add('flash');
+    setTimeout(() => el.classList.remove('flash'), 220);
+    document.getElementById('totalSub').textContent = `$${subtotal.toFixed(2)}`;
+
+    window._cur = {
+      type: propType, grand, subtotal,
+      std, large, storeys,
+      name: s('custName'), address: s('custAddress'),
+      contact: s('custContact'), notes: s('custNotes'),
+      addons: [cleaningSide === 'inside' && 'Inside Only', cleaningSide === 'both' && 'Inside/Out', isOn('ao-screens')&&'Screens', isOn('ao-hw')&&'Hard Water'].filter(Boolean)
+    };
+  }
+
+  function generateQuote() {
+    if (!window._cur || (window._cur.std + window._cur.large) === 0) {
+      alert('Please enter at least one window before generating a quote.');
+      return;
+    }
+
+    const quoteNum = 'TWC-' + Date.now().toString().slice(-6);
+    const today = new Date();
+    const expiry = new Date(today); expiry.setDate(expiry.getDate() + 30);
+    const fmt = d => d.toLocaleDateString('en-CA', { day:'numeric', month:'long', year:'numeric' });
+
+    const bizName = s('bizName') || 'The Window Crew';
+    const bizAddress = s('bizAddress');
+    const bizPhone = s('bizPhone');
+    const bizEmail = s('bizEmail');
+    const custName = s('custName');
+    const custAddress = s('custAddress');
+    const custContact = s('custContact');
+    const custNotes = s('custNotes');
+
+    const taxAmt = currentGrand - currentSubtotal;
+
+    const lineRows = currentLines.filter(l => l.c !== 'tax-l' && l.c !== 'disc').map(l => `
+      <tr>
+        <td style="padding:13px 20px; font-size:14px; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">${l.l.replace(/\s{2,}/g, ' ')}</td>
+        <td style="padding:13px 20px; text-align:right; font-size:14px; font-weight:700; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">$${l.a.toFixed(2)}</td>
+      </tr>`).join('');
+
+    const discLine = currentLines.find(l => l.c === 'disc');
+
+    document.getElementById('quoteDocument').innerHTML = `
+      <div style="font-family:'Nunito',sans-serif;">
+
+        <!-- Header bar -->
+        <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:32px 36px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+          <div>
+            <div style="background:#f0d000; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;">
+              <span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:#145689; letter-spacing:0.02em;">${bizName}</span>
+            </div>
+            ${bizAddress ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:4px;">📍 ${bizAddress}</div>` : ''}
+            ${bizPhone ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">📞 ${bizPhone}</div>` : ''}
+            ${bizEmail ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">✉️ ${bizEmail}</div>` : ''}
+          </div>
+          <div style="text-align:right;">
+            <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:28px; color:white; letter-spacing:0.04em;">QUOTE</div>
+            <div style="color:rgba(255,255,255,0.7); font-size:12px; font-weight:700; letter-spacing:0.1em; margin-top:2px;">${quoteNum}</div>
+            <div style="color:rgba(255,255,255,0.85); font-size:12px; font-weight:600; margin-top:8px;">Date: ${fmt(today)}</div>
+            <div style="color:#f0d000; font-size:12px; font-weight:700; margin-top:2px;">Valid until: ${fmt(expiry)}</div>
+          </div>
+        </div>
+
+        <!-- Customer info -->
+        <div style="background:#f4fbfc; padding:22px 36px; display:flex; gap:40px; flex-wrap:wrap; border-bottom:2px solid #eaf4f7;">
+          <div>
+            <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:6px;">Prepared For</div>
+            <div style="font-size:16px; font-weight:800; color:#1a3a4a;">${custName || '—'}</div>
+            ${custAddress ? `<div style="font-size:13px; font-weight:600; color:#6b9aaa; margin-top:2px;">${custAddress}</div>` : ''}
+            ${custContact ? `<div style="font-size:13px; font-weight:600; color:#6b9aaa; margin-top:2px;">${custContact}</div>` : ''}
+          </div>
+          <div>
+            <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:6px;">Service Type</div>
+            <div style="display:inline-block; background:#2a9db5; color:white; font-size:12px; font-weight:800; padding:4px 12px; border-radius:20px;">${propType}</div>
+          </div>
+        </div>
+
+        <!-- Line items table -->
+        <table style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr style="background:#1a3a4a;">
+              <th style="padding:11px 20px; text-align:left; font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.7);">Description</th>
+              <th style="padding:11px 20px; text-align:right; font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.7);">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${lineRows}
+          </tbody>
+        </table>
+
+        <!-- Totals -->
+        <div style="background:#f4fbfc; padding:20px 36px; border-top:2px solid #eaf4f7;">
+          ${discLine ? `
+          <div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;">
+            <span style="color:#6b9aaa; font-weight:600;">${discLine.l.replace(/\s{2,}/g,' ')}</span>
+            <span style="color:#2a9db5; font-weight:700;">−$${Math.abs(discLine.a).toFixed(2)}</span>
+          </div>` : ''}
+          <div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;">
+            <span style="color:#6b9aaa; font-weight:600;">Subtotal (excl. tax)</span>
+            <span style="color:#1a3a4a; font-weight:700;">$${currentSubtotal.toFixed(2)}</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;">
+            <span style="color:#6b9aaa; font-weight:600;">GST ${v('tax')}%</span>
+            <span style="color:#6b9aaa; font-weight:600;">$${taxAmt.toFixed(2)}</span>
+          </div>
+        </div>
+
+        <!-- Total banner -->
+        <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:22px 36px; display:flex; justify-content:space-between; align-items:center;">
+          <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:16px; color:rgba(255,255,255,0.8); letter-spacing:0.06em; text-transform:uppercase;">Total Due (inc. GST)</div>
+          <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:42px; color:#f0d000; letter-spacing:-0.01em;">$${currentGrand.toFixed(2)}</div>
+        </div>
+
+        <!-- Notes & footer -->
+        <div style="padding:22px 36px 28px; background:white;">
+          ${custNotes ? `
+          <div style="margin-bottom:16px; background:#f4fbfc; border-left:4px solid #2a9db5; padding:12px 16px; border-radius:0 8px 8px 0;">
+            <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:4px;">Job Notes</div>
+            <div style="font-size:13px; font-weight:600; color:#1a3a4a;">${custNotes}</div>
+          </div>` : ''}
+          <div style="font-size:11px; font-weight:600; color:#aac4cc; text-align:center; margin-top:8px;">
+            This quote is valid for 30 days from the date of issue. Prices may vary if site conditions differ from those described. Thank you for choosing ${bizName}!
+          </div>
+        </div>
+
+      </div>
+    `;
+
+    document.getElementById('quoteModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function generateReceiptFromSaved(i) {
+    const q = savedQuotes[i];
+    if (!q.lines) { alert('This job was saved before receipt generation was added. Please rebuild it.'); return; }
+
+    const refNum = q.quoteNum || 'TWC-' + Date.now().toString().slice(-6);
+    const today = new Date();
+    const fmt = d => d.toLocaleDateString('en-CA', { day:'numeric', month:'long', year:'numeric' });
+
+    const bizName = s('bizName') || 'The Window Crew';
+    const bizAddress = s('bizAddress');
+    const bizPhone = s('bizPhone');
+    const bizEmail = s('bizEmail');
+    const taxAmt = q.grand - q.subtotal;
+    const discLine = q.lines.find(l => l.c === 'disc');
+    const lineRows = q.lines.filter(l => l.c !== 'tax-l' && l.c !== 'disc').map(l => `
+      <tr>
+        <td style="padding:13px 20px; font-size:14px; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">${l.l.replace(/\s{2,}/g, ' ')}</td>
+        <td style="padding:13px 20px; text-align:right; font-size:14px; font-weight:700; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">$${l.a.toFixed(2)}</td>
+      </tr>`).join('');
+
+    const prevLines = currentLines, prevGrand = currentGrand, prevSub = currentSubtotal;
+    currentLines = q.lines; currentGrand = q.grand; currentSubtotal = q.subtotal;
+
+    document.getElementById('quoteDocument').innerHTML = `
+      <div style="font-family:'Nunito',sans-serif;">
+
+        <!-- Header -->
+        <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:32px 36px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+          <div>
+            <div style="background:#f0d000; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;">
+              <span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:#145689; letter-spacing:0.02em;">${bizName}</span>
+            </div>
+            ${bizAddress ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:4px;">📍 ${bizAddress}</div>` : ''}
+            ${bizPhone ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">📞 ${bizPhone}</div>` : ''}
+            ${bizEmail ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">✉️ ${bizEmail}</div>` : ''}
+          </div>
+          <div style="text-align:right;">
+            <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:28px; color:#f0d000; letter-spacing:0.04em;">RECEIPT</div>
+            <div style="color:rgba(255,255,255,0.7); font-size:12px; font-weight:700; letter-spacing:0.1em; margin-top:2px;">Ref: ${refNum}</div>
+            <div style="color:rgba(255,255,255,0.85); font-size:12px; font-weight:600; margin-top:8px;">Date Paid: ${fmt(today)}</div>
+            <div style="background:#10b981; display:inline-block; border-radius:20px; padding:3px 12px; margin-top:6px;">
+              <span style="color:white; font-size:11px; font-weight:800; letter-spacing:0.06em;">✓ PAID IN FULL</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Customer info -->
+        <div style="background:#f4fbfc; padding:22px 36px; display:flex; gap:40px; flex-wrap:wrap; border-bottom:2px solid #eaf4f7;">
+          <div>
+            <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:6px;">Receipt For</div>
+            <div style="font-size:16px; font-weight:800; color:#1a3a4a;">${q.name || '—'}</div>
+            ${q.address ? `<div style="font-size:13px; font-weight:600; color:#6b9aaa; margin-top:2px;">${q.address}</div>` : ''}
+            ${q.contact ? `<div style="font-size:13px; font-weight:600; color:#6b9aaa; margin-top:2px;">${q.contact}</div>` : ''}
+          </div>
+          <div>
+            <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:6px;">Service Type</div>
+            <div style="display:inline-block; background:#2a9db5; color:white; font-size:12px; font-weight:800; padding:4px 12px; border-radius:20px;">${q.type}</div>
+            <div style="margin-top:10px;">
+              <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:4px;">Reference</div>
+              <div style="font-size:12px; font-weight:700; color:#1a3a4a;">${refNum}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Line items -->
+        <table style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr style="background:#1a3a4a;">
+              <th style="padding:11px 20px; text-align:left; font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.7);">Description</th>
+              <th style="padding:11px 20px; text-align:right; font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.7);">Amount</th>
+            </tr>
+          </thead>
+          <tbody>${lineRows}</tbody>
+        </table>
+
+        <!-- Totals -->
+        <div style="background:#f4fbfc; padding:20px 36px; border-top:2px solid #eaf4f7;">
+          ${discLine ? `<div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;"><span style="color:#6b9aaa; font-weight:600;">${discLine.l.replace(/\s{2,}/g,' ')}</span><span style="color:#2a9db5; font-weight:700;">−$${Math.abs(discLine.a).toFixed(2)}</span></div>` : ''}
+          <div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;"><span style="color:#6b9aaa; font-weight:600;">Subtotal</span><span style="color:#1a3a4a; font-weight:700;">$${q.subtotal.toFixed(2)}</span></div>
+          ${taxAmt > 0 ? `<div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;"><span style="color:#6b9aaa; font-weight:600;">GST ${q.taxRate || 0}%</span><span style="color:#6b9aaa; font-weight:600;">$${taxAmt.toFixed(2)}</span></div>` : ''}
+        </div>
+
+        <!-- Amount Paid banner -->
+        <div style="background:linear-gradient(135deg,#059669 0%,#10b981 100%); padding:22px 36px; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:16px; color:rgba(255,255,255,0.85); letter-spacing:0.06em; text-transform:uppercase;">Amount Paid</div>
+            <div style="font-size:12px; font-weight:600; color:rgba(255,255,255,0.65); margin-top:4px;">${fmt(today)}</div>
+          </div>
+          <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:42px; color:white; letter-spacing:-0.01em;">$${q.grand.toFixed(2)}</div>
+        </div>
+
+        <!-- Footer -->
+        <div style="padding:22px 36px 28px; background:white;">
+          <div style="background:#f0fdf4; border:2px solid #10b981; border-radius:10px; padding:14px 18px; margin-bottom:16px; text-align:center;">
+            <div style="font-size:14px; font-weight:800; color:#065f46; margin-bottom:4px;">✓ Payment Received — Thank You!</div>
+            <div style="font-size:12px; font-weight:600; color:#6b9aaa;">Please keep this receipt for your records. Reference: <strong>${refNum}</strong></div>
+          </div>
+          <div style="background:#f4fbfc; border:2px solid #2a9db5; border-radius:10px; padding:14px 18px; margin-bottom:12px;">
+            <div style="font-size:14px; font-weight:800; color:#1a3a4a; margin-bottom:6px;">Windows lookin' sharp? 🪟</div>
+            <div style="font-size:13px; font-weight:600; color:#1a3a4a; line-height:1.6;">If you were happy with our service, we'd love if you left us a quick review!<br>You'll get <span style="background:#f0d000; padding:2px 8px; border-radius:4px; font-weight:800; color:#1a3a4a;">$25 off</span> your next service — just show your review when you book again.</div>
+          </div>
+          <div style="font-size:11px; font-weight:600; color:#aac4cc; text-align:center;">Thank you for choosing ${bizName}! We appreciate your business.</div>
+        </div>
+
+      </div>`;
+
+    document.getElementById('quoteModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+
+    savedQuotes[i].receipted = true;
+    localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+
+    currentLines = prevLines; currentGrand = prevGrand; currentSubtotal = prevSub;
+  }
+
+  function buildStandaloneHTML() {
+    const content = document.getElementById('quoteDocument').innerHTML;
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quote — The Window Crew</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16px 60px; }
+.doc { max-width: 680px; margin: 0 auto; border-radius: 16px; overflow: hidden; box-shadow: 0 12px 48px rgba(26,110,168,0.18); }
+@media print {
+  body { background: white; padding: 0; }
+  .doc { box-shadow: none; border-radius: 0; max-width: 100%; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+}
+</style>
+</head>
+<body>
+<div class="doc">${content}</div>
+</body>
+</html>`;
+  }
+
+  function downloadQuoteHTML() {
+    const html = buildStandaloneHTML();
+    const custName = s('custName').replace(/[^a-z0-9]/gi, '_') || 'Quote';
+    const quoteNum = document.querySelector('#quoteDocument [style*="TWC-"]')?.textContent || 'TWC';
+    const blob = new Blob([html], { type: 'text/html' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `WindowCrew_Quote_${custName}.html`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function closeModal() {
+    document.getElementById('quoteModal').style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  function printQuote() {
+    const html = buildStandaloneHTML();
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+    win.onload = () => { win.focus(); win.print(); };
+  }
+
+  // Close modal on backdrop click
+  document.getElementById('quoteModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+
+  function saveQuote() {
+    if (!window._cur || (window._cur.std + window._cur.large) === 0) {
+      alert('Please enter at least one window before saving.');
+      return;
+    }
+    const name = window._cur.name || prompt('Enter a name for this quote:');
+    if (!name?.trim()) return;
+    savedQuotes.unshift({
+      name: name.trim(),
+      address: window._cur.address,
+      contact: window._cur.contact,
+      type: window._cur.type,
+      grand: window._cur.grand,
+      subtotal: window._cur.subtotal,
+      std: window._cur.std,
+      large: window._cur.large,
+      addons: window._cur.addons,
+      lines: currentLines,
+      taxRate: v('tax'),
+      notes: window._cur.notes,
+      won: null,
+      condition: windowCondition,
+      plan: servicePlan,
+      quoteNum: 'TWC-' + Date.now().toString().slice(-6),
+      date: new Date().toLocaleDateString('en-CA', { day:'2-digit', month:'short', year:'2-digit' })
+    });
+    localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+    renderSaved();
+    // Switch to pipeline tab to show the new entry
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-pipeline').classList.add('active');
+    document.querySelector('[onclick*="pipeline"]').classList.add('active');
+    generateQuoteFromSaved(0);
+  }
+
+  function deleteQuote(i, e) {
+    e.stopPropagation();
+    if (!confirm('Delete this quote?')) return;
+    savedQuotes.splice(i, 1);
+    localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+    renderSaved();
+  }
+
+  function toggleWon(i, val) {
+    savedQuotes[i].won = val;
+    localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+    renderSaved();
+  }
+
+  function generateQuoteFromSaved(i) {
+    const q = savedQuotes[i];
+    if (!q.lines) { alert('This quote was saved before quote generation was added. Please rebuild it.'); return; }
+
+    const quoteNum = q.quoteNum || 'TWC-' + Date.now().toString().slice(-6);
+    const today = new Date();
+    const expiry = new Date(today); expiry.setDate(expiry.getDate() + 30);
+    const fmt = d => d.toLocaleDateString('en-CA', { day:'numeric', month:'long', year:'numeric' });
+
+    const bizName = s('bizName') || 'The Window Crew';
+    const bizAddress = s('bizAddress');
+    const bizPhone = s('bizPhone');
+    const bizEmail = s('bizEmail');
+    const taxAmt = q.grand - q.subtotal;
+    const discLine = q.lines.find(l => l.c === 'disc');
+    const lineRows = q.lines.filter(l => l.c !== 'tax-l' && l.c !== 'disc').map(l => `
+      <tr>
+        <td style="padding:13px 20px; font-size:14px; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">${l.l.replace(/\s{2,}/g, ' ')}</td>
+        <td style="padding:13px 20px; text-align:right; font-size:14px; font-weight:700; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">$${l.a.toFixed(2)}</td>
+      </tr>`).join('');
+
+    // Temporarily set globals so buildStandaloneHTML works
+    const prevLines = currentLines, prevGrand = currentGrand, prevSub = currentSubtotal;
+    currentLines = q.lines; currentGrand = q.grand; currentSubtotal = q.subtotal;
+
+    document.getElementById('quoteDocument').innerHTML = `
+      <div style="font-family:'Nunito',sans-serif;">
+        <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:32px 36px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+          <div>
+            <div style="background:#f0d000; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;">
+              <span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:#145689; letter-spacing:0.02em;">${bizName}</span>
+            </div>
+            ${bizAddress ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:4px;">📍 ${bizAddress}</div>` : ''}
+            ${bizPhone ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">📞 ${bizPhone}</div>` : ''}
+            ${bizEmail ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">✉️ ${bizEmail}</div>` : ''}
+          </div>
+          <div style="text-align:right;">
+            <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:28px; color:white; letter-spacing:0.04em;">QUOTE</div>
+            <div style="color:rgba(255,255,255,0.7); font-size:12px; font-weight:700; letter-spacing:0.1em; margin-top:2px;">${quoteNum}</div>
+            <div style="color:rgba(255,255,255,0.85); font-size:12px; font-weight:600; margin-top:8px;">Date: ${fmt(today)}</div>
+            <div style="color:#f0d000; font-size:12px; font-weight:700; margin-top:2px;">Valid until: ${fmt(expiry)}</div>
+          </div>
+        </div>
+        <div style="background:#f4fbfc; padding:22px 36px; display:flex; gap:40px; flex-wrap:wrap; border-bottom:2px solid #eaf4f7;">
+          <div>
+            <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:6px;">Prepared For</div>
+            <div style="font-size:16px; font-weight:800; color:#1a3a4a;">${q.name || '—'}</div>
+            ${q.address ? `<div style="font-size:13px; font-weight:600; color:#6b9aaa; margin-top:2px;">${q.address}</div>` : ''}
+            ${q.contact ? `<div style="font-size:13px; font-weight:600; color:#6b9aaa; margin-top:2px;">${q.contact}</div>` : ''}
+          </div>
+          <div>
+            <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:6px;">Service Type</div>
+            <div style="display:inline-block; background:#2a9db5; color:white; font-size:12px; font-weight:800; padding:4px 12px; border-radius:20px;">${q.type}</div>
+          </div>
+        </div>
+        <table style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr style="background:#1a3a4a;">
+              <th style="padding:11px 20px; text-align:left; font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.7);">Description</th>
+              <th style="padding:11px 20px; text-align:right; font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.7);">Amount</th>
+            </tr>
+          </thead>
+          <tbody>${lineRows}</tbody>
+        </table>
+        <div style="background:#f4fbfc; padding:20px 36px; border-top:2px solid #eaf4f7;">
+          ${discLine ? `<div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;"><span style="color:#6b9aaa; font-weight:600;">${discLine.l.replace(/\s{2,}/g,' ')}</span><span style="color:#2a9db5; font-weight:700;">−$${Math.abs(discLine.a).toFixed(2)}</span></div>` : ''}
+          <div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;"><span style="color:#6b9aaa; font-weight:600;">Subtotal (excl. tax)</span><span style="color:#1a3a4a; font-weight:700;">$${q.subtotal.toFixed(2)}</span></div>
+          <div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;"><span style="color:#6b9aaa; font-weight:600;">GST ${q.taxRate || 5}%</span><span style="color:#6b9aaa; font-weight:600;">$${taxAmt.toFixed(2)}</span></div>
+        </div>
+        <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:22px 36px; display:flex; justify-content:space-between; align-items:center;">
+          <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:16px; color:rgba(255,255,255,0.8); letter-spacing:0.06em; text-transform:uppercase;">Total Due (inc. GST)</div>
+          <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:42px; color:#f0d000; letter-spacing:-0.01em;">$${q.grand.toFixed(2)}</div>
+        </div>
+        <div style="padding:22px 36px 28px; background:white;">
+          ${q.notes ? `<div style="margin-bottom:16px; background:#f4fbfc; border-left:4px solid #2a9db5; padding:12px 16px; border-radius:0 8px 8px 0;"><div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:4px;">Job Notes</div><div style="font-size:13px; font-weight:600; color:#1a3a4a;">${q.notes}</div></div>` : ''}
+          <div style="font-size:11px; font-weight:600; color:#aac4cc; text-align:center; margin-top:8px;">This quote is valid for 30 days from the date of issue. Prices may vary if site conditions differ from those described. Thank you for choosing ${bizName}!</div>
+        </div>
+      </div>`;
+
+    document.getElementById('quoteModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+
+    // restore globals
+    currentLines = prevLines; currentGrand = prevGrand; currentSubtotal = prevSub;
+  }
+
+  function generateInvoiceFromSaved(i) {
+    const q = savedQuotes[i];
+    if (!q.lines) { alert('This quote was saved before invoice generation was added. Please rebuild it.'); return; }
+
+    const invoiceNum = q.quoteNum || 'TWC-' + Date.now().toString().slice(-6);
+    const today = new Date();
+    const dueDate = new Date(today); dueDate.setDate(dueDate.getDate() + 14);
+    const fmt = d => d.toLocaleDateString('en-CA', { day:'numeric', month:'long', year:'numeric' });
+
+    const bizName = s('bizName') || 'The Window Crew';
+    const bizAddress = s('bizAddress');
+    const bizPhone = s('bizPhone');
+    const bizEmail = s('bizEmail');
+    const taxAmt = q.grand - q.subtotal;
+    const discLine = q.lines.find(l => l.c === 'disc');
+    const lineRows = q.lines.filter(l => l.c !== 'tax-l' && l.c !== 'disc').map(l => `
+      <tr>
+        <td style="padding:13px 20px; font-size:14px; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">${l.l.replace(/\s{2,}/g, ' ')}</td>
+        <td style="padding:13px 20px; text-align:right; font-size:14px; font-weight:700; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">$${l.a.toFixed(2)}</td>
+      </tr>`).join('');
+
+    const prevLines = currentLines, prevGrand = currentGrand, prevSub = currentSubtotal;
+    currentLines = q.lines; currentGrand = q.grand; currentSubtotal = q.subtotal;
+
+    document.getElementById('quoteDocument').innerHTML = `
+      <div style="font-family:'Nunito',sans-serif;">
+
+        <!-- Header -->
+        <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:32px 36px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+          <div>
+            <div style="background:#f0d000; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;">
+              <span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:#145689; letter-spacing:0.02em;">${bizName}</span>
+            </div>
+            ${bizAddress ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:4px;">📍 ${bizAddress}</div>` : ''}
+            ${bizPhone ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">📞 ${bizPhone}</div>` : ''}
+            ${bizEmail ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">✉️ ${bizEmail}</div>` : ''}
+          </div>
+          <div style="text-align:right;">
+            <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:28px; color:#f0d000; letter-spacing:0.04em;">INVOICE</div>
+            <div style="color:rgba(255,255,255,0.7); font-size:12px; font-weight:700; letter-spacing:0.1em; margin-top:2px;">${invoiceNum}</div>
+            <div style="color:rgba(255,255,255,0.85); font-size:12px; font-weight:600; margin-top:8px;">Date: ${fmt(today)}</div>
+            <div style="color:#f0d000; font-size:12px; font-weight:700; margin-top:2px;">Payment Due: ${fmt(dueDate)}</div>
+          </div>
+        </div>
+
+        <!-- Customer info -->
+        <div style="background:#f4fbfc; padding:22px 36px; display:flex; gap:40px; flex-wrap:wrap; border-bottom:2px solid #eaf4f7;">
+          <div>
+            <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:6px;">Bill To</div>
+            <div style="font-size:16px; font-weight:800; color:#1a3a4a;">${q.name || '—'}</div>
+            ${q.address ? `<div style="font-size:13px; font-weight:600; color:#6b9aaa; margin-top:2px;">${q.address}</div>` : ''}
+            ${q.contact ? `<div style="font-size:13px; font-weight:600; color:#6b9aaa; margin-top:2px;">${q.contact}</div>` : ''}
+          </div>
+          <div>
+            <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:6px;">Service Type</div>
+            <div style="display:inline-block; background:#2a9db5; color:white; font-size:12px; font-weight:800; padding:4px 12px; border-radius:20px;">${q.type}</div>
+            <div style="margin-top:10px;">
+              <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:4px;">Ref. Quote</div>
+              <div style="font-size:12px; font-weight:700; color:#1a3a4a;">${invoiceNum}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Line items -->
+        <table style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr style="background:#1a3a4a;">
+              <th style="padding:11px 20px; text-align:left; font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.7);">Description</th>
+              <th style="padding:11px 20px; text-align:right; font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.7);">Amount</th>
+            </tr>
+          </thead>
+          <tbody>${lineRows}</tbody>
+        </table>
+
+        <!-- Totals -->
+        <div style="background:#f4fbfc; padding:20px 36px; border-top:2px solid #eaf4f7;">
+          ${discLine ? `<div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;"><span style="color:#6b9aaa; font-weight:600;">${discLine.l.replace(/\s{2,}/g,' ')}</span><span style="color:#2a9db5; font-weight:700;">−$${Math.abs(discLine.a).toFixed(2)}</span></div>` : ''}
+          <div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;"><span style="color:#6b9aaa; font-weight:600;">Subtotal</span><span style="color:#1a3a4a; font-weight:700;">$${q.subtotal.toFixed(2)}</span></div>
+          ${taxAmt > 0 ? `<div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;"><span style="color:#6b9aaa; font-weight:600;">GST ${q.taxRate || 0}%</span><span style="color:#6b9aaa; font-weight:600;">$${taxAmt.toFixed(2)}</span></div>` : ''}
+        </div>
+
+        <!-- Amount Due banner -->
+        <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:22px 36px; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:16px; color:rgba(255,255,255,0.8); letter-spacing:0.06em; text-transform:uppercase;">Amount Due</div>
+            <div style="font-size:12px; font-weight:600; color:rgba(255,255,255,0.55); margin-top:4px;">Due by ${fmt(dueDate)}</div>
+          </div>
+          <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:42px; color:#f0d000; letter-spacing:-0.01em;">$${q.grand.toFixed(2)}</div>
+        </div>
+
+        <!-- Payment & notes -->
+        <div style="padding:22px 36px 28px; background:white;">
+          ${q.notes ? `<div style="margin-bottom:16px; background:#f4fbfc; border-left:4px solid #2a9db5; padding:12px 16px; border-radius:0 8px 8px 0;"><div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:4px;">Job Notes</div><div style="font-size:13px; font-weight:600; color:#1a3a4a;">${q.notes}</div></div>` : ''}
+          <div style="background:#fffbea; border:2px solid #f0d000; border-radius:10px; padding:14px 18px; margin-bottom:16px;">
+            <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#b45309; margin-bottom:8px;">Payment Info</div>
+            <div style="font-size:13px; font-weight:600; color:#1a3a4a; margin-bottom:10px;">Payment is due within <strong>15 days</strong> of the invoice date <strong>(Net 15)</strong>.</div>
+            <div style="font-size:13px; font-weight:700; color:#1a3a4a; margin-bottom:6px;">We accept:</div>
+            <div style="font-size:13px; font-weight:600; color:#1a3a4a; line-height:2;">
+              💵 &nbsp;Cash<br>
+              💳 &nbsp;Card (Square tap or chip)<br>
+              📧 &nbsp;E-Transfer to: <strong>${bizEmail}</strong><br>
+              📝 &nbsp;Cheque made out to: <strong>${bizName}</strong>
+            </div>
+          </div>
+          <div style="background:#f4fbfc; border:2px solid #2a9db5; border-radius:10px; padding:14px 18px; margin-bottom:16px;">
+            <div style="font-size:14px; font-weight:800; color:#1a3a4a; margin-bottom:6px;">Windows lookin' sharp? 🪟</div>
+            <div style="font-size:13px; font-weight:600; color:#1a3a4a; line-height:1.6;">If you were happy with our service, we'd love if you left us a quick review!<br>You'll get <span style="background:#f0d000; padding:2px 8px; border-radius:4px; font-weight:800; color:#1a3a4a;">$25 off</span> your next service — just show your review when you book again.</div>
+          </div>
+          <div style="font-size:11px; font-weight:600; color:#aac4cc; text-align:center;">Thank you for choosing ${bizName}! We appreciate your business.</div>
+        </div>
+
+      </div>`;
+
+    document.getElementById('quoteModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+
+    savedQuotes[i].invoiced = true;
+    localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+
+    currentLines = prevLines; currentGrand = prevGrand; currentSubtotal = prevSub;
+  }
+
+  let pipeFilter = 'all';
+
+  function setPipeFilter(val, btn) {
+    pipeFilter = val;
+    document.querySelectorAll('.pipe-filter').forEach(b => b.classList.remove('active-filter'));
+    btn.classList.add('active-filter');
+    renderSaved();
+  }
+
+  function getJobStage(q) {
+    if (q.receipted) return 'complete';
+    if (q.invoiced) return 'invoiced';
+    if (q.won === true) return 'won';
+    if (q.won === false) return 'lost';
+    return 'quoted';
+  }
+
+  function renderSaved() {
+    const el = document.getElementById('savedList');
+    if (!el) return;
+    const searchEl = document.getElementById('pipelineSearch');
+    const search = searchEl ? searchEl.value.toLowerCase() : '';
+
+    const filtered = search
+      ? savedQuotes.filter(q =>
+          (q.name||'').toLowerCase().includes(search) ||
+          (q.address||'').toLowerCase().includes(search) ||
+          (q.quoteNum||'').toLowerCase().includes(search)
+        )
+      : savedQuotes;
+
+    const stages = pipeFilter === 'all'
+      ? ['quoted','won','invoiced','complete','lost']
+      : [pipeFilter];
+
+    const stageMeta = {
+      quoted:   { label: '📋 Quoted — Reach Out to Win the Bid', bg: '#1a6ea8' },
+      won:      { label: '🏆 Won — Schedule the Job',            bg: '#0d9488' },
+      invoiced: { label: '🧾 Invoiced — Awaiting Payment',        bg: '#d97706' },
+      complete: { label: '✅ Complete — Paid & Done',             bg: '#059669' },
+      lost:     { label: '✗ Lost Bids',                          bg: '#dc2626' },
+    };
+
+    if (!filtered.length) {
+      el.innerHTML = `<div class="empty-msg" style="background:white;border-radius:10px;padding:24px;">${search ? 'No results found.' : 'No jobs yet — build a quote and hit Save Quote.'}</div>`;
+      return;
+    }
+
+    el.innerHTML = stages.map(stage => {
+      const jobs = filtered.filter(q => getJobStage(q) === stage);
+      if (jobs.length === 0) return '';
+      const meta = stageMeta[stage];
+
+      const jobCards = jobs.map(q => {
+        const i = savedQuotes.indexOf(q);
+        const rowClass = q.receipted ? 'won' : q.won === false ? 'lost' : q.won === true ? 'won' : '';
+        return `
+        <div class="saved-item ${rowClass}" id="si-${i}">
+          <div class="si-badge">${q.type}</div>
+          <div style="flex:1; min-width:0;">
+            <div class="si-name">${q.name}</div>
+            ${q.address ? `<div style="font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${q.address}</div>` : ''}
+          </div>
+          <div class="si-total">$${q.grand.toFixed(2)}</div>
+          <div class="si-date">${q.date}</div>
+          <div class="won-toggle">
+            <span style="font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-right:6px;">Bid:</span>
+            ${q.won === false ? '' : `<button class="won-btn ${q.won===true?'active-won':''}" onclick="toggleWon(${i},${q.won===true?'null':'true'});event.stopPropagation()">✓ Won</button>`}
+            ${q.won === true ? '' : `<button class="won-btn lost-btn ${q.won===false?'active-lost':''}" onclick="toggleWon(${i},${q.won===false?'null':'false'});event.stopPropagation()">✗ Lost</button>`}
+          </div>
+          <button class="si-gen" onclick="generateQuoteFromSaved(${i});event.stopPropagation()">📄 Quote</button>
+          ${q.won===true ? `<button class="si-gen" style="background:var(--yellow);color:var(--blue-dark);" onclick="generateInvoiceFromSaved(${i});event.stopPropagation()">🧾 Invoice</button>` : ''}
+          ${q.invoiced ? `<button class="si-gen" style="background:var(--blue);color:white;" onclick="generateReceiptFromSaved(${i});event.stopPropagation()">✅ Receipt</button>` : ''}
+          <button class="si-del" onclick="deleteQuote(${i}, event)">×</button>
+        </div>`;
+      }).join('');
+
+      return `
+      <div class="pipeline-section">
+        <div class="pipeline-section-header" style="background:${meta.bg}; color:white;">
+          ${meta.label} <span class="pipe-count">${jobs.length}</span>
+        </div>
+        <div class="pipeline-section-body">${jobCards}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function resetForm() {
+    document.getElementById('custName').value = '';
+    document.getElementById('custAddress').value = '';
+    document.getElementById('custContact').value = '';
+    document.getElementById('custNotes').value = '';
+    document.getElementById('stdCount').value = 10;
+    document.getElementById('largeCount').value = 0;
+    document.getElementById('storeys').value = 1;
+    document.getElementById('priceStd').value = 4;
+    document.getElementById('priceLarge').value = 7;
+    document.getElementById('floorSurcharge').value = 3;
+    document.getElementById('minCharge').value = 60;
+    document.getElementById('screenPrice').value = 2;
+    document.getElementById('hwPrice').value = 6;
+    document.getElementById('travel').value = 0;
+    document.getElementById('discount').value = 0;
+    document.getElementById('discountDollar').value = 0;
+    document.getElementById('tax').value = 0;
+    ['ao-screens','ao-hw'].forEach(id => {
+      document.getElementById(id).classList.remove('on');
+      document.getElementById(id).style.borderRadius = '10px';
+    });
+    document.getElementById('screenCountWrap').style.display = 'none';
+    document.getElementById('screenCount').value = 0;
+    setSide('outside');
+    setCondition('maintenance');
+    setPlan('oneoff');
+    document.querySelectorAll('.type-btn').forEach((b,i) => b.classList.toggle('active', i===0));
+    propType = 'Residential';
+    updateMeta(); calc();
+  }
+
+  updateMeta(); calc(); renderSaved();
+
+  // ═══ TAB SWITCHING ═══
+  function switchTab(tab, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    btn.classList.add('active');
+    if (tab === 'crm') renderCRM();
+    if (tab === 'pipeline') renderSaved();
+  }
+
+  // ═══ CRM ═══
+  let crmNotes = JSON.parse(localStorage.getItem('twc_crm_notes') || '{}');
+
+  function getCustomers() {
+    const map = {};
+    savedQuotes.forEach(q => {
+      const key = (q.name || 'Unknown').trim().toUpperCase();
+      if (!map[key]) {
+        map[key] = {
+          name: q.name || 'Unknown',
+          address: q.address || '',
+          contact: q.contact || '',
+          jobs: []
+        };
+      }
+      map[key].jobs.push(q);
+      // keep most recent contact info
+      if (q.address) map[key].address = q.address;
+      if (q.contact) map[key].contact = q.contact;
+    });
+    return Object.values(map).sort((a,b) => a.name.localeCompare(b.name));
+  }
+
+  function renderCRM() {
+    const customers = getCustomers();
+    const search = document.getElementById('crmSearch').value.toLowerCase();
+    const filtered = customers.filter(c =>
+      c.name.toLowerCase().includes(search) ||
+      c.address.toLowerCase().includes(search)
+    );
+
+    // Stats
+    const allWon = savedQuotes.filter(q => q.won === true);
+    const totalRev = allWon.reduce((sum, q) => sum + q.grand, 0);
+    const winRate = savedQuotes.length ? Math.round(allWon.length / savedQuotes.length * 100) : 0;
+    document.getElementById('stat-customers').textContent = customers.length;
+    document.getElementById('stat-quotes').textContent = savedQuotes.length;
+    document.getElementById('stat-won').textContent = allWon.length;
+    document.getElementById('stat-wonpct').textContent = `${winRate}% win rate`;
+    document.getElementById('stat-revenue').textContent = `$${totalRev.toFixed(0)}`;
+
+    const el = document.getElementById('crmList');
+    if (!filtered.length) {
+      el.innerHTML = '<div class="empty-msg" style="background:white;border-radius:14px;padding:32px;">No customers found.</div>';
+      return;
+    }
+
+    el.innerHTML = filtered.map(c => {
+      const key = c.name.trim().toUpperCase();
+      const notes = crmNotes[key] || [];
+      const wonJobs = c.jobs.filter(j => j.won === true);
+      const totalSpend = wonJobs.reduce((sum, j) => sum + j.grand, 0);
+      const initials = c.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+
+      const jobRows = c.jobs.map(j => `
+        <div class="job-row">
+          <div class="job-num">${j.quoteNum || '—'}</div>
+          <div class="job-date">${j.date}</div>
+          <div class="job-type">${j.type}</div>
+          <div style="font-size:11px;font-weight:600;color:var(--muted);">${(j.std||0)+(j.large||0)} windows${j.addons?.length ? ' · '+j.addons.join(', ') : ''}</div>
+          <div class="job-total">$${j.grand.toFixed(2)}</div>
+          <div class="job-status ${j.won === true ? 'won' : j.won === false ? 'lost' : 'pending'}">${j.won === true ? '✓ Won' : j.won === false ? '✗ Lost' : '● Pending'}</div>
+        </div>`).join('');
+
+      const noteRows = notes.map((n, ni) => `
+        <div class="note-entry">
+          ${n.text}
+          <div class="note-entry-meta">${n.date} <button onclick="deleteNote('${key}', ${ni})" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:11px;margin-left:8px;">delete</button></div>
+        </div>`).join('');
+
+      return `
+      <div class="customer-card" id="cc-${key.replace(/\W/g,'_')}">
+        <div class="customer-header" onclick="toggleCustomer('${key.replace(/\W/g,'_')}')">
+          <div class="cust-avatar">${initials}</div>
+          <div class="cust-info">
+            <div class="cust-name">${c.name}</div>
+            <div class="cust-meta">${[c.address, c.contact].filter(Boolean).join(' · ')}</div>
+          </div>
+          <div class="cust-stats">
+            <div class="cust-stat">
+              <div class="cust-stat-val">${c.jobs.length}</div>
+              <div class="cust-stat-lbl">Quotes</div>
+            </div>
+            <div class="cust-stat">
+              <div class="cust-stat-val">${wonJobs.length}</div>
+              <div class="cust-stat-lbl">Won</div>
+            </div>
+            <div class="cust-stat">
+              <div class="cust-stat-val">$${totalSpend.toFixed(0)}</div>
+              <div class="cust-stat-lbl">Revenue</div>
+            </div>
+          </div>
+          <div class="cust-chevron">▼</div>
+        </div>
+        <div class="customer-body">
+          <div class="customer-body-inner">
+            <div class="job-history">
+              <div class="notes-label">Job History</div>
+              ${jobRows || '<div style="color:var(--muted);font-size:13px;">No jobs yet.</div>'}
+            </div>
+            <div class="notes-section">
+              <div class="notes-label">Notes History</div>
+              <div id="notes-${key.replace(/\W/g,'_')}">${noteRows || '<div style="color:var(--muted);font-size:13px;margin-bottom:10px;">No notes yet.</div>'}</div>
+              <div class="note-input-row">
+                <input type="text" class="note-input" id="ni-${key.replace(/\W/g,'_')}" placeholder="Add a note..." onkeydown="if(event.key==='Enter')addNote('${key}','${key.replace(/\W/g,'_')}')">
+                <button class="note-add-btn" onclick="addNote('${key}','${key.replace(/\W/g,'_')}')">+ Add Note</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function toggleCustomer(safeKey) {
+    const card = document.getElementById('cc-' + safeKey);
+    card.classList.toggle('open');
+  }
+
+  function addNote(key, safeKey) {
+    const input = document.getElementById('ni-' + safeKey);
+    const text = input.value.trim();
+    if (!text) return;
+    if (!crmNotes[key]) crmNotes[key] = [];
+    crmNotes[key].unshift({
+      text,
+      date: new Date().toLocaleDateString('en-CA', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
+    });
+    localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
+    input.value = '';
+    renderCRM();
+    // re-open the card
+    setTimeout(() => {
+      const card = document.getElementById('cc-' + safeKey);
+      if (card) card.classList.add('open');
+    }, 10);
+  }
+
+  function deleteNote(key, idx) {
+    if (!confirm('Delete this note?')) return;
+    crmNotes[key].splice(idx, 1);
+    localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
+    renderCRM();
+  }
+
+  // ═══ EXPORT / IMPORT ═══
+  function exportJSON() {
+    const data = {
+      exported: new Date().toISOString(),
+      version: '1.0',
+      savedQuotes,
+      crmNotes
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `CrewHub_Backup_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function importJSON(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!data.savedQuotes) { alert('Invalid backup file.'); return; }
+        if (!confirm(`This will merge ${data.savedQuotes.length} quotes from the backup with your current data. Continue?`)) return;
+        // Merge — add quotes not already present by quoteNum
+        const existingNums = new Set(savedQuotes.map(q => q.quoteNum));
+        const newQuotes = data.savedQuotes.filter(q => !existingNums.has(q.quoteNum));
+        savedQuotes = [...newQuotes, ...savedQuotes];
+        localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+        // Merge notes
+        if (data.crmNotes) {
+          Object.keys(data.crmNotes).forEach(k => {
+            if (!crmNotes[k]) crmNotes[k] = [];
+            // Add notes not already present
+            const existingTexts = new Set(crmNotes[k].map(n => n.text + n.date));
+            data.crmNotes[k].forEach(n => {
+              if (!existingTexts.has(n.text + n.date)) crmNotes[k].push(n);
+            });
+          });
+          localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
+        }
+        renderSaved();
+        renderCRM();
+        alert(`✅ Import complete! ${newQuotes.length} new quotes added.`);
+      } catch(err) {
+        alert('Failed to read backup file. Make sure it is a valid Crew Hub backup.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }
+
+  function exportCSV() {
+    const stageLabel = q => {
+      if (q.receipted) return 'Complete';
+      if (q.invoiced) return 'Invoiced';
+      if (q.won === true) return 'Won';
+      if (q.won === false) return 'Lost';
+      return 'Quoted';
+    };
+    const rows = [
+      ['Quote #', 'Date', 'Customer', 'Address', 'Contact', 'Type', 'Windows', 'Condition', 'Service Plan', 'Add-ons', 'Subtotal', 'Total', 'Pipeline Stage', 'Invoiced', 'Receipt Generated', 'Job Notes', 'CRM Notes']
+    ];
+    savedQuotes.forEach(q => {
+      const custKey = (q.name || '').trim().toUpperCase();
+      const custNotes = (crmNotes[custKey] || []).map(n => `[${n.date}] ${n.text}`).join(' | ');
+      rows.push([
+        q.quoteNum || '',
+        q.date || '',
+        q.name || '',
+        q.address || '',
+        q.contact || '',
+        q.type || '',
+        (q.std||0) + (q.large||0),
+        q.condition || 'maintenance',
+        q.plan || 'oneoff',
+        (q.addons||[]).join(', '),
+        (q.subtotal||0).toFixed(2),
+        (q.grand||0).toFixed(2),
+        stageLabel(q),
+        q.invoiced ? 'Yes' : 'No',
+        q.receipted ? 'Yes' : 'No',
+        q.notes || '',
+        custNotes
+      ]);
+    });
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `CrewHub_Quotes_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+</script>
+</body>
+</html>
