@@ -2392,7 +2392,205 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
   // ═══ GOOGLE DRIVE SYNC ═══
   const GOOG_CLIENT_ID = '53011513162-q25io34jn9mj6hthg244g6lpv1hbgal7.apps.googleusercontent.com';
-  const GOOG_SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
+  const GOOG_SCOPES = 'https://www.googleapis.com/auth/drive.file';
+  const SYNC_FILE_NAME = 'crewdata_hub.json';
+  let gAccessToken = null;
+  let syncFileId = null;
+  let isSyncing = false;
+
+  function setSyncUI(state, msg) {
+    const dot = document.getElementById('syncIndicator');
+    const lbl = document.getElementById('syncLabel');
+    const btn = document.getElementById('syncBtn');
+    const colors = { idle: '#10b981', syncing: '#f0d000', error: '#f87171', offline: '#aac4cc' };
+    dot.style.background = colors[state] || colors.offline;
+    lbl.textContent = msg;
+    if (state === 'syncing') {
+      btn.textContent = '⟳ Syncing...';
+      btn.disabled = true;
+    } else if (gAccessToken) {
+      btn.textContent = '🔄 Sync Now';
+      btn.disabled = false;
+    } else {
+      btn.textContent = 'Sign in to Sync';
+      btn.disabled = false;
+    }
+  }
+
+  function handleSyncBtn() {
+    if (gAccessToken) { syncNow(); } else { signIn(); }
+  }
+
+  function signIn() {
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: GOOG_CLIENT_ID,
+      scope: GOOG_SCOPES,
+      callback: async (resp) => {
+        if (resp.error) {
+          setSyncUI('error', 'Sign in failed: ' + resp.error);
+          return;
+        }
+        gAccessToken = resp.access_token;
+        syncFileId = null; // reset so we search fresh
+        setSyncUI('idle', 'Signed in — syncing...');
+        await syncNow();
+      }
+    });
+    client.requestAccessToken({ prompt: 'consent' });
+  }
+
+  async function syncNow() {
+    if (isSyncing || !gAccessToken) return;
+    isSyncing = true;
+    setSyncUI('syncing', 'Syncing...');
+    try {
+      // Step 1: find or create file
+      if (!syncFileId) {
+        syncFileId = await findOrCreateFile();
+      }
+      if (!syncFileId) throw new Error('Could not get file ID');
+
+      // Step 2: read remote
+      const remote = await readFile(syncFileId);
+
+      // Step 3: merge local + remote
+      const merged = mergeData(remote);
+
+      // Step 4: write merged back to Drive
+      await writeFile(syncFileId, merged);
+
+      // Step 5: update local state
+      savedQuotes = merged.savedQuotes;
+      crmNotes = merged.crmNotes;
+      localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+      localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
+      renderSaved();
+      if (document.getElementById('tab-crm').classList.contains('active')) renderCRM();
+
+      const now = new Date().toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' });
+      setSyncUI('idle', `Synced ${now} · ${savedQuotes.length} jobs`);
+    } catch(err) {
+      console.error('Sync error:', err);
+      setSyncUI('error', 'Sync error — see console');
+      alert('Sync failed: ' + err.message + '\n\nOpen browser console (F12) for details.');
+    }
+    isSyncing = false;
+  }
+
+  async function findOrCreateFile() {
+    // Search Drive for existing file
+    const searchRes = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=name='${SYNC_FILE_NAME}'+and+trashed=false&fields=files(id,name)&spaces=drive`,
+      { headers: { Authorization: `Bearer ${gAccessToken}` } }
+    );
+    const searchData = await searchRes.json();
+    console.log('Drive search result:', searchData);
+
+    if (searchData.files && searchData.files.length > 0) {
+      console.log('Found existing file:', searchData.files[0].id);
+      return searchData.files[0].id;
+    }
+
+    // Create new file with empty data
+    console.log('No file found — creating new one');
+    const empty = { savedQuotes: [], crmNotes: {} };
+    const boundary = 'crew_hub_boundary';
+    const meta = JSON.stringify({ name: SYNC_FILE_NAME, mimeType: 'application/json' });
+    const body = JSON.stringify(empty);
+    const reqBody = `--${boundary}\r\nContent-Type: application/json\r\n\r\n${meta}\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${boundary}--`;
+
+    const createRes = await fetch(
+      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${gAccessToken}`,
+          'Content-Type': `multipart/related; boundary=${boundary}`
+        },
+        body: reqBody
+      }
+    );
+    const created = await createRes.json();
+    console.log('Created file:', created);
+    if (!created.id) throw new Error('File creation failed: ' + JSON.stringify(created));
+    return created.id;
+  }
+
+  async function readFile(fileId) {
+    console.log('Reading file:', fileId);
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+      { headers: { Authorization: `Bearer ${gAccessToken}` } }
+    );
+    if (!res.ok) {
+      console.error('Read failed:', res.status, await res.text());
+      return { savedQuotes: [], crmNotes: {} };
+    }
+    const text = await res.text();
+    console.log('Read', text.length, 'bytes');
+    try { return JSON.parse(text); }
+    catch { return { savedQuotes: [], crmNotes: {} }; }
+  }
+
+  async function writeFile(fileId, data) {
+    console.log('Writing file:', fileId, '— quotes:', data.savedQuotes.length);
+    const res = await fetch(
+      `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
+      {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${gAccessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      }
+    );
+    if (!res.ok) {
+      const err = await res.text();
+      console.error('Write failed:', res.status, err);
+      throw new Error('Write failed: ' + res.status);
+    }
+    console.log('Write success');
+  }
+
+  function mergeData(remote) {
+    const remoteMap = {};
+    (remote.savedQuotes || []).forEach(q => { if (q.quoteNum) remoteMap[q.quoteNum] = q; });
+    savedQuotes.forEach(q => {
+      if (!q.quoteNum) return;
+      if (remoteMap[q.quoteNum]) {
+        const r = remoteMap[q.quoteNum];
+        if (q.receipted) r.receipted = true;
+        if (q.invoiced) r.invoiced = true;
+        if (q.won === true) r.won = true;
+        if (q.won === false && r.won !== true) r.won = false;
+        // keep most recent notes
+        if (q.notes) r.notes = q.notes;
+      } else {
+        remoteMap[q.quoteNum] = q;
+      }
+    });
+    const mergedNotes = Object.assign({}, remote.crmNotes || {});
+    Object.keys(crmNotes).forEach(k => {
+      if (!mergedNotes[k]) mergedNotes[k] = [];
+      const existingKeys = new Set(mergedNotes[k].map(n => n.text + n.date));
+      crmNotes[k].forEach(n => {
+        if (!existingKeys.has(n.text + n.date)) mergedNotes[k].push(n);
+      });
+    });
+    return {
+      savedQuotes: Object.values(remoteMap).sort((a, b) => (b.date || '').localeCompare(a.date || '')),
+      crmNotes: mergedNotes
+    };
+  }
+
+  function autoSync() {
+    if (gAccessToken && !isSyncing) syncNow();
+  }
+
+</script>
+</body>
+</html>
   const SYNC_FILE_NAME = 'crewdata.json';
   let gAccessToken = null;
   let syncFileId = null;
