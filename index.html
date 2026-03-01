@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Crew Hub</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -935,6 +936,11 @@ input[type="number"]:focus, input[type="text"]:focus {
   <button class="tab-btn active" onclick="switchTab('quotes', this)">📋 Quoting</button>
   <button class="tab-btn" onclick="switchTab('pipeline', this)">⚡ Job Pipeline</button>
   <button class="tab-btn" onclick="switchTab('crm', this)">👥 CRM</button>
+  <div id="syncStatus" style="margin-left:auto; display:flex; align-items:center; gap:8px; padding-bottom:4px;">
+    <div id="syncIndicator" style="width:8px;height:8px;border-radius:50%;background:#aac4cc;flex-shrink:0;"></div>
+    <span id="syncLabel" style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.6);">Not signed in</span>
+    <button id="syncBtn" onclick="handleSyncBtn()" style="background:rgba(255,255,255,0.15);color:white;border:none;border-radius:20px;padding:5px 14px;font-family:'Nunito',sans-serif;font-weight:800;font-size:11px;cursor:pointer;transition:all 0.15s;white-space:nowrap;">Sign in to Sync</button>
+  </div>
 </div>
 
 <!-- ═══ QUOTES TAB ═══ -->
@@ -1689,6 +1695,7 @@ input[type="number"]:focus, input[type="text"]:focus {
 
     savedQuotes[i].receipted = true;
     localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+    autoSync();
 
     currentLines = prevLines; currentGrand = prevGrand; currentSubtotal = prevSub;
   }
@@ -1783,6 +1790,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     document.getElementById('tab-pipeline').classList.add('active');
     document.querySelector('[onclick*="pipeline"]').classList.add('active');
     generateQuoteFromSaved(0);
+    autoSync();
   }
 
   function deleteQuote(i, e) {
@@ -1791,12 +1799,14 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     savedQuotes.splice(i, 1);
     localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
     renderSaved();
+    autoSync();
   }
 
   function toggleWon(i, val) {
     savedQuotes[i].won = val;
     localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
     renderSaved();
+    autoSync();
   }
 
   function generateQuoteFromSaved(i) {
@@ -2003,6 +2013,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
     savedQuotes[i].invoiced = true;
     localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+    autoSync();
 
     currentLines = prevLines; currentGrand = prevGrand; currentSubtotal = prevSub;
   }
@@ -2269,6 +2280,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
     input.value = '';
     renderCRM();
+    autoSync();
     // re-open the card
     setTimeout(() => {
       const card = document.getElementById('cc-' + safeKey);
@@ -2378,6 +2390,188 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     a.click();
     URL.revokeObjectURL(a.href);
   }
+  // ═══ GOOGLE DRIVE SYNC ═══
+  const GOOG_CLIENT_ID = '53011513162-q25io34jn9mj6hthg244g6lpv1hbgal7.apps.googleusercontent.com';
+  const GOOG_SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
+  const SYNC_FILE_NAME = 'crewdata.json';
+  let gAccessToken = null;
+  let syncFileId = null;
+  let isSyncing = false;
+
+  function setSyncUI(state, msg) {
+    const dot = document.getElementById('syncIndicator');
+    const lbl = document.getElementById('syncLabel');
+    const btn = document.getElementById('syncBtn');
+    const colors = { idle: '#10b981', syncing: '#f0d000', error: '#f87171', offline: '#aac4cc' };
+    dot.style.background = colors[state] || colors.offline;
+    lbl.textContent = msg;
+    if (state === 'syncing') {
+      btn.textContent = '⟳ Syncing...';
+      btn.disabled = true;
+    } else if (gAccessToken) {
+      btn.textContent = '🔄 Sync Now';
+      btn.disabled = false;
+    } else {
+      btn.textContent = 'Sign in to Sync';
+      btn.disabled = false;
+    }
+  }
+
+  function handleSyncBtn() {
+    if (gAccessToken) {
+      syncNow();
+    } else {
+      signIn();
+    }
+  }
+
+  function signIn() {
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: GOOG_CLIENT_ID,
+      scope: GOOG_SCOPES,
+      callback: async (resp) => {
+        if (resp.error) { setSyncUI('error', 'Sign in failed'); return; }
+        gAccessToken = resp.access_token;
+        setSyncUI('idle', 'Signed in');
+        document.getElementById('syncBtn').textContent = '🔄 Sync Now';
+        await syncNow();
+      }
+    });
+    client.requestAccessToken();
+  }
+
+  async function syncNow() {
+    if (isSyncing || !gAccessToken) return;
+    isSyncing = true;
+    setSyncUI('syncing', 'Syncing...');
+    try {
+      // Find or create the data file
+      if (!syncFileId) {
+        syncFileId = await findOrCreateFile();
+      }
+      // Pull remote data
+      const remote = await readFile(syncFileId);
+      // Merge
+      const merged = mergeData(remote);
+      // Push merged data back
+      await writeFile(syncFileId, merged);
+      // Update local
+      savedQuotes = merged.savedQuotes;
+      crmNotes = merged.crmNotes;
+      localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+      localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
+      renderSaved();
+      if (document.getElementById('tab-crm').classList.contains('active')) renderCRM();
+      const now = new Date().toLocaleTimeString('en-CA', { hour:'2-digit', minute:'2-digit' });
+      setSyncUI('idle', `Synced ${now}`);
+    } catch(err) {
+      console.error('Sync error:', err);
+      setSyncUI('error', 'Sync failed');
+    }
+    isSyncing = false;
+  }
+
+  async function findOrCreateFile() {
+    // Search in appDataFolder
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${SYNC_FILE_NAME}'&fields=files(id)`,
+      { headers: { Authorization: `Bearer ${gAccessToken}` } }
+    );
+    const data = await res.json();
+    if (data.files && data.files.length > 0) return data.files[0].id;
+    // Create new file
+    const meta = { name: SYNC_FILE_NAME, parents: ['appDataFolder'] };
+    const empty = { savedQuotes: [], crmNotes: {} };
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+    form.append('file', new Blob([JSON.stringify(empty)], { type: 'application/json' }));
+    const create = await fetch(
+      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+      { method: 'POST', headers: { Authorization: `Bearer ${gAccessToken}` }, body: form }
+    );
+    const created = await create.json();
+    return created.id;
+  }
+
+  async function readFile(fileId) {
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+      { headers: { Authorization: `Bearer ${gAccessToken}` } }
+    );
+    if (!res.ok) return { savedQuotes: [], crmNotes: {} };
+    try { return await res.json(); }
+    catch { return { savedQuotes: [], crmNotes: {} }; }
+  }
+
+  async function writeFile(fileId, data) {
+    await fetch(
+      `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
+      {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${gAccessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      }
+    );
+  }
+
+  function mergeData(remote) {
+    // Merge savedQuotes — remote wins on conflicts (same quoteNum), local-only quotes added
+    const remoteMap = {};
+    (remote.savedQuotes || []).forEach(q => { if (q.quoteNum) remoteMap[q.quoteNum] = q; });
+    // Apply any local updates on top of remote
+    savedQuotes.forEach(q => {
+      if (!q.quoteNum) return;
+      if (remoteMap[q.quoteNum]) {
+        // Merge: take the most advanced pipeline state
+        const r = remoteMap[q.quoteNum];
+        if (q.receipted) r.receipted = true;
+        if (q.invoiced) r.invoiced = true;
+        if (q.won === true) r.won = true;
+        if (q.won === false && r.won !== true) r.won = false;
+      } else {
+        remoteMap[q.quoteNum] = q;
+      }
+    });
+    // Merge crmNotes
+    const mergedNotes = Object.assign({}, remote.crmNotes || {});
+    Object.keys(crmNotes).forEach(k => {
+      if (!mergedNotes[k]) mergedNotes[k] = [];
+      const existingKeys = new Set(mergedNotes[k].map(n => n.text + n.date));
+      crmNotes[k].forEach(n => {
+        if (!existingKeys.has(n.text + n.date)) mergedNotes[k].push(n);
+      });
+    });
+    return {
+      savedQuotes: Object.values(remoteMap).sort((a,b) => (b.quoteNum||'').localeCompare(a.quoteNum||'')),
+      crmNotes: mergedNotes
+    };
+  }
+
+  // Auto-sync after every data-changing action
+  function autoSync() {
+    if (gAccessToken) syncNow();
+  }
+
+  // Pull on load if already signed in (token refresh)
+  window.addEventListener('load', () => {
+    // Try silent sign-in
+    try {
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: GOOG_CLIENT_ID,
+        scope: GOOG_SCOPES,
+        prompt: '',
+        callback: async (resp) => {
+          if (resp.error) return;
+          gAccessToken = resp.access_token;
+          setSyncUI('idle', 'Signed in');
+          document.getElementById('syncBtn').textContent = '🔄 Sync Now';
+          await syncNow();
+        }
+      });
+      client.requestAccessToken({ prompt: '' });
+    } catch(e) {}
+  });
+
 </script>
 </body>
 </html>
