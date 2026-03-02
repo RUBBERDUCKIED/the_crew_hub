@@ -2648,6 +2648,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         if (q.invoiced) r.invoiced = true;
         if (q.won === true) r.won = true;
         if (q.won === false && r.won !== true) r.won = false;
+        if (q.scheduled) { r.scheduled = true; r.scheduledISO = q.scheduledISO; }
         // keep most recent notes
         if (q.notes) r.notes = q.notes;
       } else {
