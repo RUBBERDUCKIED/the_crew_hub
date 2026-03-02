@@ -1695,6 +1695,7 @@ input[type="number"]:focus, input[type="text"]:focus {
 
     savedQuotes[i].receipted = true;
     localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+    renderSaved();
     autoSync();
 
     currentLines = prevLines; currentGrand = prevGrand; currentSubtotal = prevSub;
@@ -2013,6 +2014,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
     savedQuotes[i].invoiced = true;
     localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+    renderSaved();
     autoSync();
 
     currentLines = prevLines; currentGrand = prevGrand; currentSubtotal = prevSub;
