@@ -1810,6 +1810,92 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     autoSync();
   }
 
+  function openScheduleModal(i) {
+    const q = savedQuotes[i];
+    document.getElementById('schedModal-title').textContent = q.name + (q.address ? ' — ' + q.address : '');
+    document.getElementById('schedModal-idx').value = i;
+    // Pre-fill with existing scheduled time if any
+    if (q.scheduledISO) {
+      document.getElementById('schedModal-date').value = q.scheduledISO.slice(0,10);
+      document.getElementById('schedModal-time').value = q.scheduledISO.slice(11,16);
+    } else {
+      document.getElementById('schedModal-date').value = '';
+      document.getElementById('schedModal-time').value = '08:00';
+    }
+    document.getElementById('schedModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeScheduleModal() {
+    document.getElementById('schedModal').style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  async function confirmSchedule() {
+    const i = parseInt(document.getElementById('schedModal-idx').value);
+    const date = document.getElementById('schedModal-date').value;
+    const time = document.getElementById('schedModal-time').value;
+    if (!date) { alert('Please pick a date.'); return; }
+    const q = savedQuotes[i];
+    const startISO = date + 'T' + (time || '08:00') + ':00';
+    const endHour = String(parseInt((time||'08:00').split(':')[0]) + 2).padStart(2,'0');
+    const endISO  = date + 'T' + endHour + ':' + (time||'08:00').split(':')[1] + ':00';
+
+    const btn = document.getElementById('schedModal-confirm');
+    btn.textContent = 'Saving...';
+    btn.disabled = true;
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{
+            role: 'user',
+            content: `Create a Google Calendar event with these details:
+Title: "Window Cleaning — ${q.name}"
+Start: ${startISO}
+End: ${endISO}
+Description: Customer: ${q.name}
+Address: ${q.address || 'N/A'}
+Contact: ${q.contact || 'N/A'}
+Quote #: ${q.quoteNum || 'N/A'}
+Total: $${q.grand ? q.grand.toFixed(2) : 'N/A'}
+
+Please create this event now.`
+          }],
+          mcp_servers: [{ type: 'url', url: 'https://gcal.mcp.claude.com/mcp', name: 'gcal' }]
+        })
+      });
+      const data = await response.json();
+      // Check for success in response
+      const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+      const toolResults = (data.content || []).filter(b => b.type === 'mcp_tool_result');
+      const succeeded = toolResults.length > 0 || text.toLowerCase().includes('created') || text.toLowerCase().includes('scheduled');
+
+      if (succeeded) {
+        savedQuotes[i].scheduled = true;
+        savedQuotes[i].scheduledISO = startISO;
+        savedQuotes[i].scheduledLabel = new Date(startISO).toLocaleDateString('en-CA', { weekday:'short', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+        localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+        renderSaved();
+        autoSync();
+        closeScheduleModal();
+        alert('📅 Job scheduled! Event added to your Google Calendar.');
+      } else {
+        alert('Something went wrong creating the calendar event. Please try again.');
+      }
+    } catch(e) {
+      alert('Could not connect to Google Calendar. Please try again.');
+    }
+
+    btn.textContent = 'Add to Calendar';
+    btn.disabled = false;
+  }
+
+
   function generateQuoteFromSaved(i) {
     const q = savedQuotes[i];
     if (!q.lines) { alert('This quote was saved before quote generation was added. Please rebuild it.'); return; }
@@ -2091,6 +2177,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
             ${q.won === true ? '' : `<button class="won-btn lost-btn ${q.won===false?'active-lost':''}" onclick="toggleWon(${i},${q.won===false?'null':'false'});event.stopPropagation()">✗ Lost</button>`}
           </div>
           <button class="si-gen" onclick="generateQuoteFromSaved(${i});event.stopPropagation()">📄 Quote</button>
+          ${q.won===true ? `<button class="si-gen" style="background:${q.scheduled ? '#16a34a' : '#f97316'};color:white;" onclick="openScheduleModal(${i});event.stopPropagation()">${q.scheduled ? '📅 Scheduled' : '📅 Schedule'}</button>` : ''}
           ${q.won===true ? `<button class="si-gen" style="background:var(--yellow);color:var(--blue-dark);" onclick="generateInvoiceFromSaved(${i});event.stopPropagation()">🧾 Invoice</button>` : ''}
           ${q.invoiced ? `<button class="si-gen" style="background:var(--blue);color:white;" onclick="generateReceiptFromSaved(${i});event.stopPropagation()">✅ Receipt</button>` : ''}
           <button class="si-del" onclick="deleteQuote(${i}, event)">×</button>
@@ -2591,6 +2678,33 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
 </script>
+
+<!-- Schedule Job Modal -->
+<div id="schedModal" style="display:none; position:fixed; inset:0; background:rgba(10,30,45,0.75); z-index:1100; overflow-y:auto; padding:30px 16px;">
+  <div style="max-width:440px; margin:0 auto; background:white; border-radius:16px; overflow:hidden; box-shadow:0 12px 48px rgba(26,110,168,0.25);">
+    <div style="background:#1a3a4a; padding:20px 24px; display:flex; justify-content:space-between; align-items:center;">
+      <div style="color:white; font-weight:800; font-size:15px;">📅 Schedule Job</div>
+      <button onclick="closeScheduleModal()" style="background:none;border:none;color:white;font-size:24px;cursor:pointer;line-height:1;">×</button>
+    </div>
+    <div style="padding:24px; display:flex; flex-direction:column; gap:16px;">
+      <div id="schedModal-title" style="font-weight:700; font-size:14px; color:#1a3a4a; background:#f0f7fa; padding:10px 14px; border-radius:10px;"></div>
+      <div>
+        <label style="font-size:12px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;">Date</label>
+        <input id="schedModal-date" type="date" style="width:100%;padding:10px 14px;border:2px solid #e2e8f0;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;outline:none;">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;">Start Time</label>
+        <input id="schedModal-time" type="time" value="08:00" style="width:100%;padding:10px 14px;border:2px solid #e2e8f0;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;outline:none;">
+      </div>
+      <div style="font-size:12px; color:#6b9aaa;">Event will be created as a 2-hour block in your Google Calendar.</div>
+      <input type="hidden" id="schedModal-idx">
+      <div style="display:flex; gap:10px; margin-top:4px;">
+        <button id="schedModal-confirm" onclick="confirmSchedule()" style="flex:1;background:#1a6ea8;color:white;border:none;border-radius:30px;padding:12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;cursor:pointer;">Add to Calendar</button>
+        <button onclick="closeScheduleModal()" style="flex:1;background:#f1f5f9;color:#1a3a4a;border:none;border-radius:30px;padding:12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;cursor:pointer;">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
