@@ -2142,7 +2142,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       : savedQuotes;
 
     const stages = pipeFilter === 'all'
-      ? ['quoted','won','invoiced','complete','lost']
+      ? ['quoted','won','invoiced','lost']
       : [pipeFilter];
 
     const stageMeta = {
@@ -2258,7 +2258,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           jobs: []
         };
       }
-      map[key].jobs.push(q);
+      map[key].jobs.push({...q, _idx: savedQuotes.indexOf(q)});
       // keep most recent contact info
       if (q.address) map[key].address = q.address;
       if (q.contact) map[key].contact = q.contact;
@@ -2313,6 +2313,9 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           <div style="font-size:11px;font-weight:600;color:var(--muted);">${(j.std||0)+(j.large||0)} windows${j.addons?.length ? ' · '+j.addons.join(', ') : ''}</div>
           <div class="job-total">$${j.grand.toFixed(2)}</div>
           <div class="job-status ${j.won === true ? 'won' : j.won === false ? 'lost' : 'pending'}">${j.won === true ? '✓ Won' : j.won === false ? '✗ Lost' : '● Pending'}</div>
+          <button class="si-gen" style="padding:4px 10px;font-size:10px;" onclick="generateQuoteFromSaved(${j._idx})">📄 Quote</button>
+          ${j.won===true ? `<button class="si-gen" style="padding:4px 10px;font-size:10px;background:var(--yellow);color:var(--blue-dark);" onclick="generateInvoiceFromSaved(${j._idx})">🧾 Invoice</button>` : ''}
+          ${j.invoiced ? `<button class="si-gen" style="padding:4px 10px;font-size:10px;background:var(--blue);color:white;" onclick="generateReceiptFromSaved(${j._idx})">✅ Receipt</button>` : ''}
         </div>`).join('');
 
       const noteRows = notes.map((n, ni) => `
