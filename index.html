@@ -1850,23 +1850,17 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const [hh, mm] = time.split(':').map(Number);
     const endHH = String(hh + 2).padStart(2, '0');
 
-    // Build a proper local datetime string with timezone offset
-    const tzOffset = -new Date().getTimezoneOffset();
-    const sign = tzOffset >= 0 ? '+' : '-';
-    const absOff = Math.abs(tzOffset);
-    const offH = String(Math.floor(absOff / 60)).padStart(2, '0');
-    const offM = String(absOff % 60).padStart(2, '0');
-    const tzSuffix = `${sign}${offH}:${offM}`;
-
-    const startISO = `${date}T${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:00${tzSuffix}`;
-    const endISO   = `${date}T${endHH}:${String(mm).padStart(2,'0')}:00${tzSuffix}`;
+    // Use America/Vancouver timezone (Penticton, BC)
+    const tz = 'America/Vancouver';
+    const startISO = `${date}T${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:00`;
+    const endISO   = `${date}T${endHH}:${String(mm).padStart(2,'0')}:00`;
 
     const event = {
       summary: `Window Cleaning — ${q.name}`,
       location: q.address || '',
       description: `Customer: ${q.name}\nAddress: ${q.address || 'N/A'}\nContact: ${q.contact || 'N/A'}\nQuote #: ${q.quoteNum || 'N/A'}\nTotal: $${q.grand ? q.grand.toFixed(2) : 'N/A'}`,
-      start: { dateTime: startISO },
-      end:   { dateTime: endISO }
+      start: { dateTime: startISO, timeZone: tz },
+      end:   { dateTime: endISO,   timeZone: tz }
     };
 
     try {
