@@ -1874,10 +1874,10 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         savedQuotes[i].scheduled    = true;
         savedQuotes[i].scheduledISO = startISO;
         localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
-        renderSaved();
-        autoSync();
         closeScheduleModal();
         alert('📅 Job scheduled! Event added to your Google Calendar.');
+        renderSaved();
+        autoSync();
       } else {
         console.error('Calendar API error:', data);
         alert('Google Calendar returned an error: ' + (data.error?.message || 'Unknown error'));
