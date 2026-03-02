@@ -1860,7 +1860,13 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       location: q.address || '',
       description: `Customer: ${q.name}\nAddress: ${q.address || 'N/A'}\nContact: ${q.contact || 'N/A'}\nQuote #: ${q.quoteNum || 'N/A'}\nTotal: $${q.grand ? q.grand.toFixed(2) : 'N/A'}`,
       start: { dateTime: startISO, timeZone: tz },
-      end:   { dateTime: endISO,   timeZone: tz }
+      end:   { dateTime: endISO,   timeZone: tz },
+      reminders: {
+        useDefault: false,
+        overrides: [
+          { method: 'popup', minutes: 1440 }
+        ]
+      }
     };
 
     try {
