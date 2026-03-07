@@ -1255,6 +1255,7 @@ input[type="number"]:focus, input[type="text"]:focus {
     <!-- Toolbar -->
     <div class="crm-toolbar">
       <input type="text" class="crm-search" id="crmSearch" placeholder="🔍  Search by customer name or address..." oninput="renderCRM()">
+      <button class="crm-btn" id="archiveToggleBtn" onclick="toggleArchivedView()" style="background:white;color:#6b9aaa;border:2px solid #e8f4f7;">📦 Show Archived</button>
       <button class="crm-btn crm-btn-yellow" onclick="exportJSON()">⬇️ Export Backup</button>
       <button class="crm-btn crm-btn-outline" onclick="document.getElementById('importFile').click()">⬆️ Import Backup</button>
       <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)">
@@ -2245,6 +2246,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   // ═══ CRM ═══
   let crmNotes = JSON.parse(localStorage.getItem('twc_crm_notes') || '{}');
   let crmOverrides = JSON.parse(localStorage.getItem('twc_crm_overrides') || '{}');
+  let crmArchived = JSON.parse(localStorage.getItem('twc_crm_archived') || '[]');
+  let showingArchived = false;
 
   function getCustomers() {
     const map = {};
@@ -2274,32 +2277,98 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     return Object.values(map).sort((a,b) => a.name.localeCompare(b.name));
   }
 
+  function toggleArchivedView() {
+    showingArchived = !showingArchived;
+    const btn = document.getElementById('archiveToggleBtn');
+    if (showingArchived) {
+      btn.textContent = '👥 Show Active';
+      btn.style.background = '#fef3c7';
+      btn.style.color = '#92400e';
+      btn.style.borderColor = '#f0d000';
+    } else {
+      btn.textContent = '📦 Show Archived';
+      btn.style.background = 'white';
+      btn.style.color = '#6b9aaa';
+      btn.style.borderColor = '#e8f4f7';
+    }
+    renderCRM();
+  }
+
+  function archiveCustomer(key) {
+    if (!crmArchived.includes(key)) {
+      crmArchived.push(key);
+      localStorage.setItem('twc_crm_archived', JSON.stringify(crmArchived));
+    }
+    renderCRM();
+  }
+
+  function unarchiveCustomer(key) {
+    crmArchived = crmArchived.filter(k => k !== key);
+    localStorage.setItem('twc_crm_archived', JSON.stringify(crmArchived));
+    renderCRM();
+  }
+
+  function hardDeleteCustomer(key, displayName) {
+    if (!confirm(`⚠️ PERMANENTLY DELETE "${displayName}"?\n\nThis will remove ALL their quotes from your pipeline and cannot be undone.`)) return;
+    // Remove all quotes for this customer
+    savedQuotes = savedQuotes.filter(q => (q.name || 'Unknown').trim().toUpperCase() !== key);
+    localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+    // Remove from archived list
+    crmArchived = crmArchived.filter(k => k !== key);
+    localStorage.setItem('twc_crm_archived', JSON.stringify(crmArchived));
+    // Remove notes and overrides
+    delete crmNotes[key];
+    delete crmOverrides[key];
+    localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
+    localStorage.setItem('twc_crm_overrides', JSON.stringify(crmOverrides));
+    renderCRM();
+    renderSaved();
+    autoSync();
+  }
+
   function renderCRM() {
     const customers = getCustomers();
     const search = document.getElementById('crmSearch').value.toLowerCase();
-    const filtered = customers.filter(c =>
-      c.name.toLowerCase().includes(search) ||
-      c.address.toLowerCase().includes(search)
-    );
 
-    // Stats
-    const allWon = savedQuotes.filter(q => q.won === true);
+    const filtered = customers.filter(c => {
+      const key = c.name.trim().toUpperCase();
+      const isArchived = crmArchived.includes(key);
+      const matchesSearch = c.name.toLowerCase().includes(search) || c.address.toLowerCase().includes(search);
+      return matchesSearch && (showingArchived ? isArchived : !isArchived);
+    });
+
+    // Stats — always based on active (non-archived) customers only
+    const allWon = savedQuotes.filter(q => q.won === true && !crmArchived.includes((q.name||'Unknown').trim().toUpperCase()));
     const totalRev = allWon.reduce((sum, q) => sum + q.grand, 0);
-    const winRate = savedQuotes.length ? Math.round(allWon.length / savedQuotes.length * 100) : 0;
-    document.getElementById('stat-customers').textContent = customers.length;
-    document.getElementById('stat-quotes').textContent = savedQuotes.length;
+    const activeQuotes = savedQuotes.filter(q => !crmArchived.includes((q.name||'Unknown').trim().toUpperCase()));
+    const winRate = activeQuotes.length ? Math.round(allWon.length / activeQuotes.length * 100) : 0;
+    const activeCustomers = customers.filter(c => !crmArchived.includes(c.name.trim().toUpperCase()));
+    document.getElementById('stat-customers').textContent = activeCustomers.length;
+    document.getElementById('stat-quotes').textContent = activeQuotes.length;
     document.getElementById('stat-won').textContent = allWon.length;
     document.getElementById('stat-wonpct').textContent = `${winRate}% win rate`;
     document.getElementById('stat-revenue').textContent = `$${totalRev.toFixed(0)}`;
 
     const el = document.getElementById('crmList');
+
+    if (showingArchived && filtered.length === 0) {
+      el.innerHTML = '<div class="empty-msg" style="background:white;border-radius:14px;padding:32px;">No archived customers.</div>';
+      return;
+    }
     if (!filtered.length) {
       el.innerHTML = '<div class="empty-msg" style="background:white;border-radius:14px;padding:32px;">No customers found.</div>';
       return;
     }
 
-    el.innerHTML = filtered.map(c => {
+    // Archived view banner
+    const archivedBanner = showingArchived ? `
+      <div style="background:#fef3c7;border:2px solid #f0d000;border-radius:10px;padding:12px 18px;margin-bottom:16px;font-size:13px;font-weight:700;color:#92400e;">
+        📦 Showing ${filtered.length} archived customer${filtered.length !== 1 ? 's' : ''} — these are hidden from your main CRM view.
+      </div>` : '';
+
+    el.innerHTML = archivedBanner + filtered.map(c => {
       const key = c.name.trim().toUpperCase();
+      const isArchived = crmArchived.includes(key);
       const notes = crmNotes[key] || [];
       const wonJobs = c.jobs.filter(j => j.won === true);
       const totalSpend = wonJobs.reduce((sum, j) => sum + j.grand, 0);
@@ -2324,12 +2393,22 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           <div class="note-entry-meta">${n.date} <button onclick="deleteNote('${key}', ${ni})" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:11px;margin-left:8px;">delete</button></div>
         </div>`).join('');
 
+      const actionButtons = isArchived ? `
+        <button onclick="unarchiveCustomer('${key}');event.stopPropagation()" style="background:#10b981;color:white;border:none;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;margin-left:4px;flex-shrink:0;">↩ Restore</button>
+        <button onclick="hardDeleteCustomer('${key}', '${c.name.replace(/'/g,"\\'")}');event.stopPropagation()" style="background:#fee2e2;color:#dc2626;border:2px solid #fca5a5;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;margin-left:4px;flex-shrink:0;">🗑 Delete All</button>
+      ` : `
+        <button onclick="openCrmEdit('${key}');event.stopPropagation()" style="background:var(--blue);color:white;border:none;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;margin-left:4px;flex-shrink:0;">✏️ Edit</button>
+        <button onclick="archiveCustomer('${key}');event.stopPropagation()" style="background:#f1f5f9;color:#6b9aaa;border:2px solid #e8f4f7;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;margin-left:4px;flex-shrink:0;">📦 Archive</button>
+      `;
+
+      const cardStyle = isArchived ? 'opacity:0.8; border-color: #f0d000;' : '';
+
       return `
-      <div class="customer-card" id="cc-${key.replace(/\W/g,'_')}">
+      <div class="customer-card" id="cc-${key.replace(/\W/g,'_')}" style="${cardStyle}">
         <div class="customer-header" onclick="toggleCustomer('${key.replace(/\W/g,'_')}')">
-          <div class="cust-avatar">${initials}</div>
+          <div class="cust-avatar" style="${isArchived ? 'background:linear-gradient(135deg,#aac4cc,#6b9aaa);' : ''}">${initials}</div>
           <div class="cust-info">
-            <div class="cust-name">${c.name}</div>
+            <div class="cust-name">${c.name}${isArchived ? ' <span style="font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;padding:2px 7px;border-radius:10px;margin-left:6px;">Archived</span>' : ''}</div>
             <div class="cust-meta">${[c.address, c.contact].filter(Boolean).join(' · ')}</div>
           </div>
           <div class="cust-stats">
@@ -2347,7 +2426,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
             </div>
           </div>
           <div class="cust-chevron">▼</div>
-          <button onclick="openCrmEdit('${key}');event.stopPropagation()" style="background:var(--blue);color:white;border:none;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;margin-left:4px;flex-shrink:0;">✏️ Edit</button>
+          ${actionButtons}
         </div>
         <div class="customer-body">
           <div class="customer-body-inner">
