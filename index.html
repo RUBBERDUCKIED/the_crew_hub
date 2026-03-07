@@ -2111,6 +2111,24 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     currentLines = prevLines; currentGrand = prevGrand; currentSubtotal = prevSub;
   }
 
+  function getQuoteAgeDays(q) {
+    if (!q.date) return 0;
+    // q.date is like "07-Mar-25" (en-CA with day:2-digit, month:short, year:2-digit)
+    const parsed = new Date(q.date);
+    if (isNaN(parsed)) return 0;
+    const now = new Date();
+    return Math.floor((now - parsed) / (1000 * 60 * 60 * 24));
+  }
+
+  function getAgingBadge(q) {
+    if (getJobStage(q) !== 'quoted') return '';
+    const days = getQuoteAgeDays(q);
+    if (days >= 10) return `<span style="background:#fee2e2;color:#dc2626;border:1.5px solid #fca5a5;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:800;white-space:nowrap;">🔴 ${days}d — Urgent</span>`;
+    if (days >= 7)  return `<span style="background:#fff7ed;color:#c2410c;border:1.5px solid #fdba74;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:800;white-space:nowrap;">🟠 ${days}d — Nudge Again</span>`;
+    if (days >= 1)  return `<span style="background:#fefce8;color:#a16207;border:1.5px solid #fde047;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:800;white-space:nowrap;">🟡 ${days}d — Follow Up</span>`;
+    return '';
+  }
+
   let pipeFilter = 'all';
 
   function setPipeFilter(val, btn) {
@@ -2164,6 +2182,19 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       if (jobs.length === 0) return '';
       const meta = stageMeta[stage];
 
+      // Aging summary for quoted stage
+      let agingSummary = '';
+      if (stage === 'quoted') {
+        const urgent  = jobs.filter(q => getQuoteAgeDays(q) >= 10).length;
+        const nudge   = jobs.filter(q => getQuoteAgeDays(q) >= 7 && getQuoteAgeDays(q) < 10).length;
+        const followup = jobs.filter(q => getQuoteAgeDays(q) >= 1 && getQuoteAgeDays(q) < 7).length;
+        const parts = [];
+        if (urgent)   parts.push(`<span style="background:rgba(255,255,255,0.2);border-radius:20px;padding:2px 8px;">🔴 ${urgent} urgent</span>`);
+        if (nudge)    parts.push(`<span style="background:rgba(255,255,255,0.2);border-radius:20px;padding:2px 8px;">🟠 ${nudge} nudge</span>`);
+        if (followup) parts.push(`<span style="background:rgba(255,255,255,0.2);border-radius:20px;padding:2px 8px;">🟡 ${followup} follow up</span>`);
+        if (parts.length) agingSummary = `<span style="display:flex;gap:6px;flex-wrap:wrap;font-size:10px;font-weight:700;margin-left:4px;">${parts.join('')}</span>`;
+      }
+
       const jobCards = jobs.map(q => {
         const i = savedQuotes.indexOf(q);
         const rowClass = q.receipted ? 'won' : q.won === false ? 'lost' : q.won === true ? 'won' : '';
@@ -2176,6 +2207,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           </div>
           <div class="si-total">$${q.grand.toFixed(2)}</div>
           <div class="si-date">${q.date}</div>
+          ${getAgingBadge(q)}
           <div class="won-toggle">
             <span style="font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-right:6px;">Bid:</span>
             ${q.won === false ? '' : `<button class="won-btn ${q.won===true?'active-won':''}" onclick="toggleWon(${i},${q.won===true?'null':'true'});event.stopPropagation()">✓ Won</button>`}
@@ -2192,7 +2224,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       return `
       <div class="pipeline-section">
         <div class="pipeline-section-header" style="background:${meta.bg}; color:white;">
-          ${meta.label} <span class="pipe-count">${jobs.length}</span>
+          ${meta.label} <span class="pipe-count">${jobs.length}</span> ${agingSummary}
         </div>
         <div class="pipeline-section-body">${jobCards}</div>
       </div>`;
