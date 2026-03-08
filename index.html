@@ -842,6 +842,29 @@ input[type="number"]:focus, input[type="text"]:focus {
 }
 .note-add-btn:hover { background: var(--teal-dark); }
 
+.pipe-type-tab {
+  padding: 10px 22px;
+  border-radius: 10px 10px 0 0;
+  border: 2px solid var(--gray);
+  border-bottom: none;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--muted);
+  background: white;
+  transition: all 0.15s;
+  position: relative;
+  bottom: -2px;
+}
+.pipe-type-tab:hover { color: var(--teal); border-color: var(--teal-light); }
+.active-type-tab {
+  background: var(--teal) !important;
+  border-color: var(--teal) !important;
+  color: white !important;
+  bottom: -2px;
+}
+
 /* ─── MOBILE RESPONSIVE ─── */
 @media (max-width: 600px) {
 
@@ -1206,6 +1229,14 @@ input[type="number"]:focus, input[type="text"]:focus {
 <div id="tab-pipeline" class="tab-panel">
   <div style="max-width:960px; margin:0 auto; padding:28px 16px 60px;">
 
+    <!-- Property Type Sub-tabs -->
+    <div style="display:flex; gap:6px; margin-bottom:20px; border-bottom:2px solid var(--gray); padding-bottom:0;">
+      <button class="pipe-type-tab active-type-tab" id="pt-all"         onclick="setPipeTypeTab('all',this)">🏠 All Jobs</button>
+      <button class="pipe-type-tab"                 id="pt-Residential" onclick="setPipeTypeTab('Residential',this)">🏡 Residential</button>
+      <button class="pipe-type-tab"                 id="pt-Commercial"  onclick="setPipeTypeTab('Commercial',this)">🏢 Commercial</button>
+      <button class="pipe-type-tab"                 id="pt-Storefront"  onclick="setPipeTypeTab('Storefront',this)">🪟 Storefront</button>
+    </div>
+
     <!-- Search + filter bar -->
     <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:20px;">
       <input type="text" id="pipelineSearch" class="crm-search" style="margin:0; flex:1; min-width:200px;" placeholder="🔍  Search by name, address, quote #..." oninput="renderSaved()">
@@ -1218,6 +1249,9 @@ input[type="number"]:focus, input[type="text"]:focus {
         <button class="pipe-filter" id="pf-lost" onclick="setPipeFilter('lost',this)">✗ Lost</button>
       </div>
     </div>
+
+    <!-- Recurring Jobs Panel -->
+    <div id="recurringPanel" style="margin-bottom:24px;"></div>
 
     <div id="savedList"></div>
 
@@ -1296,6 +1330,8 @@ input[type="number"]:focus, input[type="text"]:focus {
   let currentLines = [];
   let currentGrand = 0;
   let currentSubtotal = 0;
+  let crmArchived = JSON.parse(localStorage.getItem('twc_crm_archived') || '[]');
+  let showingArchived = false;
 
   function setType(btn) {
     document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
@@ -1786,6 +1822,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     });
     localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
     renderSaved();
+    renderRecurring();
     // Switch to pipeline tab to show the new entry
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -1801,6 +1838,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     savedQuotes.splice(i, 1);
     localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
     renderSaved();
+    renderRecurring();
     autoSync();
   }
 
@@ -1808,6 +1846,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     savedQuotes[i].won = val;
     localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
     renderSaved();
+    renderRecurring();
     autoSync();
   }
 
@@ -2104,6 +2143,9 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     document.body.style.overflow = 'hidden';
 
     savedQuotes[i].invoiced = true;
+    if (!savedQuotes[i].invoicedDate) {
+      savedQuotes[i].invoicedDate = new Date().toISOString().slice(0,10);
+    }
     localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
     renderSaved();
     autoSync();
@@ -2113,9 +2155,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
   function getQuoteAgeDays(q) {
     if (!q.date) return 0;
-    // q.date is like "07-Mar-25" (en-CA with day:2-digit, month:short, year:2-digit)
-    const parsed = new Date(q.date);
-    if (isNaN(parsed)) return 0;
+    const parsed = parseQuoteDate(q.date);
+    if (!parsed) return 0;
     const now = new Date();
     return Math.floor((now - parsed) / (1000 * 60 * 60 * 24));
   }
@@ -2129,7 +2170,203 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     return '';
   }
 
+  const planIntervalDays = { annual: 365, biannual: 182, quarterly: 91 };
+  const planLabel = { annual: 'Annual', biannual: 'Twice/Year', quarterly: 'Quarterly' };
+
+  // Parses "Mar 07, 26" or "07-Mar-25" or ISO "2025-03-07" — all formats used in saved quotes
+  function parseQuoteDate(str) {
+    if (!str) return null;
+    const months = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+    // "Mar 07, 26" or "Mar. 07, 26"
+    let m = str.match(/([A-Za-z]+)\.?\s+(\d{1,2}),?\s+(\d{2,4})/);
+    if (m) {
+      const month = months[m[1].slice(0,3)];
+      const day   = parseInt(m[2]);
+      let year    = parseInt(m[3]);
+      if (year < 100) year += 2000;
+      if (month === undefined) return null;
+      return new Date(year, month, day);
+    }
+    // "07-Mar-25"
+    m = str.match(/(\d{1,2})-([A-Za-z]+)-(\d{2,4})/);
+    if (m) {
+      const month = months[m[2].slice(0,3)];
+      const day   = parseInt(m[1]);
+      let year    = parseInt(m[3]);
+      if (year < 100) year += 2000;
+      if (month === undefined) return null;
+      return new Date(year, month, day);
+    }
+    // ISO fallback "2025-03-07"
+    const iso = new Date(str);
+    return isNaN(iso) ? null : iso;
+  }
+
+  function getNextDueDate(q) {
+    const interval = planIntervalDays[q.plan];
+    if (!interval) return null;
+    // Priority: invoice date > scheduled date > quote date
+    const baseStr = q.invoicedDate || (q.scheduledISO ? q.scheduledISO.slice(0,10) : null) || q.date;
+    const base = parseQuoteDate(baseStr);
+    if (!base) return null;
+    return new Date(base.getTime() + interval * 24 * 60 * 60 * 1000);
+  }
+
+  function getDaysUntilDue(q) {
+    const next = getNextDueDate(q);
+    if (!next) return null;
+    const now = new Date();
+    now.setHours(0,0,0,0);
+    return Math.floor((next - now) / (1000 * 60 * 60 * 24));
+  }
+
+  function preFillFromQuote(q) {
+    // Switch to quotes tab
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-quotes').classList.add('active');
+    document.querySelector('[onclick*="quotes"]').classList.add('active');
+    // Pre-fill customer details
+    document.getElementById('custName').value    = q.name || '';
+    document.getElementById('custAddress').value = q.address || '';
+    document.getElementById('custContact').value = q.contact || '';
+    document.getElementById('custNotes').value   = q.notes || '';
+    // Pre-fill window counts
+    document.getElementById('stdCount').value   = q.std || 0;
+    document.getElementById('largeCount').value = q.large || 0;
+    // Restore property type
+    if (q.type) {
+      document.querySelectorAll('.type-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.type === q.type);
+      });
+      propType = q.type;
+    }
+    // Restore condition & plan
+    if (q.condition) setCondition(q.condition);
+    if (q.plan)      setPlan(q.plan);
+    calc();
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function renderRecurring() {
+    const panel = document.getElementById('recurringPanel');
+    if (!panel) return;
+
+    // Find the most recent invoiced/receipted job per customer that has a recurring plan
+    const customerLatest = {};
+    savedQuotes.forEach(q => {
+      if (!q.plan || q.plan === 'oneoff') return;
+      if (!q.invoiced && !q.receipted) return; // must have been invoiced = job was done
+      const key = (q.name || '').trim().toUpperCase();
+      if (crmArchived.includes(key)) return;
+      if (pipeTypeFilter !== 'all' && (q.type || '') !== pipeTypeFilter) return;
+      if (!customerLatest[key] || new Date(q.date) > new Date(customerLatest[key].date)) {
+        customerLatest[key] = q;
+      }
+    });
+
+    const tiers = { overdue: [], soon: [], upcoming: [], later: [] };
+
+    Object.values(customerLatest).forEach(q => {
+      const days = getDaysUntilDue(q);
+      if (days === null) return;
+      // Skip if there's already a newer active quote/job for this customer
+      const key = (q.name || '').trim().toUpperCase();
+      const hasNewerJob = savedQuotes.some(r =>
+        (r.name||'').trim().toUpperCase() === key &&
+        r !== q &&
+        (r.invoiced || r.receipted) &&
+        new Date(r.date) > new Date(q.date)
+      );
+      if (hasNewerJob) return;
+      if      (days < 0)   tiers.overdue.push({ q, days });
+      else if (days <= 30) tiers.soon.push({ q, days });
+      else if (days <= 90) tiers.upcoming.push({ q, days });
+      else                 tiers.later.push({ q, days });
+    });
+
+    Object.values(tiers).forEach(arr => arr.sort((a,b) => a.days - b.days));
+
+    const totalCount = Object.values(tiers).reduce((s, a) => s + a.length, 0);
+    if (totalCount === 0) {
+      panel.innerHTML = '';
+      return;
+    }
+
+    const fmt = d => d.toLocaleDateString('en-CA', { day:'numeric', month:'short', year:'numeric' });
+
+    const renderRow = ({ q, days }) => {
+      const next = getNextDueDate(q);
+      const isOverdue = days < 0;
+      const baseLabel = isOverdue
+        ? `<span style="color:#dc2626;font-weight:800;">⚠ ${Math.abs(days)}d overdue</span>`
+        : days === 0
+          ? `<span style="color:#d97706;font-weight:800;">Due today!</span>`
+          : `<span style="font-weight:800;color:var(--text);">Due in ${days}d</span>`;
+      const rowBg = isOverdue ? '#fff5f5' : days <= 30 ? '#fffbea' : '#f0fdf4';
+      const rowBorder = isOverdue ? '#fca5a5' : days <= 30 ? '#fde047' : '#86efac';
+      // Base date label
+      const baseDateStr = q.invoicedDate
+        ? `Invoiced ${q.invoicedDate}`
+        : q.scheduledISO
+          ? `Scheduled ${q.scheduledISO.slice(0,10)}`
+          : `Quoted ${q.date}`;
+      return `
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:${rowBg};border:2px solid ${rowBorder};border-radius:10px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:800;font-size:14px;color:var(--text);">${q.name}</div>
+            <div style="font-size:11px;font-weight:600;color:var(--muted);margin-top:1px;">
+              ${q.address ? q.address + ' · ' : ''}${planLabel[q.plan]} · ${baseDateStr}
+            </div>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap;">
+            Next: ${next ? fmt(next) : '—'}
+          </div>
+          ${baseLabel}
+          <button class="si-gen" style="background:var(--yellow);color:var(--blue-dark);white-space:nowrap;" onclick='preFillFromQuote(${JSON.stringify(q).replace(/'/g,"&#39;")})'>✏️ Re-quote</button>
+        </div>`;
+    };
+
+    const tierConfig = [
+      { key: 'overdue',  label: '⚠ Overdue Return Visits',         bg: '#dc2626' },
+      { key: 'soon',     label: '🔴 Due Within 30 Days',            bg: '#ea580c' },
+      { key: 'upcoming', label: '🟡 Due in 1–3 Months',             bg: '#d97706' },
+      { key: 'later',    label: '🟢 Scheduled Later (3+ Months)',   bg: '#16a34a' },
+    ];
+
+    panel.innerHTML = `
+      <div style="margin-bottom:6px;">
+        <div style="font-family:'Montserrat',sans-serif;font-weight:900;font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:var(--teal-dark);margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+          <span style="width:4px;height:16px;background:var(--yellow);border-radius:2px;display:inline-block;"></span>
+          🔁 Recurring Return Visits
+        </div>
+        ${tierConfig.map(({ key, label, bg }) => {
+          const items = tiers[key];
+          if (!items.length) return '';
+          return `
+            <div class="pipeline-section" style="margin-bottom:10px;">
+              <div class="pipeline-section-header" style="background:${bg};color:white;">
+                ${label} <span class="pipe-count">${items.length}</span>
+              </div>
+              <div class="pipeline-section-body" style="gap:6px;">
+                ${items.map(renderRow).join('')}
+              </div>
+            </div>`;
+        }).join('')}
+      </div>`;
+  }
+
   let pipeFilter = 'all';
+  let pipeTypeFilter = 'all';
+
+  function setPipeTypeTab(val, btn) {
+    pipeTypeFilter = val;
+    document.querySelectorAll('.pipe-type-tab').forEach(b => b.classList.remove('active-type-tab'));
+    btn.classList.add('active-type-tab');
+    renderSaved();
+    renderRecurring();
+  }
 
   function setPipeFilter(val, btn) {
     pipeFilter = val;
@@ -2146,6 +2383,67 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     return 'quoted';
   }
 
+  let quickNoteIdx = null;
+
+  function openQuickNote(i) {
+    const q = savedQuotes[i];
+    quickNoteIdx = i;
+    const key = (q.name || '').trim().toUpperCase();
+
+    // Header label
+    document.getElementById('qnm-customer').textContent =
+      `${q.name}${q.address ? ' — ' + q.address : ''} · ${q.quoteNum || ''} · $${q.grand ? q.grand.toFixed(2) : '0.00'}`;
+
+    // Show existing notes for this customer
+    const existing = crmNotes[key] || [];
+    const existEl = document.getElementById('qnm-existing');
+    if (existing.length) {
+      existEl.innerHTML = `
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Previous Notes</div>
+        ${existing.slice().reverse().map(n => `
+          <div style="background:#f8fafc;border:1.5px solid var(--gray);border-radius:8px;padding:8px 12px;margin-bottom:6px;">
+            <div style="font-size:12px;font-weight:600;color:var(--text);">${n.text}</div>
+            <div style="font-size:11px;font-weight:600;color:var(--muted);margin-top:3px;">${n.date}</div>
+          </div>`).join('')}`;
+    } else {
+      existEl.innerHTML = `<div style="font-size:12px;font-weight:600;color:var(--muted);font-style:italic;margin-bottom:8px;">No previous notes for this customer.</div>`;
+    }
+
+    document.getElementById('qnm-input').value = '';
+    document.getElementById('quickNoteModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => document.getElementById('qnm-input').focus(), 100);
+  }
+
+  function closeQuickNote() {
+    document.getElementById('quickNoteModal').style.display = 'none';
+    document.body.style.overflow = '';
+    quickNoteIdx = null;
+  }
+
+  function saveQuickNote() {
+    const text = document.getElementById('qnm-input').value.trim();
+    if (!text) { document.getElementById('qnm-input').focus(); return; }
+    const q = savedQuotes[quickNoteIdx];
+    const key = (q.name || '').trim().toUpperCase();
+    if (!crmNotes[key]) crmNotes[key] = [];
+    crmNotes[key].push({
+      text,
+      date: new Date().toLocaleDateString('en-CA', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
+    });
+    localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
+    autoSync();
+    closeQuickNote();
+  }
+
+  // Close quick note modal on backdrop click — deferred so modal exists in DOM
+  window.addEventListener('load', function() {
+    const qnModal = document.getElementById('quickNoteModal');
+    if (qnModal) qnModal.addEventListener('click', function(e) {
+      if (e.target === this) closeQuickNote();
+    });
+  });
+
   function renderSaved() {
     const el = document.getElementById('savedList');
     if (!el) return;
@@ -2160,6 +2458,11 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         )
       : savedQuotes;
 
+    // Apply property type sub-tab filter
+    const typeFiltered = pipeTypeFilter === 'all'
+      ? filtered
+      : filtered.filter(q => (q.type || '') === pipeTypeFilter);
+
     const stages = pipeFilter === 'all'
       ? ['quoted','won','invoiced','lost']
       : [pipeFilter];
@@ -2172,13 +2475,13 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       lost:     { label: '✗ Lost Bids',                          bg: '#dc2626' },
     };
 
-    if (!filtered.length) {
-      el.innerHTML = `<div class="empty-msg" style="background:white;border-radius:10px;padding:24px;">${search ? 'No results found.' : 'No jobs yet — build a quote and hit Save Quote.'}</div>`;
+    if (!typeFiltered.length) {
+      el.innerHTML = `<div class="empty-msg" style="background:white;border-radius:10px;padding:24px;">${search ? 'No results found.' : pipeTypeFilter !== 'all' ? `No ${pipeTypeFilter} jobs yet.` : 'No jobs yet — build a quote and hit Save Quote.'}</div>`;
       return;
     }
 
     el.innerHTML = stages.map(stage => {
-      const jobs = filtered.filter(q => getJobStage(q) === stage);
+      const jobs = typeFiltered.filter(q => getJobStage(q) === stage);
       if (jobs.length === 0) return '';
       const meta = stageMeta[stage];
 
@@ -2199,7 +2502,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         const i = savedQuotes.indexOf(q);
         const rowClass = q.receipted ? 'won' : q.won === false ? 'lost' : q.won === true ? 'won' : '';
         return `
-        <div class="saved-item ${rowClass}" id="si-${i}">
+        <div class="saved-item ${rowClass}" id="si-${i}" onclick="openQuickNote(${i})" style="cursor:pointer;" title="Click to add a note">
           <div class="si-badge">${q.type}</div>
           <div style="flex:1; min-width:0;">
             <div class="si-name">${q.name}</div>
@@ -2263,7 +2566,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     updateMeta(); calc();
   }
 
-  updateMeta(); calc(); renderSaved();
+  updateMeta(); calc(); renderSaved(); renderRecurring();
 
   // ═══ TAB SWITCHING ═══
   function switchTab(tab, btn) {
@@ -2272,14 +2575,12 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     document.getElementById('tab-' + tab).classList.add('active');
     btn.classList.add('active');
     if (tab === 'crm') renderCRM();
-    if (tab === 'pipeline') renderSaved();
+    if (tab === 'pipeline') { renderSaved(); renderRecurring(); }
   }
 
   // ═══ CRM ═══
   let crmNotes = JSON.parse(localStorage.getItem('twc_crm_notes') || '{}');
   let crmOverrides = JSON.parse(localStorage.getItem('twc_crm_overrides') || '{}');
-  let crmArchived = JSON.parse(localStorage.getItem('twc_crm_archived') || '[]');
-  let showingArchived = false;
 
   function getCustomers() {
     const map = {};
@@ -2888,6 +3189,29 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       <div style="display:flex; gap:10px; margin-top:4px;">
         <button id="schedModal-confirm" onclick="confirmSchedule()" style="flex:1;background:#1a6ea8;color:white;border:none;border-radius:30px;padding:12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;cursor:pointer;">Add to Calendar</button>
         <button onclick="closeScheduleModal()" style="flex:1;background:#f1f5f9;color:#1a3a4a;border:none;border-radius:30px;padding:12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;cursor:pointer;">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Note Modal -->
+<div id="quickNoteModal" style="display:none; position:fixed; inset:0; background:rgba(10,30,45,0.75); z-index:1100; overflow-y:auto; padding:30px 16px;">
+  <div style="max-width:440px; margin:0 auto; background:white; border-radius:16px; overflow:hidden; box-shadow:0 12px 48px rgba(26,110,168,0.25);">
+    <div style="background:var(--teal-dark); padding:18px 24px; display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <div style="color:white; font-weight:800; font-size:15px;">📝 Add CRM Note</div>
+        <div id="qnm-customer" style="color:rgba(255,255,255,0.7); font-size:12px; font-weight:600; margin-top:2px;"></div>
+      </div>
+      <button onclick="closeQuickNote()" style="background:none;border:none;color:white;font-size:24px;cursor:pointer;line-height:1;">×</button>
+    </div>
+    <div style="padding:20px 24px;">
+      <div id="qnm-existing" style="margin-bottom:14px; max-height:160px; overflow-y:auto;"></div>
+      <label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:8px;">New Note</label>
+      <textarea id="qnm-input" rows="3" placeholder="e.g. Left voicemail, called back about scheduling..." style="width:100%;padding:10px 14px;border:2px solid var(--gray);border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;color:var(--text);outline:none;resize:vertical;" onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey))saveQuickNote()"></textarea>
+      <div style="font-size:11px;color:var(--muted);font-weight:600;margin-top:4px;">Ctrl+Enter to save</div>
+      <div style="display:flex;gap:10px;margin-top:14px;">
+        <button onclick="saveQuickNote()" style="flex:1;background:var(--teal);color:white;border:none;border-radius:30px;padding:12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;cursor:pointer;">💾 Save Note</button>
+        <button onclick="closeQuickNote()" style="flex:1;background:#f1f5f9;color:var(--text);border:none;border-radius:30px;padding:12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;cursor:pointer;">Cancel</button>
       </div>
     </div>
   </div>
