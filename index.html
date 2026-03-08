@@ -4140,7 +4140,7 @@ ${bizEmail}`
     try {
       if (!syncFileId) syncFileId = await findOrCreateFile();
       if (!syncFileId) throw new Error('Could not get file ID');
-      await writeFile(syncFileId, { savedQuotes, crmNotes, customerPhotos, customers, version: '2.0' });
+      await writeFile(syncFileId, { savedQuotes, crmNotes, customerPhotos, customers, deletedCustomerIds, version: '2.0' });
       const now = new Date().toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' });
       setSyncUI('idle', `Saved ${now} · ${savedQuotes.length} jobs`);
     } catch(err) {
