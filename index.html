@@ -4037,16 +4037,15 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const toEmail = emailMatch ? emailMatch[0] : '';
 
     const subject = encodeURIComponent(`Thanks for choosing ${bizName}! 🪟`);
+    const firstName = name.split(' ')[0] || name;
     const body = encodeURIComponent(
-`Hi ${name},
+`Hey ${firstName}!
 
-Thank you so much for having us out — we hope your windows are looking crystal clear!
+Thank you again for choosing The Window Crew. We really appreciate your support and hope you're loving those clean windows.
 
-If you were happy with our work, we'd love if you could take 2 minutes to leave us a quick Google review. It makes a huge difference for a small local business like ours.
+If you were happy with our work, we'd be incredibly thankful if you took a minute to leave us a quick Google review. As a small local business, every review truly helps us grow!
 
 👉 https://g.page/r/CQVf6RM5_Es3EAE/review
-
-As a thank you, mention this email when you book your next service and you'll get $25 off!
 
 Thanks again,
 ${bizName}
