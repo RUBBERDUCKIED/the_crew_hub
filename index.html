@@ -959,6 +959,7 @@ input[type="number"]:focus, input[type="text"]:focus {
   <button class="tab-btn active" onclick="switchTab('quotes', this)">📋 Quoting</button>
   <button class="tab-btn" onclick="switchTab('pipeline', this)">⚡ Job Pipeline</button>
   <button class="tab-btn" onclick="switchTab('crm', this)">👥 CRM</button>
+  <button class="tab-btn" onclick="switchTab('reports', this)">📊 Reports</button>
   <div id="syncStatus" style="margin-left:auto; display:flex; align-items:center; gap:8px; padding-bottom:4px;">
     <div id="syncIndicator" style="width:8px;height:8px;border-radius:50%;background:#aac4cc;flex-shrink:0;"></div>
     <span id="syncLabel" style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.6);">Not signed in</span>
@@ -2784,6 +2785,157 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     btn.classList.add('active');
     if (tab === 'crm') renderCRM();
     if (tab === 'pipeline') { renderSaved(); renderRecurring(); }
+    if (tab === 'reports') renderReports();
+  }
+
+  // ═══ REPORTS ═══
+  function renderReports() {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+
+    // Populate year selector
+    const yearSel = document.getElementById('rpt-year');
+    const years = [...new Set(savedQuotes.map(q => {
+      const d = parseQuoteDate(q.date);
+      return d ? d.getFullYear() : null;
+    }).filter(Boolean))].sort((a,b) => b-a);
+    if (!years.includes(currentYear)) years.unshift(currentYear);
+    const selYear = parseInt(yearSel.value) || currentYear;
+    yearSel.innerHTML = years.map(y => `<option value="${y}" ${y===selYear?'selected':''}>${y}</option>`).join('');
+
+    // Filter quotes for selected year
+    const yearQuotes = savedQuotes.filter(q => {
+      const d = parseQuoteDate(q.date); return d && d.getFullYear() === selYear;
+    });
+    const completed = yearQuotes.filter(q => q.receipted);
+    const invoicedOnly = yearQuotes.filter(q => q.invoiced && !q.receipted);
+    const won = yearQuotes.filter(q => q.won === true || q.invoiced || q.receipted);
+    const quoted = yearQuotes.filter(q => q.won !== false);
+
+    // KPIs
+    const yearRevenue = completed.reduce((s,q) => s+q.grand, 0);
+    const outstanding = invoicedOnly.reduce((s,q) => s+q.grand, 0);
+    const winRate = quoted.length ? Math.round(won.length / quoted.length * 100) : 0;
+    const avgJob = completed.length ? yearRevenue / completed.length : 0;
+
+    // This month vs last month
+    const thisMonth = now.getMonth();
+    const thisMonthRev = completed.filter(q => {
+      const d = parseQuoteDate(q.date); return d && d.getMonth() === thisMonth && d.getFullYear() === selYear;
+    }).reduce((s,q) => s+q.grand, 0);
+    const lastMonthRev = completed.filter(q => {
+      const d = parseQuoteDate(q.date);
+      const lm = thisMonth === 0 ? 11 : thisMonth - 1;
+      const ly = thisMonth === 0 ? selYear - 1 : selYear;
+      return d && d.getMonth() === lm && d.getFullYear() === ly;
+    }).reduce((s,q) => s+q.grand, 0);
+    const monthTrend = lastMonthRev > 0 ? Math.round((thisMonthRev - lastMonthRev) / lastMonthRev * 100) : null;
+    const trendArrow = v => v > 0 ? `<span style="color:#16a34a;">▲ ${v}% vs last month</span>` : v < 0 ? `<span style="color:#dc2626;">▼ ${Math.abs(v)}% vs last month</span>` : `<span style="color:var(--muted);">same as last month</span>`;
+
+    document.getElementById('rpt-revenue').textContent = '$' + yearRevenue.toFixed(2);
+    document.getElementById('rpt-revenue-trend').textContent = `${completed.length} jobs`;
+    document.getElementById('rpt-month').textContent = '$' + thisMonthRev.toFixed(2);
+    document.getElementById('rpt-month-trend').innerHTML = monthTrend !== null ? trendArrow(monthTrend) : '<span style="color:var(--muted);">no prior data</span>';
+    document.getElementById('rpt-jobs').textContent = completed.length;
+    document.getElementById('rpt-winrate').textContent = winRate + '%';
+    document.getElementById('rpt-winrate-sub').textContent = `${won.length} won of ${quoted.length} quoted`;
+    document.getElementById('rpt-avg').textContent = '$' + avgJob.toFixed(2);
+    document.getElementById('rpt-outstanding').textContent = '$' + outstanding.toFixed(2);
+
+    // ── Monthly bar chart ──
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const monthlyRev = Array(12).fill(0);
+    completed.forEach(q => {
+      const d = parseQuoteDate(q.date);
+      if (d) monthlyRev[d.getMonth()] += q.grand;
+    });
+    const barCanvas = document.getElementById('rpt-bar');
+    const bCtx = barCanvas.getContext('2d');
+    barCanvas.width = barCanvas.offsetWidth || 340;
+    const bW = barCanvas.width, bH = 180;
+    barCanvas.height = bH;
+    bCtx.clearRect(0,0,bW,bH);
+    const maxRev = Math.max(...monthlyRev, 1);
+    const barW = Math.floor((bW - 40) / 12) - 4;
+    const padL = 40, padB = 28, chartH = bH - padB - 10;
+    // Y axis
+    bCtx.strokeStyle = '#e2e8f0'; bCtx.lineWidth = 1;
+    [0,0.25,0.5,0.75,1].forEach(f => {
+      const y = 10 + chartH * (1-f);
+      bCtx.beginPath(); bCtx.moveTo(padL,y); bCtx.lineTo(bW,y); bCtx.stroke();
+      bCtx.fillStyle='#94a3b8'; bCtx.font='600 9px Nunito,sans-serif'; bCtx.textAlign='right';
+      bCtx.fillText('$'+(maxRev*f).toFixed(0), padL-4, y+3);
+    });
+    monthlyRev.forEach((rev,m) => {
+      const x = padL + m * ((bW-padL)/12) + 2;
+      const h = chartH * (rev/maxRev);
+      const y = 10 + chartH - h;
+      const isCurrentMonth = m === thisMonth && selYear === currentYear;
+      bCtx.fillStyle = isCurrentMonth ? '#1e7d93' : '#7dd3dc';
+      bCtx.beginPath();
+      bCtx.roundRect ? bCtx.roundRect(x, y, barW, h, [3,3,0,0]) : bCtx.rect(x, y, barW, h);
+      bCtx.fill();
+      bCtx.fillStyle='#64748b'; bCtx.font='600 9px Nunito,sans-serif'; bCtx.textAlign='center';
+      bCtx.fillText(months[m], x + barW/2, bH-8);
+    });
+
+    // ── Pie chart ──
+    const typeColors = { Residential:'#1e7d93', Commercial:'#f97316', Storefront:'#6366f1' };
+    const typeCounts = {};
+    yearQuotes.forEach(q => { typeCounts[q.type] = (typeCounts[q.type]||0)+1; });
+    const pieCanvas = document.getElementById('rpt-pie');
+    const pCtx = pieCanvas.getContext('2d');
+    pCtx.clearRect(0,0,180,180);
+    const total = Object.values(typeCounts).reduce((s,v)=>s+v,0) || 1;
+    let startAngle = -Math.PI/2;
+    const cx=90, cy=90, r=75;
+    Object.entries(typeCounts).forEach(([type,count]) => {
+      const slice = (count/total)*Math.PI*2;
+      pCtx.beginPath();
+      pCtx.moveTo(cx,cy);
+      pCtx.arc(cx,cy,r,startAngle,startAngle+slice);
+      pCtx.closePath();
+      pCtx.fillStyle = typeColors[type] || '#94a3b8';
+      pCtx.fill();
+      pCtx.strokeStyle='white'; pCtx.lineWidth=2; pCtx.stroke();
+      startAngle += slice;
+    });
+    // Centre donut hole
+    pCtx.beginPath(); pCtx.arc(cx,cy,38,0,Math.PI*2);
+    pCtx.fillStyle='white'; pCtx.fill();
+    pCtx.fillStyle='#1a3a4a'; pCtx.font='800 13px Nunito,sans-serif'; pCtx.textAlign='center';
+    pCtx.fillText(yearQuotes.length, cx, cy+2);
+    pCtx.fillStyle='#94a3b8'; pCtx.font='600 9px Nunito,sans-serif';
+    pCtx.fillText('jobs', cx, cy+14);
+    // Legend
+    document.getElementById('rpt-pie-legend').innerHTML = Object.entries(typeCounts).map(([type,count]) =>
+      `<div style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--text);">
+        <div style="width:12px;height:12px;border-radius:3px;background:${typeColors[type]||'#94a3b8'};flex-shrink:0;"></div>
+        ${type} <span style="color:var(--muted);font-weight:600;">(${count})</span>
+      </div>`
+    ).join('');
+
+    // ── Top customers ──
+    const custRev = {};
+    completed.forEach(q => {
+      const k = (q.name||'Unknown').trim().toUpperCase();
+      custRev[k] = (custRev[k]||0) + q.grand;
+    });
+    const top = Object.entries(custRev).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    const maxCustRev = top[0]?.[1] || 1;
+    document.getElementById('rpt-top-customers').innerHTML = top.length ? top.map(([k,rev]) => {
+      const pct = Math.round(rev/maxCustRev*100);
+      const displayName = savedQuotes.find(q=>(q.name||'').trim().toUpperCase()===k)?.name || k;
+      return `<div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:700;color:var(--text);">${displayName}</span>
+          <span style="font-size:13px;font-weight:800;color:var(--teal-dark);">$${rev.toFixed(2)}</span>
+        </div>
+        <div style="background:#e2e8f0;border-radius:20px;height:8px;overflow:hidden;">
+          <div style="background:var(--teal);width:${pct}%;height:100%;border-radius:20px;transition:width 0.4s;"></div>
+        </div>
+      </div>`;
+    }).join('') : '<div style="color:var(--muted);font-size:13px;font-weight:600;">No completed jobs yet for this year.</div>';
   }
 
   // ═══ CRM ═══
@@ -3670,6 +3822,79 @@ ${bizEmail}`
         <button onclick="closeScheduleModal()" style="flex:1;background:#f1f5f9;color:#1a3a4a;border:none;border-radius:30px;padding:12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;cursor:pointer;">Cancel</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Reports Tab -->
+<div id="tab-reports" class="tab-panel">
+  <div style="max-width:900px; margin:0 auto; padding:24px 16px 60px;">
+
+    <!-- Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
+      <div>
+        <div style="font-size:22px; font-weight:900; color:var(--teal-dark);">📊 Business Reports</div>
+        <div style="font-size:13px; font-weight:600; color:var(--muted); margin-top:2px;">Based on all saved quotes &amp; jobs</div>
+      </div>
+      <select id="rpt-year" onchange="renderReports()" style="padding:8px 14px; border:2px solid var(--gray); border-radius:20px; font-family:'Nunito',sans-serif; font-weight:700; font-size:14px; color:var(--teal-dark); background:white; cursor:pointer;"></select>
+    </div>
+
+    <!-- KPI row -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:24px;">
+      <div class="stat-card" style="text-align:center;">
+        <div class="stat-label">Revenue (Year)</div>
+        <div class="stat-val" id="rpt-revenue" style="color:var(--teal-dark);">$0</div>
+        <div class="stat-sub" id="rpt-revenue-trend"></div>
+      </div>
+      <div class="stat-card" style="text-align:center;">
+        <div class="stat-label">This Month</div>
+        <div class="stat-val" id="rpt-month" style="color:#16a34a;">$0</div>
+        <div class="stat-sub" id="rpt-month-trend"></div>
+      </div>
+      <div class="stat-card" style="text-align:center;">
+        <div class="stat-label">Jobs Complete</div>
+        <div class="stat-val" id="rpt-jobs">0</div>
+        <div class="stat-sub" id="rpt-jobs-sub">receipted</div>
+      </div>
+      <div class="stat-card" style="text-align:center;">
+        <div class="stat-label">Win Rate</div>
+        <div class="stat-val" id="rpt-winrate">0%</div>
+        <div class="stat-sub" id="rpt-winrate-sub">quotes → won</div>
+      </div>
+      <div class="stat-card" style="text-align:center;">
+        <div class="stat-label">Avg Job Value</div>
+        <div class="stat-val" id="rpt-avg">$0</div>
+        <div class="stat-sub">per completed job</div>
+      </div>
+      <div class="stat-card" style="text-align:center; border:2px solid #fbbf24;">
+        <div class="stat-label" style="color:#b45309;">Outstanding</div>
+        <div class="stat-val" id="rpt-outstanding" style="color:#b45309;">$0</div>
+        <div class="stat-sub">invoiced, not receipted</div>
+      </div>
+    </div>
+
+    <!-- Charts row -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
+
+      <!-- Monthly revenue bar chart -->
+      <div class="stat-card" style="grid-column:1/2;">
+        <div style="font-size:13px; font-weight:800; color:var(--teal-dark); margin-bottom:14px;">Monthly Revenue</div>
+        <canvas id="rpt-bar" height="180"></canvas>
+      </div>
+
+      <!-- Job type pie chart -->
+      <div class="stat-card" style="grid-column:2/3; display:flex; flex-direction:column; align-items:center;">
+        <div style="font-size:13px; font-weight:800; color:var(--teal-dark); margin-bottom:14px; align-self:flex-start;">Jobs by Type</div>
+        <canvas id="rpt-pie" width="180" height="180"></canvas>
+        <div id="rpt-pie-legend" style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:14px;"></div>
+      </div>
+    </div>
+
+    <!-- Top customers -->
+    <div class="stat-card">
+      <div style="font-size:13px; font-weight:800; color:var(--teal-dark); margin-bottom:14px;">Top Customers (by revenue)</div>
+      <div id="rpt-top-customers"></div>
+    </div>
+
   </div>
 </div>
 
