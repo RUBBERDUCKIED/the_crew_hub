@@ -4066,11 +4066,13 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const body = encodeURIComponent(
 `Hey ${firstName}!
 
-Thank you again for choosing The Window Crew. We really appreciate your support and hope you're loving those clean windows.
+Thanks again for choosing The Window Crew. We really appreciate your support and hope you're loving those clean windows.
 
 If you were happy with our work, we'd be incredibly thankful if you took a minute to leave us a quick Google review. As a small local business, every review truly helps us grow!
 
 👉 https://g.page/r/CQVf6RM5_Es3EAE/review
+
+As a thank you, mention this email when you book your next service and we'll take $25 off!
 
 Thanks again,
 ${bizName}
@@ -4081,6 +4083,7 @@ ${bizEmail}`
 
     document.getElementById('rrm-name').textContent    = name;
     document.getElementById('rrm-contact').textContent = contact || 'No contact info saved';
+    document.getElementById('rrm-preview').textContent  = decodeURIComponent(body);
     document.getElementById('rrm-mailto').dataset.mailto = mailtoLink;
     document.getElementById('rrm-mailto').style.display = 'inline-block';
     document.getElementById('reviewModal').style.display = 'block';
@@ -4270,13 +4273,7 @@ ${bizEmail}`
 
       <!-- Message preview -->
       <div style="font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px;">Message Preview</div>
-      <div style="background:#f8fafc; border:2px solid var(--gray); border-radius:10px; padding:14px 16px; font-size:13px; font-weight:600; color:var(--text); line-height:1.7; margin-bottom:6px; white-space:pre-wrap; max-height:220px; overflow-y:auto;">Thanks for choosing us — we hope your windows are looking crystal clear!
-
-If you were happy with our work, we'd love a quick Google review — it makes a huge difference for a small local business.
-
-👉 https://g.page/r/CQVf6RM5_Es3EAE/review
-
-Mention this email on your next booking and get <strong>$25 off</strong>!</div>
+      <div id="rrm-preview" style="background:#f8fafc; border:2px solid var(--gray); border-radius:10px; padding:14px 16px; font-size:13px; font-weight:600; color:var(--text); line-height:1.7; margin-bottom:6px; white-space:pre-wrap; max-height:220px; overflow-y:auto;"></div>
       <div style="font-size:11px; font-weight:600; color:var(--muted); margin-bottom:20px;"></div>
 
       <!-- Action buttons -->
