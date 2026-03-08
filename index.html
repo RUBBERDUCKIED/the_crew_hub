@@ -2119,39 +2119,65 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   function migrateToCustomerTable() {
-    // Run once on load — creates customer records for any quote missing a customerId
-    // Safe to run multiple times
+    // Idempotent — safe to run on every load.
+    // Also deduplicates customer records that share the same normalized name
+    // (caused by earlier sync bug that stripped customerId from quotes).
     let changed = false;
     const nameToId = {};
-    // First pass: collect existing customerId mappings
-    savedQuotes.forEach(q => {
-      if (q.customerId && customers[q.customerId]) {
-        nameToId[(q.name || '').trim().toUpperCase()] = q.customerId;
+
+    // Step 0: deduplicate existing customer records by normalized name.
+    // Keep the oldest record (lowest createdAt) and remap quotes to it.
+    Object.values(customers).forEach(c => {
+      const norm = (c.name || 'Unknown').trim().toUpperCase();
+      if (!nameToId[norm]) {
+        nameToId[norm] = c.customerId;
+      } else {
+        // There is already a record for this name — pick the older one as canonical
+        const existing = customers[nameToId[norm]];
+        const keepId = (existing.createdAt || '') <= (c.createdAt || '')
+          ? existing.customerId : c.customerId;
+        const dropId = keepId === existing.customerId ? c.customerId : existing.customerId;
+        nameToId[norm] = keepId;
+        if (dropId !== keepId) {
+          delete customers[dropId];
+          changed = true;
+        }
       }
     });
-    // Second pass: create missing customer records and stamp quotes
+
+    // Step 1: re-stamp all quotes with the canonical customerId for their name
     savedQuotes.forEach(q => {
-      if (q.customerId && customers[q.customerId]) return; // already linked
-      const normName = (q.name || 'Unknown').trim().toUpperCase();
-      if (!nameToId[normName]) {
+      const norm = (q.name || 'Unknown').trim().toUpperCase();
+      // If quote points to a deleted/missing record, remap it
+      if (q.customerId && !customers[q.customerId]) {
+        q.customerId = nameToId[norm] || null;
+        changed = true;
+      }
+      if (q.customerId && customers[q.customerId]) {
+        // Already correctly linked — ensure nameToId is populated
+        if (!nameToId[norm]) nameToId[norm] = q.customerId;
+        return;
+      }
+      // Quote has no valid customerId — create or assign
+      if (!nameToId[norm]) {
         const customerId = 'cust_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-        // Apply any existing overrides during migration
-        const ov = (window._crmOverridesForMigration || {})[normName] || {};
+        const ov = (window._crmOverridesForMigration || {})[norm] || {};
         customers[customerId] = {
           customerId,
           name:     ov.name    || q.name    || 'Unknown',
           address:  ov.address || q.address || '',
           contact:  ov.contact !== undefined ? ov.contact : (q.contact || ''),
           company:  q.company  || '',
-          archived: crmArchived.includes(normName),
+          archived: crmArchived.includes(norm),
           createdAt: q.date || new Date().toISOString()
         };
-        nameToId[normName] = customerId;
+        nameToId[norm] = customerId;
         changed = true;
       }
-      q.customerId = nameToId[normName];
+      q.customerId = nameToId[norm];
       changed = true;
     });
+
     if (changed) {
       localStorage.setItem('twc_customers', JSON.stringify(customers));
       localStorage.setItem('twc_quotes',    JSON.stringify(savedQuotes));
@@ -3777,6 +3803,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         if (q.scheduled) { r.scheduled = true; r.scheduledISO = q.scheduledISO; }
         if (q.invoicedDate) r.invoicedDate = q.invoicedDate;
         if (q.notes) r.notes = q.notes;
+        // Always preserve customerId — remote may be stale and lack it
+        if (q.customerId && !r.customerId) r.customerId = q.customerId;
       } else {
         remoteMap[q.quoteNum] = q;
       }
@@ -3798,17 +3826,11 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         if (!existingIds.has(p.fileId)) mergedPhotos[k].push(p);
       });
     });
-    // Merge customers — remote wins on conflict, but local archived flag is sticky
+    // Merge customers — local always wins (holds the latest edits)
+    // Remote supplies customer records not present locally
     const mergedCustomers = Object.assign({}, remote.customers || {});
     Object.keys(customers).forEach(cid => {
-      if (!mergedCustomers[cid]) {
-        mergedCustomers[cid] = customers[cid];
-      } else {
-        // Merge: take remote as base, but preserve local archived flag if true
-        mergedCustomers[cid] = Object.assign({}, mergedCustomers[cid], {
-          archived: mergedCustomers[cid].archived || customers[cid].archived
-        });
-      }
+      mergedCustomers[cid] = Object.assign({}, mergedCustomers[cid] || {}, customers[cid]);
     });
     return {
       savedQuotes: Object.values(remoteMap).sort((a, b) => (b.date || '').localeCompare(a.date || '')),
