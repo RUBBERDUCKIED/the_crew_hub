@@ -2273,7 +2273,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
     renderSaved();
     renderRecurring();
-    autoSync();
+    pushSync();
   }
 
   function toggleWon(i, val) {
@@ -3280,7 +3280,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     renderSaved();
     renderRecurring();
     renderCRM();
-    autoSync();
+    pushSync();
   }
 
   function renderCRM() {
@@ -3516,6 +3516,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     if (legacyKey && crmNotes[legacyKey]) crmNotes[legacyKey] = notesByName;
     localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
     renderCRM();
+    pushSync();
   }
 
   // ═══ EXPORT / IMPORT ═══
@@ -3909,7 +3910,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       customerPhotos[customerKey] = customerPhotos[customerKey].filter(p => p.fileId !== fileId);
     }
     if (photoBlobCache[fileId]) { URL.revokeObjectURL(photoBlobCache[fileId]); delete photoBlobCache[fileId]; }
-    autoSync();
+    pushSync();
     renderPhotoModal(customerKey);
     if (document.getElementById('tab-crm').classList.contains('active')) renderCRM();
   }
@@ -4067,6 +4068,26 @@ ${bizEmail}`
 
   function autoSync() {
     if (gAccessToken && !isSyncing) syncNow();
+  }
+
+  // Push local state directly to Drive — no read, no merge.
+  // Use after destructive operations so Drive can never restore deleted data.
+  async function pushSync() {
+    if (!gAccessToken) return;
+    if (isSyncing) { setTimeout(pushSync, 800); return; }
+    isSyncing = true;
+    setSyncUI('syncing', 'Saving...');
+    try {
+      if (!syncFileId) syncFileId = await findOrCreateFile();
+      if (!syncFileId) throw new Error('Could not get file ID');
+      await writeFile(syncFileId, { savedQuotes, crmNotes, customerPhotos, customers, version: '2.0' });
+      const now = new Date().toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' });
+      setSyncUI('idle', `Saved ${now} · ${savedQuotes.length} jobs`);
+    } catch(err) {
+      console.error('Push sync error:', err);
+      setSyncUI('error', 'Save error — see console');
+    }
+    isSyncing = false;
   }
 
 </script>
