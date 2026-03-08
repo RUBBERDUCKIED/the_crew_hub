@@ -979,7 +979,7 @@ input[type="number"]:focus, input[type="text"]:focus {
       <div>
         <label class="field-label">Customer Name</label>
         <div class="input-wrap">
-          <input type="text" id="custName" placeholder="e.g. Smith Residence">
+          <input type="text" id="custName" placeholder="e.g. Smith Residence" oninput="updateQuotePhotoPanel()">
         </div>
       </div>
       <div>
@@ -1008,6 +1008,25 @@ input[type="number"]:focus, input[type="text"]:focus {
           <button class="type-btn" data-type="Storefront" onclick="setType(this)">Storefront</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Site Photos -->
+  <div class="card full">
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <span>📷 Site Reference Photos <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0;">(internal only — never on customer docs)</span></span>
+      <span id="quote-photo-signin-note" style="font-size:11px;font-weight:700;color:#f97316;display:none;">⚠ Sign in to Drive to upload photos</span>
+    </div>
+    <div id="quote-photo-name-note" style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:10px;display:none;">Enter a customer name above first.</div>
+    <div id="quote-photo-ui" style="display:none;">
+      <div id="quote-photo-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;min-height:10px;"></div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <input type="file" id="quote-photo-input" accept="image/*" multiple style="flex:1;font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;">
+        <button id="quote-photo-btn" onclick="handleQuotePhotoUpload()" style="background:var(--teal);color:white;border:none;border-radius:20px;padding:9px 18px;font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap;">⬆ Upload</button>
+        <input type="file" id="quote-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="handleQuoteCameraCapture()">
+        <button onclick="document.getElementById('quote-camera-input').click()" style="background:#f97316;color:white;border:none;border-radius:20px;padding:9px 18px;font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap;">📸 Take Photo</button>
+      </div>
+      <div id="quote-photo-status" style="font-size:12px;font-weight:700;margin-top:6px;min-height:16px;"></div>
     </div>
   </div>
 
@@ -1332,6 +1351,9 @@ input[type="number"]:focus, input[type="text"]:focus {
   let currentSubtotal = 0;
   let crmArchived = JSON.parse(localStorage.getItem('twc_crm_archived') || '[]');
   let showingArchived = false;
+  let customerPhotos = {};
+  let photoFolderId = null;
+  let photoBlobCache = {};
 
   function setType(btn) {
     document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
@@ -1399,8 +1421,112 @@ input[type="number"]:focus, input[type="text"]:focus {
   function v(id) { return parseFloat(document.getElementById(id).value) || 0; }
   function s(id) { return document.getElementById(id).value.trim(); }
 
+  function updateQuotePhotoPanel() {
+    const name = document.getElementById('custName').value.trim();
+    const key = name.toUpperCase();
+    const signinNote = document.getElementById('quote-photo-signin-note');
+    const nameNote   = document.getElementById('quote-photo-name-note');
+    const photoUI    = document.getElementById('quote-photo-ui');
+
+    if (!gAccessToken) {
+      signinNote.style.display = 'inline';
+      nameNote.style.display   = 'none';
+      photoUI.style.display    = 'none';
+      return;
+    }
+    signinNote.style.display = 'none';
+    if (!name) {
+      nameNote.style.display = 'block';
+      photoUI.style.display  = 'none';
+      return;
+    }
+    nameNote.style.display = 'none';
+    photoUI.style.display  = 'block';
+    renderQuotePhotoGrid(key);
+  }
+
+  function renderQuotePhotoGrid(key) {
+    const grid = document.getElementById('quote-photo-grid');
+    if (!grid) return;
+    const photos = customerPhotos[key] || [];
+    if (!photos.length) {
+      grid.innerHTML = '';
+      return;
+    }
+    grid.innerHTML = photos.map(p => `
+      <div style="position:relative;border-radius:8px;overflow:hidden;background:#f1f5f9;aspect-ratio:1;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="openPhotoLightbox('${p.fileId}')">
+        <img id="qpg-img-${p.fileId}" src="" style="width:100%;height:100%;object-fit:cover;display:none;">
+        <span id="qpg-spin-${p.fileId}" style="font-size:16px;color:var(--muted);">⟳</span>
+        <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.4);color:white;font-size:9px;font-weight:600;padding:3px 5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</div>
+      </div>`).join('');
+    photos.forEach(p => {
+      fetchPhotoBlob(p.fileId).then(url => {
+        if (!url) return;
+        const img  = document.getElementById('qpg-img-' + p.fileId);
+        const spin = document.getElementById('qpg-spin-' + p.fileId);
+        if (img)  { img.src = url; img.style.display = 'block'; }
+        if (spin) spin.style.display = 'none';
+      });
+    });
+  }
+
+  async function handleQuoteCameraCapture() {
+    const input = document.getElementById('quote-camera-input');
+    const files = Array.from(input.files);
+    if (!files.length) return;
+    const name = document.getElementById('custName').value.trim();
+    if (!name) { alert('Please enter a customer name first.'); return; }
+    const key = name.toUpperCase();
+    const status = document.getElementById('quote-photo-status');
+    status.style.color = 'var(--teal)';
+    status.textContent = 'Uploading photo...';
+    try {
+      const meta = await uploadPhotoToDrive(files[0], key);
+      if (!customerPhotos[key]) customerPhotos[key] = [];
+      customerPhotos[key].push(meta);
+      status.style.color = '#16a34a';
+      status.textContent = '✓ Photo saved to Drive!';
+      input.value = '';
+      autoSync();
+      renderQuotePhotoGrid(key);
+    } catch(e) {
+      status.style.color = '#dc2626';
+      status.textContent = 'Upload failed: ' + e.message;
+    }
+  }
+
+  async function handleQuotePhotoUpload() {
+    const name = document.getElementById('custName').value.trim();
+    if (!name) { alert('Please enter a customer name first.'); return; }
+    const key = name.toUpperCase();
+    const input  = document.getElementById('quote-photo-input');
+    const files  = Array.from(input.files);
+    if (!files.length) return;
+    const status = document.getElementById('quote-photo-status');
+    const btn    = document.getElementById('quote-photo-btn');
+    btn.disabled = true; btn.textContent = 'Uploading...';
+    status.style.color = 'var(--teal)';
+    status.textContent = `Uploading ${files.length} photo${files.length > 1 ? 's' : ''}...`;
+    try {
+      for (let i = 0; i < files.length; i++) {
+        status.textContent = `Uploading ${i+1} of ${files.length}...`;
+        const meta = await uploadPhotoToDrive(files[i], key);
+        if (!customerPhotos[key]) customerPhotos[key] = [];
+        customerPhotos[key].push(meta);
+      }
+      status.style.color = '#16a34a';
+      status.textContent = `✓ ${files.length} photo${files.length > 1 ? 's' : ''} saved to Drive!`;
+      input.value = '';
+      autoSync();
+      renderQuotePhotoGrid(key);
+    } catch(e) {
+      status.style.color = '#dc2626';
+      status.textContent = 'Upload failed: ' + e.message;
+    }
+    btn.disabled = false; btn.textContent = '⬆ Upload';
+  }
+
   function updateMeta() {
-    document.getElementById('screenMeta').textContent = `$${v('screenPrice').toFixed(2)} per screen`;
     document.getElementById('hwMeta').textContent = `$${v('hwPrice').toFixed(2)} per window`;
   }
 
@@ -2231,6 +2357,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     document.getElementById('custAddress').value = q.address || '';
     document.getElementById('custContact').value = q.contact || '';
     document.getElementById('custNotes').value   = q.notes || '';
+    updateQuotePhotoPanel();
     // Pre-fill window counts
     document.getElementById('stdCount').value   = q.std || 0;
     document.getElementById('largeCount').value = q.large || 0;
@@ -2521,6 +2648,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           ${q.won===true ? `<button class="si-gen" style="background:var(--yellow);color:var(--blue-dark);" onclick="generateInvoiceFromSaved(${i});event.stopPropagation()">🧾 Invoice</button>` : ''}
           ${q.invoiced ? `<button class="si-gen" style="background:var(--blue);color:white;" onclick="generateReceiptFromSaved(${i});event.stopPropagation()">✅ Receipt</button>` : ''}
           <button class="si-del" onclick="deleteQuote(${i}, event)">×</button>
+          <button class="si-gen" style="background:#6366f1;color:white;" onclick="openPhotoModalByIndex(${i});event.stopPropagation()">📷 ${getPhotoLabel((q.name||'').trim().toUpperCase())}</button>
         </div>`;
       }).join('');
 
@@ -2768,6 +2896,24 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
               ${jobRows || '<div style="color:var(--muted);font-size:13px;">No jobs yet.</div>'}
             </div>
             <div class="notes-section">
+              <div class="notes-label">📷 Site Photos
+                ${(customerPhotos[key]||[]).length > 0 ? `<span style="background:var(--teal);color:white;border-radius:20px;padding:2px 8px;font-size:10px;margin-left:6px;">${(customerPhotos[key]||[]).length}</span>` : ''}
+              </div>
+              ${!gAccessToken
+                ? `<div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:10px;">Sign in to Drive to view & upload photos.</div>`
+                : (customerPhotos[key]||[]).length === 0
+                  ? `<div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;">No site photos yet.</div>`
+                  : `<div id="crm-photos-${key.replace(/\W/g,'_')}" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;">
+                      ${(customerPhotos[key]||[]).map(p => `
+                        <div style="border-radius:8px;overflow:hidden;background:#f1f5f9;aspect-ratio:1;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="openPhotoLightbox('${p.fileId}')">
+                          <img id="crm-img-${p.fileId}" src="" style="width:100%;height:100%;object-fit:cover;display:none;">
+                          <span id="crm-spin-${p.fileId}" style="font-size:18px;color:var(--muted);">⟳</span>
+                        </div>`).join('')}
+                    </div>`
+              }
+              <button onclick="openPhotoModal('${key}', '${c.name.replace(/\\/g,'').replace(/'/g,'')}');event.stopPropagation()" style="background:var(--teal);color:white;border:none;border-radius:20px;padding:7px 16px;font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;cursor:pointer;margin-bottom:14px;">📷 Manage Photos</button>
+            </div>
+            <div class="notes-section">
               <div class="notes-label">Notes History</div>
               <div id="notes-${key.replace(/\W/g,'_')}">${noteRows || '<div style="color:var(--muted);font-size:13px;margin-bottom:10px;">No notes yet.</div>'}</div>
               <div class="note-input-row">
@@ -2784,6 +2930,27 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   function toggleCustomer(safeKey) {
     const card = document.getElementById('cc-' + safeKey);
     card.classList.toggle('open');
+    // Load photo thumbnails when opening
+    if (card.classList.contains('open') && gAccessToken) {
+      const customerKey = safeKey.replace(/_/g, match => {
+        // reverse safe key — just iterate customerPhotos keys
+        return match;
+      });
+      // Find matching key in customerPhotos
+      Object.keys(customerPhotos).forEach(k => {
+        const safe = k.replace(/\W/g,'_');
+        if (safe !== safeKey) return;
+        (customerPhotos[k] || []).forEach(p => {
+          fetchPhotoBlob(p.fileId).then(url => {
+            if (!url) return;
+            const img = document.getElementById('crm-img-' + p.fileId);
+            const spin = document.getElementById('crm-spin-' + p.fileId);
+            if (img) { img.src = url; img.style.display = 'block'; }
+            if (spin) spin.style.display = 'none';
+          });
+        });
+      });
+    }
   }
 
   function openCrmEdit(key) {
@@ -2978,8 +3145,9 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           return;
         }
         gAccessToken = resp.access_token;
-        syncFileId = null; // reset so we search fresh
+        syncFileId = null;
         setSyncUI('idle', 'Signed in — syncing...');
+        updateQuotePhotoPanel();
         await syncNow();
       }
     });
@@ -3009,9 +3177,11 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       // Step 5: update local state
       savedQuotes = merged.savedQuotes;
       crmNotes = merged.crmNotes;
+      customerPhotos = merged.customerPhotos || {};
       localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
       localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
       renderSaved();
+      renderRecurring();
       if (document.getElementById('tab-crm').classList.contains('active')) renderCRM();
 
       const now = new Date().toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' });
@@ -3112,7 +3282,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         if (q.won === true) r.won = true;
         if (q.won === false && r.won !== true) r.won = false;
         if (q.scheduled) { r.scheduled = true; r.scheduledISO = q.scheduledISO; }
-        // keep most recent notes
+        if (q.invoicedDate) r.invoicedDate = q.invoicedDate;
         if (q.notes) r.notes = q.notes;
       } else {
         remoteMap[q.quoteNum] = q;
@@ -3126,10 +3296,198 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         if (!existingKeys.has(n.text + n.date)) mergedNotes[k].push(n);
       });
     });
+    // Merge customerPhotos — union by fileId
+    const mergedPhotos = Object.assign({}, remote.customerPhotos || {});
+    Object.keys(customerPhotos).forEach(k => {
+      if (!mergedPhotos[k]) mergedPhotos[k] = [];
+      const existingIds = new Set(mergedPhotos[k].map(p => p.fileId));
+      customerPhotos[k].forEach(p => {
+        if (!existingIds.has(p.fileId)) mergedPhotos[k].push(p);
+      });
+    });
     return {
       savedQuotes: Object.values(remoteMap).sort((a, b) => (b.date || '').localeCompare(a.date || '')),
-      crmNotes: mergedNotes
+      crmNotes: mergedNotes,
+      customerPhotos: mergedPhotos
     };
+  }
+
+  // ═══ PHOTO STORAGE (GOOGLE DRIVE) ═══
+  const PHOTO_FOLDER_NAME = 'CrewHub Photos';
+
+  async function ensurePhotoFolder() {
+    if (photoFolderId) return photoFolderId;
+    // Search for existing folder
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=name='${PHOTO_FOLDER_NAME}'+and+mimeType='application/vnd.google-apps.folder'+and+trashed=false&fields=files(id)&spaces=drive`,
+      { headers: { Authorization: `Bearer ${gAccessToken}` } }
+    );
+    const data = await res.json();
+    if (data.files && data.files.length > 0) {
+      photoFolderId = data.files[0].id;
+      return photoFolderId;
+    }
+    // Create folder
+    const createRes = await fetch('https://www.googleapis.com/drive/v3/files?fields=id', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${gAccessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: PHOTO_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' })
+    });
+    const folder = await createRes.json();
+    photoFolderId = folder.id;
+    return photoFolderId;
+  }
+
+  async function uploadPhotoToDrive(file, customerKey) {
+    const folderId = await ensurePhotoFolder();
+    const safeName = customerKey.replace(/[^A-Z0-9]/g, '_');
+    const fileName = `${safeName}_${Date.now()}_${file.name}`;
+    const metadata = { name: fileName, parents: [folderId] };
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    form.append('file', file);
+    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${gAccessToken}` },
+      body: form
+    });
+    if (!res.ok) throw new Error('Upload failed: ' + res.status);
+    const uploaded = await res.json();
+    return { fileId: uploaded.id, name: file.name, uploadedAt: new Date().toISOString() };
+  }
+
+  async function fetchPhotoBlob(fileId) {
+    if (photoBlobCache[fileId]) return photoBlobCache[fileId];
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+      headers: { Authorization: `Bearer ${gAccessToken}` }
+    });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    photoBlobCache[fileId] = url;
+    return url;
+  }
+
+  async function deletePhotoDrive(fileId, customerKey) {
+    if (!confirm('Delete this photo?')) return;
+    try {
+      await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${gAccessToken}` }
+      });
+    } catch(e) { console.warn('Drive delete failed:', e); }
+    // Remove from local state
+    if (customerPhotos[customerKey]) {
+      customerPhotos[customerKey] = customerPhotos[customerKey].filter(p => p.fileId !== fileId);
+    }
+    if (photoBlobCache[fileId]) { URL.revokeObjectURL(photoBlobCache[fileId]); delete photoBlobCache[fileId]; }
+    autoSync();
+    renderPhotoModal(customerKey);
+    if (document.getElementById('tab-crm').classList.contains('active')) renderCRM();
+  }
+
+  // ═══ PHOTO MODAL ═══
+  let photoModalKey = null;
+
+  function getPhotoLabel(key) {
+    const count = (customerPhotos[key] || []).length;
+    if (count === 0) return 'Photos';
+    return count + ' Photo' + (count !== 1 ? 's' : '');
+  }
+
+  function openPhotoModalByIndex(i) {
+    const q = savedQuotes[i];
+    if (!q) return;
+    openPhotoModal((q.name || '').trim().toUpperCase(), q.name || '');
+  }
+
+  function openPhotoModal(customerKey, customerName) {
+    if (!gAccessToken) {
+      alert('Please sign in to Google Drive first to use photo storage.');
+      return;
+    }
+    photoModalKey = customerKey;
+    document.getElementById('pm-title').textContent = customerName;
+    document.getElementById('pm-upload-status').textContent = '';
+    document.getElementById('pm-file-input').value = '';
+    document.getElementById('photoModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    renderPhotoModal(customerKey);
+  }
+
+  function closePhotoModal() {
+    document.getElementById('photoModal').style.display = 'none';
+    document.body.style.overflow = '';
+    photoModalKey = null;
+  }
+
+  async function renderPhotoModal(customerKey) {
+    const grid = document.getElementById('pm-grid');
+    const photos = customerPhotos[customerKey] || [];
+    if (!photos.length) {
+      grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--muted);font-size:13px;font-weight:600;">No photos yet — upload some below.</div>`;
+      return;
+    }
+    grid.innerHTML = photos.map(p => `
+      <div style="position:relative;border-radius:10px;overflow:hidden;background:#f1f5f9;aspect-ratio:1;display:flex;align-items:center;justify-content:center;">
+        <img id="pm-img-${p.fileId}" src="" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;display:none;" onclick="openPhotoLightbox('${p.fileId}')">
+        <div id="pm-spin-${p.fileId}" style="font-size:24px;color:var(--muted);">⟳</div>
+        <button onclick="deletePhotoDrive('${p.fileId}','${customerKey}')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.6);color:white;border:none;border-radius:50%;width:24px;height:24px;font-size:12px;cursor:pointer;line-height:1;">×</button>
+        <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.45);color:white;font-size:10px;font-weight:600;padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name}</div>
+      </div>`).join('');
+    // Load images async
+    for (const p of photos) {
+      fetchPhotoBlob(p.fileId).then(url => {
+        if (!url) return;
+        const img = document.getElementById('pm-img-' + p.fileId);
+        const spin = document.getElementById('pm-spin-' + p.fileId);
+        if (img) { img.src = url; img.style.display = 'block'; }
+        if (spin) spin.style.display = 'none';
+      });
+    }
+  }
+
+  async function handlePhotoUpload() {
+    const input = document.getElementById('pm-file-input');
+    const files = Array.from(input.files);
+    if (!files.length || !photoModalKey) return;
+    const status = document.getElementById('pm-upload-status');
+    const btn = document.getElementById('pm-upload-btn');
+    btn.disabled = true;
+    btn.textContent = 'Uploading...';
+    status.style.color = 'var(--teal)';
+    status.textContent = `Uploading ${files.length} photo${files.length > 1 ? 's' : ''}...`;
+    try {
+      for (let i = 0; i < files.length; i++) {
+        status.textContent = `Uploading ${i+1} of ${files.length}...`;
+        const photoMeta = await uploadPhotoToDrive(files[i], photoModalKey);
+        if (!customerPhotos[photoModalKey]) customerPhotos[photoModalKey] = [];
+        customerPhotos[photoModalKey].push(photoMeta);
+      }
+      status.style.color = '#16a34a';
+      status.textContent = `✓ ${files.length} photo${files.length > 1 ? 's' : ''} uploaded!`;
+      input.value = '';
+      autoSync();
+      renderPhotoModal(photoModalKey);
+      if (document.getElementById('tab-crm').classList.contains('active')) renderCRM();
+    } catch(e) {
+      status.style.color = '#dc2626';
+      status.textContent = 'Upload failed: ' + e.message;
+    }
+    btn.disabled = false;
+    btn.textContent = '⬆ Upload';
+  }
+
+  // Lightbox
+  function openPhotoLightbox(fileId) {
+    const url = photoBlobCache[fileId];
+    if (!url) return;
+    const lb = document.getElementById('photoLightbox');
+    document.getElementById('lb-img').src = url;
+    lb.style.display = 'flex';
+  }
+  function closePhotoLightbox() {
+    document.getElementById('photoLightbox').style.display = 'none';
   }
 
   function autoSync() {
@@ -3192,6 +3550,36 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       </div>
     </div>
   </div>
+</div>
+
+<!-- Photo Modal -->
+<div id="photoModal" style="display:none; position:fixed; inset:0; background:rgba(10,30,45,0.8); z-index:1200; overflow-y:auto; padding:30px 16px;">
+  <div style="max-width:560px; margin:0 auto; background:white; border-radius:16px; overflow:hidden; box-shadow:0 12px 48px rgba(26,110,168,0.3);">
+    <div style="background:var(--teal-dark); padding:18px 24px; display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <div style="color:white; font-weight:800; font-size:15px;">📷 Site Photos</div>
+        <div id="pm-title" style="color:rgba(255,255,255,0.7); font-size:12px; font-weight:600; margin-top:2px;"></div>
+      </div>
+      <button onclick="closePhotoModal()" style="background:none;border:none;color:white;font-size:24px;cursor:pointer;line-height:1;">×</button>
+    </div>
+    <div style="padding:20px 24px;">
+      <div id="pm-grid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px; min-height:80px;"></div>
+      <div style="border-top:2px solid var(--gray); padding-top:16px;">
+        <label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:8px;">Add Photos</label>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <input type="file" id="pm-file-input" accept="image/*" multiple style="flex:1; font-family:'Nunito',sans-serif; font-size:13px; font-weight:600;">
+          <button id="pm-upload-btn" onclick="handlePhotoUpload()" style="background:var(--teal);color:white;border:none;border-radius:20px;padding:10px 20px;font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;cursor:pointer;white-space:nowrap;">⬆ Upload</button>
+        </div>
+        <div id="pm-upload-status" style="font-size:12px;font-weight:700;margin-top:8px;min-height:18px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Photo Lightbox -->
+<div id="photoLightbox" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:1300; align-items:center; justify-content:center;" onclick="closePhotoLightbox()">
+  <img id="lb-img" src="" style="max-width:90vw; max-height:90vh; border-radius:8px; box-shadow:0 8px 40px rgba(0,0,0,0.6);">
+  <button onclick="closePhotoLightbox()" style="position:fixed;top:20px;right:24px;background:rgba(255,255,255,0.15);color:white;border:none;border-radius:50%;width:40px;height:40px;font-size:22px;cursor:pointer;">×</button>
 </div>
 
 <!-- Quick Note Modal -->
