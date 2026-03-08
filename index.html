@@ -493,8 +493,8 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
 
 .saved-item {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 8px;
   background: var(--gray);
   border: 2px solid transparent;
   border-radius: 10px;
@@ -504,6 +504,21 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
 }
 
 .saved-item:hover { border-color: var(--teal-light); }
+
+.si-top-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.si-btn-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
 
 .si-badge {
   background: var(--teal);
@@ -515,12 +530,13 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   padding: 3px 8px;
   border-radius: 20px;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.si-name { flex: 1; font-weight: 800; font-size: 14px; color: var(--text); }
+.si-name { flex: 1; font-weight: 800; font-size: 14px; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .si-windows { font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap; }
-.si-total { font-weight: 900; font-size: 16px; color: var(--blue); white-space: nowrap; }
-.si-date { font-size: 11px; font-weight: 600; color: var(--muted); min-width: 60px; text-align: right; }
+.si-total { font-weight: 900; font-size: 16px; color: var(--blue); white-space: nowrap; flex-shrink: 0; }
+.si-date { font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
 
 .si-gen {
   background: var(--teal);
@@ -534,6 +550,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.15s;
+  flex-shrink: 0;
 }
 .si-gen:hover { background: var(--teal-dark); }
 
@@ -903,15 +920,12 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   .action-row { flex-direction: column; gap: 8px; }
   .action-row .btn { width: 100%; text-align: center; justify-content: center; }
 
-  /* Pipeline job cards */
-  .saved-item { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
-  .saved-item .si-badge { flex-shrink: 0; }
-  .saved-item > div[style*="flex:1"] { width: 100%; flex-basis: 100%; order: 1; }
-  .saved-item .si-total { order: 2; font-size: 16px; font-weight: 900; }
-  .saved-item .si-date { display: none; }
-  .saved-item .won-toggle { order: 3; width: 100%; flex-wrap: wrap; gap: 4px; }
-  .saved-item .si-gen { order: 4; padding: 6px 12px; font-size: 11px; }
-  .saved-item .si-del { order: 5; margin-left: auto; }
+  /* Pipeline job cards — two-row layout, buttons wrap naturally */
+  .saved-item { padding: 10px 12px; }
+  .si-top-row { gap: 8px; }
+  .si-btn-row { gap: 5px; }
+  .si-date { display: none; }
+  .si-gen { padding: 5px 10px; font-size: 10px; }
   .won-btn { padding: 4px 10px; font-size: 10px; }
   .si-badge { font-size: 8px; padding: 2px 6px; }
 
@@ -2967,27 +2981,29 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         const rowClass = q.receipted ? 'won' : q.won === false ? 'lost' : q.won === true ? 'won' : '';
         return `
         <div class="saved-item ${rowClass}" id="si-${i}" onclick="openQuickNote(${i})" style="cursor:pointer;" title="Click to add a note">
-          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <div class="si-top-row">
             <div class="si-badge">${q.type}</div>
-            <button class="si-gen" style="background:#6366f1;color:white;font-size:10px;padding:3px 7px;margin:0;width:100%;" onclick="openPhotoModalByIndex(${i});event.stopPropagation()">📷 ${getPhotoLabel(q.customerId || '', (q.name||'').trim().toUpperCase())}</button>
+            <div style="flex:1;min-width:0;">
+              <div class="si-name">${q.company ? `<span style="font-size:10px;font-weight:700;color:var(--muted);display:block;line-height:1.2;">${q.company}</span>` : ''}${q.name}</div>
+              ${q.address ? `<div style="font-size:11px;font-weight:600;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${q.address}</div>` : ''}
+            </div>
+            <div class="si-total">$${q.grand.toFixed(2)}</div>
+            <div class="si-date">${q.date}</div>
+            ${getAgingBadge(q)}
+            <button class="si-del" onclick="deleteQuote(${i}, event)">×</button>
           </div>
-          <div style="flex:1; min-width:0;">
-            <div class="si-name">${q.company ? `<span style="font-size:10px;font-weight:700;color:var(--muted);display:block;line-height:1.2;">${q.company}</span>` : ''}${q.name}</div>
-            ${q.address ? `<div style="font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${q.address}</div>` : ''}
+          <div class="si-btn-row">
+            <button class="si-gen" style="background:#6366f1;color:white;font-size:10px;padding:3px 8px;" onclick="openPhotoModalByIndex(${i});event.stopPropagation()">📷 ${getPhotoLabel(q.customerId || '', (q.name||'').trim().toUpperCase())}</button>
+            <div class="won-toggle" style="margin:0;">
+              <span style="font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-right:4px;">Bid:</span>
+              ${q.won === false ? '' : `<button class="won-btn ${q.won===true?'active-won':''}" onclick="toggleWon(${i},${q.won===true?'null':'true'});event.stopPropagation()">✓ Won</button>`}
+              ${q.won === true ? '' : `<button class="won-btn lost-btn ${q.won===false?'active-lost':''}" onclick="toggleWon(${i},${q.won===false?'null':'false'});event.stopPropagation()">✗ Lost</button>`}
+            </div>
+            <button class="si-gen" onclick="generateQuoteFromSaved(${i});event.stopPropagation()">📄 Quote</button>
+            ${q.won===true ? `<button class="si-gen" style="background:${q.scheduled ? '#16a34a' : '#f97316'};color:white;" onclick="openScheduleModal(${i});event.stopPropagation()">${q.scheduled ? '📅 Scheduled' : '📅 Schedule'}</button>` : ''}
+            ${q.won===true ? `<button class="si-gen" style="background:var(--yellow);color:var(--blue-dark);" onclick="generateInvoiceFromSaved(${i});event.stopPropagation()">🧾 Invoice</button>` : ''}
+            ${q.invoiced ? `<button class="si-gen" style="background:var(--blue);color:white;" onclick="generateReceiptFromSaved(${i});event.stopPropagation()">✅ Receipt</button>` : ''}
           </div>
-          <div class="si-total">$${q.grand.toFixed(2)}</div>
-          <div class="si-date">${q.date}</div>
-          ${getAgingBadge(q)}
-          <div class="won-toggle">
-            <span style="font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-right:6px;">Bid:</span>
-            ${q.won === false ? '' : `<button class="won-btn ${q.won===true?'active-won':''}" onclick="toggleWon(${i},${q.won===true?'null':'true'});event.stopPropagation()">✓ Won</button>`}
-            ${q.won === true ? '' : `<button class="won-btn lost-btn ${q.won===false?'active-lost':''}" onclick="toggleWon(${i},${q.won===false?'null':'false'});event.stopPropagation()">✗ Lost</button>`}
-          </div>
-          <button class="si-gen" onclick="generateQuoteFromSaved(${i});event.stopPropagation()">📄 Quote</button>
-          ${q.won===true ? `<button class="si-gen" style="background:${q.scheduled ? '#16a34a' : '#f97316'};color:white;" onclick="openScheduleModal(${i});event.stopPropagation()">${q.scheduled ? '📅 Scheduled' : '📅 Schedule'}</button>` : ''}
-          ${q.won===true ? `<button class="si-gen" style="background:var(--yellow);color:var(--blue-dark);" onclick="generateInvoiceFromSaved(${i});event.stopPropagation()">🧾 Invoice</button>` : ''}
-          ${q.invoiced ? `<button class="si-gen" style="background:var(--blue);color:white;" onclick="generateReceiptFromSaved(${i});event.stopPropagation()">✅ Receipt</button>` : ''}
-          <button class="si-del" onclick="deleteQuote(${i}, event)">×</button>
         </div>`;
       }).join('');
 
