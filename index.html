@@ -985,8 +985,23 @@ input[type="number"]:focus, input[type="text"]:focus {
       </div>
       <div>
         <label class="field-label" id="label-custName">Customer Name</label>
-        <div class="input-wrap">
-          <input type="text" id="custName" placeholder="e.g. Smith Residence" oninput="updateQuotePhotoPanel()">
+        <div style="position:relative;">
+          <div class="input-wrap" style="margin-bottom:0;">
+            <input type="text" id="custName" placeholder="Search or enter new customer…" 
+              oninput="onCustNameInput()" 
+              onblur="setTimeout(closeCustDropdown, 180)"
+              autocomplete="off">
+          </div>
+          <!-- Linked badge -->
+          <div id="cust-linked-badge" style="display:none; margin-top:5px; padding:4px 10px; background:#f0fdf4; border:1.5px solid #86efac; border-radius:20px; font-size:11px; font-weight:700; color:#16a34a; display:inline-flex; align-items:center; gap:5px;">
+            <span>✓ Linked to existing customer</span>
+            <button onclick="clearCustomerLink()" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:13px;line-height:1;padding:0 2px;" title="Unlink — treat as new">×</button>
+          </div>
+          <div id="cust-new-badge" style="display:none; margin-top:5px; padding:4px 10px; background:#fff7ed; border:1.5px solid #fed7aa; border-radius:20px; font-size:11px; font-weight:700; color:#c2410c;">
+            ✦ New customer — will be created on save
+          </div>
+          <!-- Dropdown -->
+          <div id="cust-dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:white; border:2px solid var(--teal); border-radius:10px; box-shadow:0 8px 24px rgba(26,110,168,0.15); z-index:200; max-height:220px; overflow-y:auto; margin-top:2px;"></div>
         </div>
       </div>
       <div>
@@ -1372,6 +1387,7 @@ input[type="number"]:focus, input[type="text"]:focus {
   let photoBlobCache = {};
   // ── Customer table (source of truth) ──
   let customers = JSON.parse(localStorage.getItem('twc_customers') || '{}');
+  let currentCustomerId = null; // set when a customer is selected/linked in the quote form
 
   let cleaningSide = 'outside';
   let windowCondition = 'maintenance';
@@ -1466,13 +1482,105 @@ input[type="number"]:focus, input[type="text"]:focus {
   function v(id) { return parseFloat(document.getElementById(id).value) || 0; }
   function s(id) { return document.getElementById(id).value.trim(); }
 
+  // ═══ CUSTOMER TYPEAHEAD ═══
+
+  function onCustNameInput() {
+    const query = document.getElementById('custName').value.trim();
+    // If user is typing, unlink any previously selected customer
+    if (currentCustomerId) clearCustomerLink(true);
+    updateCustBadge();
+    showCustDropdown(query);
+    updateQuotePhotoPanel();
+  }
+
+  function showCustDropdown(query) {
+    const dd = document.getElementById('cust-dropdown');
+    if (!query || query.length < 1) { dd.style.display = 'none'; return; }
+    const normQ = query.toUpperCase();
+    const matches = Object.values(customers)
+      .filter(c => !c.archived &&
+        ((c.name || '').toUpperCase().includes(normQ) ||
+         (c.company || '').toUpperCase().includes(normQ) ||
+         (c.address || '').toUpperCase().includes(normQ)))
+      .slice(0, 8);
+    if (!matches.length) { dd.style.display = 'none'; return; }
+    dd.style.display = 'block';
+    dd.innerHTML = matches.map(c => `
+      <div onclick="selectCustomer('${c.customerId}')"
+        style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f1f5f9; display:flex; flex-direction:column; gap:2px;"
+        onmouseover="this.style.background='#f0fdf4'" onmouseout="this.style.background='white'">
+        <div style="font-size:13px; font-weight:800; color:var(--text);">
+          ${c.company ? `<span style="color:var(--teal-dark);font-size:11px;">${c.company} · </span>` : ''}${c.name}
+        </div>
+        <div style="font-size:11px; font-weight:600; color:var(--muted);">${[c.address, c.contact].filter(Boolean).join(' · ') || 'No address on file'}</div>
+      </div>`).join('');
+  }
+
+  function closeCustDropdown() {
+    const dd = document.getElementById('cust-dropdown');
+    if (dd) dd.style.display = 'none';
+    // If name was typed but no customer selected, show new badge
+    const name = (document.getElementById('custName').value || '').trim();
+    if (name && !currentCustomerId) {
+      document.getElementById('cust-new-badge').style.display = 'inline-flex';
+    }
+  }
+
+  function selectCustomer(customerId) {
+    const c = customers[customerId];
+    if (!c) return;
+    currentCustomerId = customerId;
+    // Fill all fields from customer record
+    document.getElementById('custName').value    = c.name || '';
+    document.getElementById('custAddress').value = c.address || '';
+    document.getElementById('custContact').value = c.contact || '';
+    document.getElementById('custCompany').value = c.company || '';
+    document.getElementById('cust-dropdown').style.display = 'none';
+    updateCustBadge();
+    updateQuotePhotoPanel();
+  }
+
+  function clearCustomerLink(silent) {
+    currentCustomerId = null;
+    updateCustBadge();
+    if (!silent) {
+      // Clear fields so user can re-type
+      document.getElementById('custAddress').value = '';
+      document.getElementById('custContact').value = '';
+      document.getElementById('custCompany').value = '';
+      document.getElementById('custName').focus();
+    }
+    updateQuotePhotoPanel();
+  }
+
+  function updateCustBadge() {
+    const linked = document.getElementById('cust-linked-badge');
+    const newBadge = document.getElementById('cust-new-badge');
+    const name = (document.getElementById('custName').value || '').trim();
+    if (currentCustomerId && customers[currentCustomerId]) {
+      linked.style.display = 'inline-flex';
+      newBadge.style.display = 'none';
+    } else if (name) {
+      linked.style.display = 'none';
+      newBadge.style.display = 'inline-flex';
+    } else {
+      linked.style.display = 'none';
+      newBadge.style.display = 'none';
+    }
+  }
+
+  function getActivePhotoKey() {
+    // Returns the best key for photos: customerId if linked, else legacy name key
+    if (currentCustomerId) return currentCustomerId;
+    const name = (document.getElementById('custName')?.value || '').trim();
+    return name ? name.toUpperCase() : null;
+  }
+
   function updateQuotePhotoPanel() {
-    const name = document.getElementById('custName').value.trim();
-    const key = name.toUpperCase();
+    const key = getActivePhotoKey();
     const signinNote = document.getElementById('quote-photo-signin-note');
     const nameNote   = document.getElementById('quote-photo-name-note');
     const photoUI    = document.getElementById('quote-photo-ui');
-
     if (!gAccessToken) {
       signinNote.style.display = 'inline';
       nameNote.style.display   = 'none';
@@ -1480,7 +1588,7 @@ input[type="number"]:focus, input[type="text"]:focus {
       return;
     }
     signinNote.style.display = 'none';
-    if (!name) {
+    if (!key) {
       nameNote.style.display = 'block';
       photoUI.style.display  = 'none';
       return;
@@ -1493,11 +1601,13 @@ input[type="number"]:focus, input[type="text"]:focus {
   function renderQuotePhotoGrid(key) {
     const grid = document.getElementById('quote-photo-grid');
     if (!grid) return;
-    const photos = customerPhotos[key] || [];
-    if (!photos.length) {
-      grid.innerHTML = '';
-      return;
-    }
+    // If key is a customerId, also check legacy name key
+    const c = key && customers[key] ? customers[key] : null;
+    const legacyKey = c ? (c.name || '').trim().toUpperCase() : null;
+    const photos = c
+      ? getPhotosForCustomer(key, legacyKey)
+      : (customerPhotos[key] || []);
+    if (!photos.length) { grid.innerHTML = ''; return; }
     grid.innerHTML = photos.map(p => `
       <div style="position:relative;border-radius:8px;overflow:hidden;background:#f1f5f9;aspect-ratio:1;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="openPhotoLightbox('${p.fileId}')">
         <img id="qpg-img-${p.fileId}" src="" style="width:100%;height:100%;object-fit:cover;display:none;">
@@ -1519,9 +1629,8 @@ input[type="number"]:focus, input[type="text"]:focus {
     const input = document.getElementById('quote-camera-input');
     const files = Array.from(input.files);
     if (!files.length) return;
-    const name = document.getElementById('custName').value.trim();
-    if (!name) { alert('Please enter a customer name first.'); return; }
-    const key = name.toUpperCase();
+    const key = getActivePhotoKey();
+    if (!key) { alert('Please enter or select a customer first.'); return; }
     const status = document.getElementById('quote-photo-status');
     status.style.color = 'var(--teal)';
     status.textContent = 'Uploading photo...';
@@ -1541,9 +1650,8 @@ input[type="number"]:focus, input[type="text"]:focus {
   }
 
   async function handleQuotePhotoUpload() {
-    const name = document.getElementById('custName').value.trim();
-    if (!name) { alert('Please enter a customer name first.'); return; }
-    const key = name.toUpperCase();
+    const key = getActivePhotoKey();
+    if (!key) { alert('Please enter or select a customer first.'); return; }
     const input  = document.getElementById('quote-photo-input');
     const files  = Array.from(input.files);
     if (!files.length) return;
@@ -2082,8 +2190,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const name = window._cur.name || prompt('Enter a name for this quote:');
     if (!name?.trim()) return;
 
-    // Find or create customer record — CRM becomes source of truth
-    const customerId = findOrCreateCustomer(
+    // Use already-selected customer, or find/create from typed name
+    const customerId = currentCustomerId || findOrCreateCustomer(
       name.trim(),
       window._cur.address,
       window._cur.contact,
@@ -2530,8 +2638,11 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     document.getElementById('custName').value    = q.name || '';
     document.getElementById('custAddress').value = q.address || '';
     document.getElementById('custContact').value = q.contact || '';
-    document.getElementById('custNotes').value   = q.notes || '';
+    document.getElementById('custNotes').value   = '';
     document.getElementById('custCompany').value = q.company || '';
+    // Re-link to the customer record
+    currentCustomerId = q.customerId || null;
+    updateCustBadge();
     updateQuotePhotoPanel();
     // Pre-fill window counts
     document.getElementById('stdCount').value   = q.std || 0;
@@ -2560,10 +2671,10 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     savedQuotes.forEach(q => {
       if (!q.plan || q.plan === 'oneoff') return;
       if (!q.invoiced && !q.receipted) return; // must have been invoiced = job was done
-      const key = (q.name || '').trim().toUpperCase();
+      const key = q.customerId || (q.name || '').trim().toUpperCase();
       // Check archived via customer record (or legacy crmArchived as fallback)
       const cust = q.customerId ? customers[q.customerId] : null;
-      const isArchived = cust ? cust.archived : crmArchived.includes(key);
+      const isArchived = cust ? cust.archived : crmArchived.includes((q.name||'').trim().toUpperCase());
       if (isArchived) return;
       if (pipeTypeFilter !== 'all' && (q.type || '') !== pipeTypeFilter) return;
       if (!customerLatest[key] || new Date(q.date) > new Date(customerLatest[key].date)) {
@@ -2811,7 +2922,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         <div class="saved-item ${rowClass}" id="si-${i}" onclick="openQuickNote(${i})" style="cursor:pointer;" title="Click to add a note">
           <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
             <div class="si-badge">${q.type}</div>
-            <button class="si-gen" style="background:#6366f1;color:white;font-size:10px;padding:3px 7px;margin:0;width:100%;" onclick="openPhotoModalByIndex(${i});event.stopPropagation()">📷 ${getPhotoLabel((q.name||'').trim().toUpperCase())}</button>
+            <button class="si-gen" style="background:#6366f1;color:white;font-size:10px;padding:3px 7px;margin:0;width:100%;" onclick="openPhotoModalByIndex(${i});event.stopPropagation()">📷 ${getPhotoLabel(q.customerId || '', (q.name||'').trim().toUpperCase())}</button>
           </div>
           <div style="flex:1; min-width:0;">
             <div class="si-name">${q.company ? `<span style="font-size:10px;font-weight:700;color:var(--muted);display:block;line-height:1.2;">${q.company}</span>` : ''}${q.name}</div>
@@ -2849,6 +2960,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     document.getElementById('custContact').value = '';
     document.getElementById('custNotes').value = '';
     document.getElementById('custCompany').value = '';
+    currentCustomerId = null;
+    updateCustBadge();
     document.getElementById('stdCount').value = 10;
     document.getElementById('largeCount').value = 0;
     document.getElementById('storeys').value = 1;
@@ -3027,14 +3140,18 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     // ── Top customers ──
     const custRev = {};
     completed.forEach(q => {
-      const k = (q.name||'Unknown').trim().toUpperCase();
-      custRev[k] = (custRev[k]||0) + q.grand;
+      const k = q.customerId || (q.name || 'Unknown').trim().toUpperCase();
+      custRev[k] = (custRev[k] || 0) + q.grand;
     });
-    const top = Object.entries(custRev).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    const top = Object.entries(custRev).sort((a, b) => b[1] - a[1]).slice(0, 8);
     const maxCustRev = top[0]?.[1] || 1;
-    document.getElementById('rpt-top-customers').innerHTML = top.length ? top.map(([k,rev]) => {
-      const pct = Math.round(rev/maxCustRev*100);
-      const displayName = savedQuotes.find(q=>(q.name||'').trim().toUpperCase()===k)?.name || k;
+    document.getElementById('rpt-top-customers').innerHTML = top.length ? top.map(([k, rev]) => {
+      const pct = Math.round(rev / maxCustRev * 100);
+      // Resolve display name — check customer record first, then quote snapshot
+      const custRecord = customers[k];
+      const displayName = custRecord
+        ? (custRecord.company ? `${custRecord.company} · ${custRecord.name}` : custRecord.name)
+        : (savedQuotes.find(q => (q.customerId || (q.name||'').trim().toUpperCase()) === k)?.name || k);
       return `<div style="margin-bottom:10px;">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
           <span style="font-size:13px;font-weight:700;color:var(--text);">${displayName}</span>
@@ -3778,8 +3895,9 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   // ═══ PHOTO MODAL ═══
   let photoModalKey = null;
 
-  function getPhotoLabel(key) {
-    const count = (customerPhotos[key] || []).length;
+  function getPhotoLabel(customerId, legacyNameKey) {
+    const photos = getPhotosForCustomer(customerId, legacyNameKey);
+    const count = photos.length;
     if (count === 0) return 'Photos';
     return count + ' Photo' + (count !== 1 ? 's' : '');
   }
@@ -3787,7 +3905,9 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   function openPhotoModalByIndex(i) {
     const q = savedQuotes[i];
     if (!q) return;
-    openPhotoModal((q.name || '').trim().toUpperCase(), q.name || '');
+    const key  = q.customerId || (q.name || '').trim().toUpperCase();
+    const name = q.name || '';
+    openPhotoModal(key, name);
   }
 
   function openPhotoModal(customerKey, customerName) {
@@ -3812,7 +3932,11 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
   async function renderPhotoModal(customerKey) {
     const grid = document.getElementById('pm-grid');
-    const photos = customerPhotos[customerKey] || [];
+    const c = customers[customerKey];
+    const legacyKey = c ? (c.name || '').trim().toUpperCase() : null;
+    const photos = c
+      ? getPhotosForCustomer(customerKey, legacyKey)
+      : (customerPhotos[customerKey] || []);
     if (!photos.length) {
       grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--muted);font-size:13px;font-weight:600;">No photos yet — upload some below.</div>`;
       return;
@@ -3824,7 +3948,6 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         <button onclick="deletePhotoDrive('${p.fileId}','${customerKey}')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.6);color:white;border:none;border-radius:50%;width:24px;height:24px;font-size:12px;cursor:pointer;line-height:1;">×</button>
         <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.45);color:white;font-size:10px;font-weight:600;padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name}</div>
       </div>`).join('');
-    // Load images async
     for (const p of photos) {
       fetchPhotoBlob(p.fileId).then(url => {
         if (!url) return;
