@@ -1393,6 +1393,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   let photoBlobCache = {};
   // ── Customer table (source of truth) ──
   let customers = JSON.parse(localStorage.getItem('twc_customers') || '{}');
+  let deletedCustomerIds = JSON.parse(localStorage.getItem('twc_deleted_customers') || '[]');
   let currentCustomerId = null; // set when a customer is selected/linked in the quote form
 
   let cleaningSide = 'outside';
@@ -3294,6 +3295,11 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     // Delete customer record
     delete customers[customerId];
     saveCustomers();
+    // Log deletion so other devices can sync it
+    if (!deletedCustomerIds.includes(customerId)) {
+      deletedCustomerIds.push(customerId);
+      localStorage.setItem('twc_deleted_customers', JSON.stringify(deletedCustomerIds));
+    }
     // Clean up notes and photos
     delete crmNotes[customerId];
     delete crmNotes[(c.name || '').trim().toUpperCase()];
@@ -3721,9 +3727,11 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       crmNotes = merged.crmNotes;
       customerPhotos = merged.customerPhotos || {};
       customers = merged.customers || customers;
+      deletedCustomerIds = merged.deletedCustomerIds || deletedCustomerIds;
       localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
       localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
       localStorage.setItem('twc_customers', JSON.stringify(customers));
+      localStorage.setItem('twc_deleted_customers', JSON.stringify(deletedCustomerIds));
       renderSaved();
       renderRecurring();
       if (document.getElementById('tab-crm').classList.contains('active')) renderCRM();
@@ -3741,7 +3749,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   async function findOrCreateFile() {
     // Search Drive for existing file
     const searchRes = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=name='${SYNC_FILE_NAME}'+and+trashed=false&fields=files(id,name)&spaces=drive`,
+      `https://www.googleapis.com/drive/v3/files?q=name%3D'${SYNC_FILE_NAME}'+and+trashed%3Dfalse&fields=files(id,name)&spaces=drive&corpora=user`,
       { headers: { Authorization: `Bearer ${gAccessToken}` } }
     );
     const searchData = await searchRes.json();
@@ -3851,17 +3859,21 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         if (!existingIds.has(p.fileId)) mergedPhotos[k].push(p);
       });
     });
-    // Merge customers — start from LOCAL (preserves edits AND deletions)
-    // Only pull in remote records that don't exist locally at all (new from another device)
+    // Merge deletion logs — union both sides
+    const mergedDeletedIds = [...new Set([...deletedCustomerIds, ...(remote.deletedCustomerIds || [])])];
+    // Merge customers — start from LOCAL, add remote-only additions, then purge deleted IDs
     const mergedCustomers = Object.assign({}, customers);
     Object.keys(remote.customers || {}).forEach(cid => {
       if (!mergedCustomers[cid]) mergedCustomers[cid] = remote.customers[cid];
     });
+    // Apply deletion log — remove any customer in the deletion log from merged result
+    mergedDeletedIds.forEach(cid => { delete mergedCustomers[cid]; });
     return {
       savedQuotes: Object.values(remoteMap).sort((a, b) => (b.date || '').localeCompare(a.date || '')),
       crmNotes: mergedNotes,
       customerPhotos: mergedPhotos,
-      customers: mergedCustomers
+      customers: mergedCustomers,
+      deletedCustomerIds: mergedDeletedIds
     };
   }
 
@@ -4081,12 +4093,32 @@ ${bizEmail}`
 
     const mailtoLink = `mailto:${toEmail}?subject=${subject}&body=${body}`;
 
+    const plainBody = decodeURIComponent(body);
     document.getElementById('rrm-name').textContent    = name;
     document.getElementById('rrm-contact').textContent = contact || 'No contact info saved';
-    document.getElementById('rrm-preview').textContent  = decodeURIComponent(body);
+    document.getElementById('rrm-preview').textContent  = plainBody;
     document.getElementById('rrm-mailto').href = mailtoLink;
+    window._reviewEmailBody = plainBody;
+    window._reviewEmailSubject = decodeURIComponent(subject);
     document.getElementById('quoteModal').style.display = 'none';
     document.getElementById('reviewModal').style.display = 'block';
+  }
+
+  function copyReviewEmail(btn) {
+    const text = 'Subject: ' + (window._reviewEmailSubject || '') + '\n\n' + (window._reviewEmailBody || '');
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = '✓ Copied!';
+      btn.style.background = '#dcfce7';
+      btn.style.borderColor = '#86efac';
+      btn.style.color = '#16a34a';
+      setTimeout(() => {
+        btn.textContent = orig;
+        btn.style.background = '#e0f2fe';
+        btn.style.borderColor = '#7dd3fc';
+        btn.style.color = '#0369a1';
+      }, 2000);
+    });
   }
 
   function closeReviewModal() {
@@ -4278,9 +4310,10 @@ ${bizEmail}`
       <div style="font-size:11px; font-weight:600; color:var(--muted); margin-bottom:20px;"></div>
 
       <!-- Action buttons -->
-      <div style="display:flex; gap:10px;">
-        <a id="rrm-mailto" href="" style="flex:1; background:#16a34a; color:white; border-radius:30px; padding:13px; font-family:'Nunito',sans-serif; font-weight:800; font-size:14px; text-align:center; text-decoration:none; display:flex; align-items:center; justify-content:center;">📧 Open in Email App</a>
-        <button onclick="closeReviewModal()" style="flex:1; background:#f1f5f9; color:var(--text); border:none; border-radius:30px; padding:13px; font-family:'Nunito',sans-serif; font-weight:800; font-size:14px; cursor:pointer;">Skip for Now</button>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <a id="rrm-mailto" href="" style="flex:1; min-width:140px; background:#16a34a; color:white; border-radius:30px; padding:13px; font-family:'Nunito',sans-serif; font-weight:800; font-size:14px; text-align:center; text-decoration:none; display:flex; align-items:center; justify-content:center;">📧 Open in Email App</a>
+        <button onclick="copyReviewEmail(this)" style="flex:1; min-width:120px; background:#e0f2fe; color:#0369a1; border:2px solid #7dd3fc; border-radius:30px; padding:13px; font-family:'Nunito',sans-serif; font-weight:800; font-size:14px; cursor:pointer;">📋 Copy Email</button>
+        <button onclick="closeReviewModal()" style="flex:1; min-width:100px; background:#f1f5f9; color:var(--text); border:none; border-radius:30px; padding:13px; font-family:'Nunito',sans-serif; font-weight:800; font-size:14px; cursor:pointer;">Skip</button>
       </div>
     </div>
   </div>
