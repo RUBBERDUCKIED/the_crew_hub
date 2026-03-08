@@ -1307,6 +1307,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
       <button class="pipe-type-tab"                 id="pt-Residential" onclick="setPipeTypeTab('Residential',this)">🏡 Residential</button>
       <button class="pipe-type-tab"                 id="pt-Commercial"  onclick="setPipeTypeTab('Commercial',this)">🏢 Commercial</button>
       <button class="pipe-type-tab"                 id="pt-Storefront"  onclick="setPipeTypeTab('Storefront',this)">🪟 Storefront</button>
+      <button class="pipe-type-tab"                 id="pt-reviews"     onclick="setPipeTypeTab('reviews',this)" style="margin-left:auto;">⭐ Review Requests</button>
     </div>
 
     <!-- Search + filter bar -->
@@ -2054,8 +2055,11 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
     renderSaved();
     autoSync();
 
-    // Show review request button
-    showReviewRequest(savedQuotes[i]);
+    // Mark as pending review request if not already sent
+    if (!savedQuotes[i].reviewRequestSent) {
+      savedQuotes[i].reviewPending = true;
+      localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+    }
 
     currentLines = prevLines; currentGrand = prevGrand; currentSubtotal = prevSub;
   }
@@ -2984,6 +2988,16 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const searchEl = document.getElementById('pipelineSearch');
     const search = searchEl ? searchEl.value.toLowerCase() : '';
 
+    // Show review requests panel if on reviews tab
+    if (pipeTypeFilter === 'reviews') {
+      renderReviewRequests(el, search);
+      // hide filter bar
+      const filterBar = document.querySelector('#tab-pipeline .pipe-filter')?.closest('div')?.parentElement;
+      document.getElementById('pipelineSearch').parentElement.style.display = 'none';
+      return;
+    }
+    document.getElementById('pipelineSearch').parentElement.style.display = '';
+
     const filtered = search
       ? savedQuotes.filter(q =>
           (q.name||'').toLowerCase().includes(search) ||
@@ -3903,6 +3917,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         const r = remoteMap[q.quoteNum];
         if (q.receipted) r.receipted = true;
         if (q.invoiced) r.invoiced = true;
+        if (q.reviewPending) r.reviewPending = true;
+        if (q.reviewRequestSent) { r.reviewRequestSent = true; r.reviewPending = false; }
         if (q.won === true) r.won = true;
         if (q.won === false && r.won !== true) r.won = false;
         if (q.scheduled) { r.scheduled = true; r.scheduledISO = q.scheduledISO; }
@@ -4139,6 +4155,124 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   // ═══ REVIEW REQUEST ═══
+  function renderReviewRequests(el, search) {
+    const pending = savedQuotes.filter(q =>
+      q.receipted && q.reviewPending && !q.reviewRequestSent &&
+      (!search || (q.name||'').toLowerCase().includes(search) || (q.address||'').toLowerCase().includes(search))
+    );
+    const sent = savedQuotes.filter(q =>
+      q.receipted && q.reviewRequestSent &&
+      (!search || (q.name||'').toLowerCase().includes(search) || (q.address||'').toLowerCase().includes(search))
+    );
+
+    if (!pending.length && !sent.length) {
+      el.innerHTML = `<div style="background:white;border-radius:14px;padding:40px;text-align:center;">
+        <div style="font-size:32px;margin-bottom:12px;">⭐</div>
+        <div style="font-weight:800;font-size:16px;color:var(--text);margin-bottom:6px;">No pending review requests</div>
+        <div style="font-size:13px;font-weight:600;color:var(--muted);">When you generate a receipt, the customer will appear here so you can send them a review request.</div>
+      </div>`;
+      return;
+    }
+
+    const bizName = s('bizName') || 'The Window Crew';
+    const bizEmail = s('bizEmail') || 'amadeus@thewindowcrew.ca';
+
+    const makeCard = (q, isSent) => {
+      const i = savedQuotes.indexOf(q);
+      const firstName = (q.name || 'there').split(' ')[0];
+      const hasEmail = !!(q.email);
+      return `<div style="background:white;border-radius:12px;padding:16px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;border:2px solid ${isSent ? '#d1fae5' : '#e8f4f7'};">
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:800;font-size:14px;color:var(--text);">${q.name || '—'}</div>
+          <div style="font-size:12px;font-weight:600;color:var(--muted);margin-top:2px;">${q.address || ''}</div>
+          <div style="font-size:12px;font-weight:600;color:${hasEmail ? 'var(--teal)' : '#f97316'};margin-top:2px;">${hasEmail ? '✉️ ' + q.email : '⚠️ No email on file'}</div>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap;">${q.quoteNum || ''}</div>
+        ${isSent
+          ? `<div style="background:#d1fae5;color:#065f46;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:800;">✅ Sent</div>`
+          : `<button onclick="sendReviewRequest(${i}, this)" style="background:#f0d000;color:#1a3a4a;border:none;border-radius:20px;padding:8px 18px;font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap;" ${!hasEmail ? 'title="Add email in CRM first"' : ''}>⭐ Send Request</button>`
+        }
+      </div>`;
+    };
+
+    let html = '';
+    if (pending.length) {
+      html += `<div style="background:#1a3a4a;border-radius:12px;padding:12px 18px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <span style="color:white;font-weight:800;font-size:14px;">⭐ Pending Review Requests — ${pending.length} customer${pending.length!==1?'s':''}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px;">${pending.map(q => makeCard(q, false)).join('')}</div>`;
+    }
+    if (sent.length) {
+      html += `<div style="background:#065f46;border-radius:12px;padding:12px 18px;margin-bottom:12px;">
+        <span style="color:white;font-weight:800;font-size:14px;">✅ Sent — ${sent.length} customer${sent.length!==1?'s':''}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;">${sent.map(q => makeCard(q, true)).join('')}</div>`;
+    }
+    el.innerHTML = html;
+  }
+
+  async function sendReviewRequest(i, btn) {
+    const q = savedQuotes[i];
+    if (!q.email) {
+      alert('No email address on file. Edit this customer in the CRM to add one, then try again.');
+      return;
+    }
+    const bizName = s('bizName') || 'The Window Crew';
+    const bizEmail = s('bizEmail') || 'amadeus@thewindowcrew.ca';
+    const firstName = (q.name || 'there').split(' ')[0];
+
+    btn.textContent = '⏳ Sending...';
+    btn.disabled = true;
+
+    const plainBody = `Hey ${firstName}!
+
+Thanks again for choosing The Window Crew. We really appreciate your support and hope you're loving those clean windows.
+
+If you were happy with our work, we'd be incredibly thankful if you took a minute to leave us a quick Google review. As a small local business, every review truly helps us grow!
+
+👉 https://g.page/r/CQVf6RM5_Es3EAE/review
+
+As a thank you, mention this email when you book your next service and we'll take $25 off!
+
+Thanks again,
+${bizName}
+${bizEmail}`;
+
+    const htmlBody = `<!DOCTYPE html><html><head>
+      <meta charset="utf-8">
+      <style>body{font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#1a3a4a;}
+      .btn{display:inline-block;background:#f0d000;color:#1a3a4a;padding:14px 28px;border-radius:30px;text-decoration:none;font-weight:800;font-size:16px;margin:16px 0;}
+      .footer{font-size:12px;color:#aaa;margin-top:24px;}</style>
+    </head><body>
+      <h2 style="color:#1e7d93;">Hey ${firstName}! 🪟</h2>
+      <p>Thanks again for choosing <strong>${bizName}</strong>. We really appreciate your support and hope you're loving those clean windows!</p>
+      <p>If you were happy with our work, we'd be incredibly thankful if you took a minute to leave us a quick Google review. As a small local business, every review truly helps us grow!</p>
+      <a href="https://g.page/r/CQVf6RM5_Es3EAE/review" class="btn">⭐ Leave a Google Review</a>
+      <p style="background:#fffbea;border-left:4px solid #f0d000;padding:10px 14px;border-radius:0 8px 8px 0;font-weight:700;">As a thank you, mention this email when you book your next service and we'll take <strong>$25 off!</strong></p>
+      <div class="footer">Thanks again,<br><strong>${bizName}</strong><br>${bizEmail}</div>
+    </body></html>`;
+
+    try {
+      await emailjs.send('service_wseo91x', 'template_f6w8c79', {
+        to_email: q.email,
+        subject: `Thanks for choosing ${bizName}! 🪟`,
+        html_content: htmlBody,
+        name: bizName,
+        email: bizEmail
+      });
+      savedQuotes[i].reviewRequestSent = true;
+      savedQuotes[i].reviewPending = false;
+      localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+      autoSync();
+      renderSaved();
+    } catch(err) {
+      console.error('Review request error:', err);
+      alert('Failed to send. Error: ' + (err.text || err.message || JSON.stringify(err)));
+      btn.textContent = '⭐ Send Request';
+      btn.disabled = false;
+    }
+  }
+
   function showReviewRequest(q) {
     const contact = q.contact || '';
     const name    = q.name || 'there';
