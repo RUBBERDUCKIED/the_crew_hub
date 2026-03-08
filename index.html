@@ -4094,8 +4094,6 @@ ${bizEmail}`
     if (!link) return;
     const a = document.createElement('a');
     a.href = link;
-    a.target = '_blank';
-    a.rel = 'noopener';
     document.body.appendChild(a);
     a.click();
     setTimeout(() => document.body.removeChild(a), 200);
