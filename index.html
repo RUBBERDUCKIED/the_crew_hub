@@ -262,7 +262,7 @@ body {
   pointer-events: none;
 }
 
-input[type="number"], input[type="text"] {
+input[type="number"], input[type="text"], input[type="tel"], input[type="email"] {
   width: 100%;
   background: var(--gray);
   border: 2px solid transparent;
@@ -279,7 +279,7 @@ input[type="number"], input[type="text"] {
 
 input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
 
-input[type="number"]:focus, input[type="text"]:focus {
+input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, input[type="email"]:focus {
   border-color: var(--teal);
   background: white;
 }
@@ -1011,9 +1011,15 @@ input[type="number"]:focus, input[type="text"]:focus {
         </div>
       </div>
       <div>
-        <label class="field-label">Contact Info</label>
+        <label class="field-label">Phone Number</label>
         <div class="input-wrap">
-          <input type="text" id="custContact" placeholder="Phone or email">
+          <input type="tel" id="custPhone" placeholder="e.g. 250-555-1234">
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Email Address</label>
+        <div class="input-wrap">
+          <input type="email" id="custEmail" placeholder="e.g. john@email.com">
         </div>
       </div>
       <div>
@@ -1512,7 +1518,7 @@ input[type="number"]:focus, input[type="text"]:focus {
         <div style="font-size:13px; font-weight:800; color:var(--text);">
           ${c.company ? `<span style="color:var(--teal-dark);font-size:11px;">${c.company} · </span>` : ''}${c.name}
         </div>
-        <div style="font-size:11px; font-weight:600; color:var(--muted);">${[c.address, c.contact].filter(Boolean).join(' · ') || 'No address on file'}</div>
+        <div style="font-size:11px; font-weight:600; color:var(--muted);">${[c.address, c.phone, c.email].filter(Boolean).join(' · ') || 'No address on file'}</div>
       </div>`).join('');
   }
 
@@ -1533,7 +1539,8 @@ input[type="number"]:focus, input[type="text"]:focus {
     // Fill all fields from customer record
     document.getElementById('custName').value    = c.name || '';
     document.getElementById('custAddress').value = c.address || '';
-    document.getElementById('custContact').value = c.contact || '';
+    document.getElementById('custPhone').value   = c.phone || '';
+    document.getElementById('custEmail').value   = c.email || '';
     document.getElementById('custCompany').value = c.company || '';
     document.getElementById('cust-dropdown').style.display = 'none';
     updateCustBadge();
@@ -1546,7 +1553,8 @@ input[type="number"]:focus, input[type="text"]:focus {
     if (!silent) {
       // Clear fields so user can re-type
       document.getElementById('custAddress').value = '';
-      document.getElementById('custContact').value = '';
+      document.getElementById('custPhone').value   = '';
+      document.getElementById('custEmail').value   = '';
       document.getElementById('custCompany').value = '';
       document.getElementById('custName').focus();
     }
@@ -1788,7 +1796,8 @@ input[type="number"]:focus, input[type="text"]:focus {
       std, large, storeys,
       name: s('custName'), address: s('custAddress'),
       company: s('custCompany') || '',
-      contact: s('custContact'), notes: s('custNotes'),
+      phone: s('custPhone'), email: s('custEmail'),
+      contact: (s('custPhone') + (s('custPhone') && s('custEmail') ? ' · ' : '') + s('custEmail')).trim(), notes: s('custNotes'),
       addons: [cleaningSide === 'inside' && 'Inside Only', cleaningSide === 'both' && 'Inside/Out', isOn('ao-screens')&&'Screens', isOn('ao-hw')&&'Hard Water'].filter(Boolean)
     };
   }
@@ -1810,7 +1819,8 @@ input[type="number"]:focus, input[type="text"]:focus {
     const bizEmail = s('bizEmail');
     const custName = s('custName');
     const custAddress = s('custAddress');
-    const custContact = s('custContact');
+    const custPhone = s('custPhone'); const custEmail = s('custEmail');
+    const custContact = [custPhone, custEmail].filter(Boolean).join(' · ');
     const custNotes = s('custNotes');
     const custCompany = s('custCompany');
 
@@ -2088,27 +2098,29 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
   // ═══ CUSTOMER TABLE ═══
 
-  function findOrCreateCustomer(name, address, contact, company) {
+  function findOrCreateCustomer(name, address, phone, email, company) {
     const normName = (name || '').trim().toUpperCase();
     if (!normName) return null;
-    // Try to find existing by normalised name
+    const contact = (phone + (phone && email ? ' · ' : '') + email).trim();
     const existing = Object.values(customers).find(
       c => (c.name || '').trim().toUpperCase() === normName
     );
     if (existing) {
-      // Update current info with latest from quote
       if (address) existing.address = address;
+      if (phone)   existing.phone   = phone;
+      if (email)   existing.email   = email;
       if (contact) existing.contact = contact;
       if (company) existing.company = company;
       localStorage.setItem('twc_customers', JSON.stringify(customers));
       return existing.customerId;
     }
-    // Create new customer record
     const customerId = 'cust_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
     customers[customerId] = {
       customerId,
       name: name.trim(),
       address: address || '',
+      phone: phone || '',
+      email: email || '',
       contact: contact || '',
       company: company || '',
       archived: false,
@@ -2162,11 +2174,15 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       if (!nameToId[norm]) {
         const customerId = 'cust_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
         const ov = (window._crmOverridesForMigration || {})[norm] || {};
+        const migrContact = ov.contact !== undefined ? ov.contact : (q.contact || '');
+        const migrEmailMatch = migrContact.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
         customers[customerId] = {
           customerId,
           name:     ov.name    || q.name    || 'Unknown',
           address:  ov.address || q.address || '',
-          contact:  ov.contact !== undefined ? ov.contact : (q.contact || ''),
+          phone:    q.phone    || (migrEmailMatch ? migrContact.replace(migrEmailMatch[0],'').replace(/[·\s]+$/,'').trim() : migrContact),
+          email:    q.email    || (migrEmailMatch ? migrEmailMatch[0] : ''),
+          contact:  migrContact,
           company:  q.company  || '',
           archived: crmArchived.includes(norm),
           createdAt: q.date || new Date().toISOString()
@@ -2220,7 +2236,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const customerId = currentCustomerId || findOrCreateCustomer(
       name.trim(),
       window._cur.address,
-      window._cur.contact,
+      window._cur.phone || '',
+      window._cur.email || '',
       window._cur.company
     );
 
@@ -2239,6 +2256,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       customerId,                          // link to customer record
       name: name.trim(),                   // snapshot for historical accuracy
       address: window._cur.address,
+      phone:   window._cur.phone || '',
+      email:   window._cur.email || '',
       contact: window._cur.contact,
       company: window._cur.company || '',
       type: window._cur.type,
@@ -2663,7 +2682,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     // Pre-fill customer details
     document.getElementById('custName').value    = q.name || '';
     document.getElementById('custAddress').value = q.address || '';
-    document.getElementById('custContact').value = q.contact || '';
+    document.getElementById('custPhone').value   = (currentCustomerId && customers[currentCustomerId]?.phone) || q.phone || '';
+    document.getElementById('custEmail').value   = (currentCustomerId && customers[currentCustomerId]?.email) || q.email || '';
     document.getElementById('custNotes').value   = '';
     document.getElementById('custCompany').value = q.company || '';
     // Re-link to the customer record
@@ -2983,7 +3003,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   function resetForm() {
     document.getElementById('custName').value = '';
     document.getElementById('custAddress').value = '';
-    document.getElementById('custContact').value = '';
+    document.getElementById('custPhone').value = '';
+    document.getElementById('custEmail').value = '';
     document.getElementById('custNotes').value = '';
     document.getElementById('custCompany').value = '';
     currentCustomerId = null;
@@ -3369,7 +3390,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           <div class="cust-avatar" style="${isArchived ? 'background:linear-gradient(135deg,#aac4cc,#6b9aaa);' : ''}">${initials}</div>
           <div class="cust-info">
             <div class="cust-name">${c.company ? `<span style="font-size:11px;font-weight:700;color:var(--teal-dark);">${c.company} · </span>` : ''}${c.name}${isArchived ? ' <span style="font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;padding:2px 7px;border-radius:10px;margin-left:6px;">Archived</span>' : ''}</div>
-            <div class="cust-meta">${[c.address, c.contact].filter(Boolean).join(' · ')}</div>
+            <div class="cust-meta">${[c.address].filter(Boolean).join('')}${c.address && (c.phone||c.email) ? ' · ' : ''}${[c.phone, c.email].filter(Boolean).join(' · ')}</div>
           </div>
           <div class="cust-stats">
             <div class="cust-stat"><div class="cust-stat-val">${c.jobs.length}</div><div class="cust-stat-lbl">Quotes</div></div>
@@ -3448,7 +3469,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     if (!c) return;
     document.getElementById('crmEdit-name').value    = c.name;
     document.getElementById('crmEdit-address').value = c.address || '';
-    document.getElementById('crmEdit-contact').value = c.contact || '';
+    document.getElementById('crmEdit-phone').value   = c.phone || '';
+    document.getElementById('crmEdit-email').value   = c.email || '';
     document.getElementById('crmEdit-key').value     = customerId;
     document.getElementById('crmEditModal').style.display = 'block';
     document.body.style.overflow = 'hidden';
@@ -3463,12 +3485,14 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const customerId = document.getElementById('crmEdit-key').value;
     const name    = document.getElementById('crmEdit-name').value.trim();
     const address = document.getElementById('crmEdit-address').value.trim();
-    const contact = document.getElementById('crmEdit-contact').value.trim();
+    const phone   = document.getElementById('crmEdit-phone').value.trim();
+    const email   = document.getElementById('crmEdit-email').value.trim();
     if (!customerId || !customers[customerId]) return;
-    // Write directly to customer record — it IS the source of truth now
     customers[customerId].name    = name;
     customers[customerId].address = address;
-    customers[customerId].contact = contact;
+    customers[customerId].phone   = phone;
+    customers[customerId].email   = email;
+    customers[customerId].contact = (phone + (phone && email ? ' · ' : '') + email).trim();
     saveCustomers();
     closeCrmEdit();
     renderCRM();
@@ -4033,8 +4057,9 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const bizEmail = s('bizEmail') || 'amadeus@thewindowcrew.ca';
 
     // Extract email if present, otherwise leave blank for user to fill
+    // Use dedicated email field if present, else fall back to regex on contact string
     const emailMatch = contact.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
-    const toEmail = emailMatch ? emailMatch[0] : '';
+    const toEmail = q.email || (emailMatch ? emailMatch[0] : '');
 
     const subject = encodeURIComponent(`Thanks for choosing ${bizName}! 🪟`);
     const firstName = name.split(' ')[0] || name;
@@ -4108,8 +4133,12 @@ ${bizEmail}`
         <input id="crmEdit-address" type="text" style="width:100%;padding:10px 14px;border:2px solid #e2e8f0;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;outline:none;">
       </div>
       <div>
-        <label style="font-size:12px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;">Contact (Phone / Email)</label>
-        <input id="crmEdit-contact" type="text" style="width:100%;padding:10px 14px;border:2px solid #e2e8f0;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;outline:none;">
+        <label style="font-size:12px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;">Phone Number</label>
+        <input id="crmEdit-phone" type="tel" style="width:100%;padding:10px 14px;border:2px solid #e2e8f0;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;outline:none;">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;">Email Address</label>
+        <input id="crmEdit-email" type="email" style="width:100%;padding:10px 14px;border:2px solid #e2e8f0;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;outline:none;">
       </div>
       <input type="hidden" id="crmEdit-key">
       <div style="display:flex;gap:10px;margin-top:4px;">
