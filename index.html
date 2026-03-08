@@ -1413,9 +1413,10 @@ input[type="number"]:focus, input[type="text"]:focus {
     btn.classList.add('active');
     propType = btn.dataset.type;
     const isStorefront = propType === 'Storefront';
-    // Show company name field for storefront
-    document.getElementById('company-name-field').style.display = isStorefront ? 'block' : 'none';
-    document.getElementById('label-custName').textContent = isStorefront ? 'Contact Name' : 'Customer Name';
+    const isCommercial = propType === 'Commercial';
+    // Show company name field for storefront and commercial
+    document.getElementById('company-name-field').style.display = (isStorefront || isCommercial) ? 'block' : 'none';
+    document.getElementById('label-custName').textContent = (isStorefront || isCommercial) ? 'Contact Name' : 'Customer Name';
     // Swap plan panels
     document.getElementById('plans-residential').style.display = isStorefront ? 'none' : 'grid';
     document.getElementById('plans-storefront').style.display  = isStorefront ? 'grid' : 'none';
@@ -2760,6 +2761,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     document.getElementById('plans-residential').style.display = 'grid';
     document.getElementById('plans-storefront').style.display = 'none';
     document.getElementById('storey-surcharge-row').style.display = 'block';
+    document.getElementById('company-name-field').style.display = 'none';
+    document.getElementById('label-custName').textContent = 'Customer Name';
     document.getElementById('label-priceStd').textContent = 'Standard ($ / pane)';
     document.getElementById('label-priceLarge').textContent = 'Large ($ / pane)';
     setPlan('oneoff');
