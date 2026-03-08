@@ -1029,7 +1029,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
       <div>
         <label class="field-label">Phone Number</label>
         <div class="input-wrap">
-          <input type="tel" id="custPhone" placeholder="e.g. 250-555-1234">
+          <input type="tel" id="custPhone" placeholder="250-555-1234" oninput="formatPhone(this)">
         </div>
       </div>
       <div>
@@ -1266,7 +1266,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
       </div>
       <div>
         <label class="field-label">Phone</label>
-        <div class="input-wrap"><input type="text" id="bizPhone" value="587-220-8775"></div>
+        <div class="input-wrap"><input type="tel" id="bizPhone" value="587-220-8775" oninput="formatPhone(this)"></div>
       </div>
       <div>
         <label class="field-label">Email</label>
@@ -2104,6 +2104,16 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
   // Tracks current doc for email sending
   let _emailDocMeta = { toEmail: '', subject: '', docType: '' };
+
+  function formatPhone(input) {
+    // Strip everything except digits
+    let digits = input.value.replace(/\D/g, '').slice(0, 10);
+    let formatted = digits;
+    if (digits.length > 6)      formatted = digits.slice(0,3) + '-' + digits.slice(3,6) + '-' + digits.slice(6);
+    else if (digits.length > 3) formatted = digits.slice(0,3) + '-' + digits.slice(3);
+    // Only update if value changed (prevents cursor jump on non-digit keys)
+    if (input.value !== formatted) input.value = formatted;
+  }
 
   function setEmailMeta(toEmail, subject, docType) {
     _emailDocMeta = { toEmail, subject, docType };
@@ -4381,7 +4391,7 @@ ${bizEmail}`
       </div>
       <div>
         <label style="font-size:12px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;">Phone Number</label>
-        <input id="crmEdit-phone" type="tel" style="width:100%;padding:10px 14px;border:2px solid #e2e8f0;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;outline:none;">
+        <input id="crmEdit-phone" type="tel" oninput="formatPhone(this)" style="width:100%;padding:10px 14px;border:2px solid #e2e8f0;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;outline:none;">
       </div>
       <div>
         <label style="font-size:12px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;">Email Address</label>
