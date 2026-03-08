@@ -3826,11 +3826,11 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         if (!existingIds.has(p.fileId)) mergedPhotos[k].push(p);
       });
     });
-    // Merge customers — local always wins (holds the latest edits)
-    // Remote supplies customer records not present locally
-    const mergedCustomers = Object.assign({}, remote.customers || {});
-    Object.keys(customers).forEach(cid => {
-      mergedCustomers[cid] = Object.assign({}, mergedCustomers[cid] || {}, customers[cid]);
+    // Merge customers — start from LOCAL (preserves edits AND deletions)
+    // Only pull in remote records that don't exist locally at all (new from another device)
+    const mergedCustomers = Object.assign({}, customers);
+    Object.keys(remote.customers || {}).forEach(cid => {
+      if (!mergedCustomers[cid]) mergedCustomers[cid] = remote.customers[cid];
     });
     return {
       savedQuotes: Object.values(remoteMap).sort((a, b) => (b.date || '').localeCompare(a.date || '')),
