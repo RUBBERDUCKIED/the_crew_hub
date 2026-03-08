@@ -4085,11 +4085,13 @@ ${bizEmail}`
     document.getElementById('rrm-contact').textContent = contact || 'No contact info saved';
     document.getElementById('rrm-preview').textContent  = decodeURIComponent(body);
     document.getElementById('rrm-mailto').href = mailtoLink;
+    document.getElementById('quoteModal').style.display = 'none';
     document.getElementById('reviewModal').style.display = 'block';
   }
 
   function closeReviewModal() {
     document.getElementById('reviewModal').style.display = 'none';
+    document.getElementById('quoteModal').style.display = 'block';
   }
 
   function autoSync() {
