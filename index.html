@@ -4084,9 +4084,21 @@ ${bizEmail}`
     document.getElementById('rrm-name').textContent    = name;
     document.getElementById('rrm-contact').textContent = contact || 'No contact info saved';
     document.getElementById('rrm-preview').textContent  = decodeURIComponent(body);
-    document.getElementById('rrm-mailto').dataset.mailto = mailtoLink;
+    window._reviewMailtoLink = mailtoLink;
     document.getElementById('rrm-mailto').style.display = 'inline-block';
     document.getElementById('reviewModal').style.display = 'block';
+  }
+
+  function openMailtoLink() {
+    const link = window._reviewMailtoLink;
+    if (!link) return;
+    const a = document.createElement('a');
+    a.href = link;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => document.body.removeChild(a), 200);
   }
 
   function closeReviewModal() {
@@ -4278,7 +4290,7 @@ ${bizEmail}`
 
       <!-- Action buttons -->
       <div style="display:flex; gap:10px;">
-        <button id="rrm-mailto" onclick="window.location.href=this.dataset.mailto" style="flex:1; display:none; background:#16a34a; color:white; border:none; border-radius:30px; padding:13px; font-family:'Nunito',sans-serif; font-weight:800; font-size:14px; cursor:pointer; text-align:center;">📧 Open in Email App</button>
+        <button id="rrm-mailto" onclick="openMailtoLink()" style="flex:1; display:none; background:#16a34a; color:white; border:none; border-radius:30px; padding:13px; font-family:'Nunito',sans-serif; font-weight:800; font-size:14px; cursor:pointer; text-align:center;">📧 Open in Email App</button>
         <button onclick="closeReviewModal()" style="flex:1; background:#f1f5f9; color:var(--text); border:none; border-radius:30px; padding:13px; font-family:'Nunito',sans-serif; font-weight:800; font-size:14px; cursor:pointer;">Skip for Now</button>
       </div>
     </div>
