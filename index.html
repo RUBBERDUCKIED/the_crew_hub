@@ -1365,11 +1365,13 @@ input[type="number"]:focus, input[type="text"]:focus {
   let currentLines = [];
   let currentGrand = 0;
   let currentSubtotal = 0;
-  let crmArchived = JSON.parse(localStorage.getItem('twc_crm_archived') || '[]');
+  let crmArchived = JSON.parse(localStorage.getItem('twc_crm_archived') || '[]'); // kept for migration
   let showingArchived = false;
   let customerPhotos = {};
   let photoFolderId = null;
   let photoBlobCache = {};
+  // ── Customer table (source of truth) ──
+  let customers = JSON.parse(localStorage.getItem('twc_customers') || '{}');
 
   let cleaningSide = 'outside';
   let windowCondition = 'maintenance';
@@ -1976,6 +1978,102 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     if (e.target === this) closeModal();
   });
 
+  // ═══ CUSTOMER TABLE ═══
+
+  function findOrCreateCustomer(name, address, contact, company) {
+    const normName = (name || '').trim().toUpperCase();
+    if (!normName) return null;
+    // Try to find existing by normalised name
+    const existing = Object.values(customers).find(
+      c => (c.name || '').trim().toUpperCase() === normName
+    );
+    if (existing) {
+      // Update current info with latest from quote
+      if (address) existing.address = address;
+      if (contact) existing.contact = contact;
+      if (company) existing.company = company;
+      localStorage.setItem('twc_customers', JSON.stringify(customers));
+      return existing.customerId;
+    }
+    // Create new customer record
+    const customerId = 'cust_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+    customers[customerId] = {
+      customerId,
+      name: name.trim(),
+      address: address || '',
+      contact: contact || '',
+      company: company || '',
+      archived: false,
+      createdAt: new Date().toISOString()
+    };
+    localStorage.setItem('twc_customers', JSON.stringify(customers));
+    return customerId;
+  }
+
+  function migrateToCustomerTable() {
+    // Run once on load — creates customer records for any quote missing a customerId
+    // Safe to run multiple times
+    let changed = false;
+    const nameToId = {};
+    // First pass: collect existing customerId mappings
+    savedQuotes.forEach(q => {
+      if (q.customerId && customers[q.customerId]) {
+        nameToId[(q.name || '').trim().toUpperCase()] = q.customerId;
+      }
+    });
+    // Second pass: create missing customer records and stamp quotes
+    savedQuotes.forEach(q => {
+      if (q.customerId && customers[q.customerId]) return; // already linked
+      const normName = (q.name || 'Unknown').trim().toUpperCase();
+      if (!nameToId[normName]) {
+        const customerId = 'cust_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+        // Apply any existing overrides during migration
+        const ov = (window._crmOverridesForMigration || {})[normName] || {};
+        customers[customerId] = {
+          customerId,
+          name:     ov.name    || q.name    || 'Unknown',
+          address:  ov.address || q.address || '',
+          contact:  ov.contact !== undefined ? ov.contact : (q.contact || ''),
+          company:  q.company  || '',
+          archived: crmArchived.includes(normName),
+          createdAt: q.date || new Date().toISOString()
+        };
+        nameToId[normName] = customerId;
+        changed = true;
+      }
+      q.customerId = nameToId[normName];
+      changed = true;
+    });
+    if (changed) {
+      localStorage.setItem('twc_customers', JSON.stringify(customers));
+      localStorage.setItem('twc_quotes',    JSON.stringify(savedQuotes));
+    }
+  }
+
+  // Get all notes for a customer — checks both customerId key and legacy name key
+  function getNotesForCustomer(customerId, legacyNameKey) {
+    const byId   = crmNotes[customerId]    || [];
+    const byName = crmNotes[legacyNameKey] || [];
+    const seen   = new Set(byId.map(n => n.text + n.date));
+    const combined = [...byId];
+    byName.forEach(n => { if (!seen.has(n.text + n.date)) combined.push(n); });
+    return combined;
+  }
+
+  // Get all photos for a customer — checks both customerId key and legacy name key
+  function getPhotosForCustomer(customerId, legacyNameKey) {
+    const byId   = customerPhotos[customerId]    || [];
+    const byName = customerPhotos[legacyNameKey] || [];
+    const seen   = new Set(byId.map(p => p.fileId));
+    const combined = [...byId];
+    byName.forEach(p => { if (!seen.has(p.fileId)) combined.push(p); });
+    return combined;
+  }
+
+  function saveCustomers() {
+    localStorage.setItem('twc_customers', JSON.stringify(customers));
+  }
+
   function saveQuote() {
     if (!window._cur || (window._cur.std + window._cur.large) === 0) {
       alert('Please enter at least one window before saving.');
@@ -1984,12 +2082,19 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const name = window._cur.name || prompt('Enter a name for this quote:');
     if (!name?.trim()) return;
 
-    // Push any notes into CRM immediately — internal only, never on docs
+    // Find or create customer record — CRM becomes source of truth
+    const customerId = findOrCreateCustomer(
+      name.trim(),
+      window._cur.address,
+      window._cur.contact,
+      window._cur.company
+    );
+
+    // Push any internal notes into CRM — keyed by customerId
     const noteText = window._cur.notes ? window._cur.notes.trim() : '';
-    if (noteText) {
-      const key = name.trim().toUpperCase();
-      if (!crmNotes[key]) crmNotes[key] = [];
-      crmNotes[key].push({
+    if (noteText && customerId) {
+      if (!crmNotes[customerId]) crmNotes[customerId] = [];
+      crmNotes[customerId].push({
         text: `[Quote ${new Date().toLocaleDateString('en-CA', { day:'numeric', month:'short', year:'numeric' })}] ${noteText}`,
         date: new Date().toLocaleDateString('en-CA', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
       });
@@ -1997,7 +2102,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     }
 
     savedQuotes.unshift({
-      name: name.trim(),
+      customerId,                          // link to customer record
+      name: name.trim(),                   // snapshot for historical accuracy
       address: window._cur.address,
       contact: window._cur.contact,
       company: window._cur.company || '',
@@ -2018,7 +2124,6 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
     renderSaved();
     renderRecurring();
-    // Switch to pipeline tab to show the new entry
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('tab-pipeline').classList.add('active');
@@ -2456,7 +2561,10 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       if (!q.plan || q.plan === 'oneoff') return;
       if (!q.invoiced && !q.receipted) return; // must have been invoiced = job was done
       const key = (q.name || '').trim().toUpperCase();
-      if (crmArchived.includes(key)) return;
+      // Check archived via customer record (or legacy crmArchived as fallback)
+      const cust = q.customerId ? customers[q.customerId] : null;
+      const isArchived = cust ? cust.archived : crmArchived.includes(key);
+      if (isArchived) return;
       if (pipeTypeFilter !== 'all' && (q.type || '') !== pipeTypeFilter) return;
       if (!customerLatest[key] || new Date(q.date) > new Date(customerLatest[key].date)) {
         customerLatest[key] = q;
@@ -2585,14 +2693,14 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   function openQuickNote(i) {
     const q = savedQuotes[i];
     quickNoteIdx = i;
-    const key = (q.name || '').trim().toUpperCase();
+    const cid = q.customerId;
+    const legacyKey = (q.name || '').trim().toUpperCase();
 
-    // Header label
     document.getElementById('qnm-customer').textContent =
       `${q.name}${q.address ? ' — ' + q.address : ''} · ${q.quoteNum || ''} · $${q.grand ? q.grand.toFixed(2) : '0.00'}`;
 
-    // Show existing notes for this customer
-    const existing = crmNotes[key] || [];
+    // Show existing notes — check both customerId key and legacy name key
+    const existing = cid ? getNotesForCustomer(cid, legacyKey) : (crmNotes[legacyKey] || []);
     const existEl = document.getElementById('qnm-existing');
     if (existing.length) {
       existEl.innerHTML = `
@@ -2622,9 +2730,10 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const text = document.getElementById('qnm-input').value.trim();
     if (!text) { document.getElementById('qnm-input').focus(); return; }
     const q = savedQuotes[quickNoteIdx];
-    const key = (q.name || '').trim().toUpperCase();
-    if (!crmNotes[key]) crmNotes[key] = [];
-    crmNotes[key].push({
+    // Use customerId if available, fall back to legacy name key
+    const noteKey = q.customerId || (q.name || '').trim().toUpperCase();
+    if (!crmNotes[noteKey]) crmNotes[noteKey] = [];
+    crmNotes[noteKey].push({
       text,
       date: new Date().toLocaleDateString('en-CA', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
     });
@@ -2942,32 +3051,39 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   let crmNotes = JSON.parse(localStorage.getItem('twc_crm_notes') || '{}');
   let crmOverrides = JSON.parse(localStorage.getItem('twc_crm_overrides') || '{}');
 
+  // ── Run migration: stamp customerId onto existing quotes & build customer records ──
+  window._crmOverridesForMigration = crmOverrides;
+  migrateToCustomerTable();
+  window._crmOverridesForMigration = null;
+
   function getCustomers() {
-    const map = {};
+    // Customer table is source of truth. Each record collects its linked quotes.
+    const result = Object.values(customers).map(c => {
+      const legacyKey = (c.name || '').trim().toUpperCase();
+      const jobs = savedQuotes
+        .filter(q => q.customerId === c.customerId ||
+                     (!q.customerId && (q.name || '').trim().toUpperCase() === legacyKey))
+        .map(q => ({ ...q, _idx: savedQuotes.indexOf(q) }));
+      return { ...c, key: c.customerId, legacyKey, jobs };
+    });
+    // Also surface any quotes that somehow have no matching customer record (safety net)
+    const knownIds = new Set(result.map(c => c.customerId));
     savedQuotes.forEach(q => {
-      const key = (q.name || 'Unknown').trim().toUpperCase();
-      if (!map[key]) {
-        map[key] = {
-          name: q.name || 'Unknown',
-          address: q.address || '',
-          contact: q.contact || '',
-          jobs: []
-        };
-      }
-      map[key].jobs.push({...q, _idx: savedQuotes.indexOf(q)});
-      // keep most recent contact info
-      if (q.address) map[key].address = q.address;
-      if (q.contact) map[key].contact = q.contact;
-    });
-    // Apply manual overrides
-    Object.keys(crmOverrides).forEach(key => {
-      if (map[key]) {
-        if (crmOverrides[key].name)    map[key].name    = crmOverrides[key].name;
-        if (crmOverrides[key].address) map[key].address = crmOverrides[key].address;
-        if (crmOverrides[key].contact !== undefined) map[key].contact = crmOverrides[key].contact;
+      if (q.customerId && !knownIds.has(q.customerId)) {
+        // Orphan — create a minimal record on-the-fly (doesn't persist)
+        const legacyKey = (q.name || '').trim().toUpperCase();
+        result.push({
+          customerId: q.customerId, key: q.customerId, legacyKey,
+          name: q.name || 'Unknown', address: q.address || '',
+          contact: q.contact || '', company: q.company || '',
+          archived: false,
+          jobs: savedQuotes.filter(x => x.customerId === q.customerId)
+                           .map(x => ({ ...x, _idx: savedQuotes.indexOf(x) }))
+        });
+        knownIds.add(q.customerId);
       }
     });
-    return Object.values(map).sort((a,b) => a.name.localeCompare(b.name));
+    return result.sort((a, b) => a.name.localeCompare(b.name));
   }
 
   function toggleArchivedView() {
@@ -2987,60 +3103,67 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     renderCRM();
   }
 
-  function archiveCustomer(key) {
-    if (!crmArchived.includes(key)) {
-      crmArchived.push(key);
-      localStorage.setItem('twc_crm_archived', JSON.stringify(crmArchived));
+  function archiveCustomer(customerId) {
+    if (customers[customerId]) {
+      customers[customerId].archived = true;
+      saveCustomers();
     }
     renderCRM();
   }
 
-  function unarchiveCustomer(key) {
-    crmArchived = crmArchived.filter(k => k !== key);
-    localStorage.setItem('twc_crm_archived', JSON.stringify(crmArchived));
+  function unarchiveCustomer(customerId) {
+    if (customers[customerId]) {
+      customers[customerId].archived = false;
+      saveCustomers();
+    }
     renderCRM();
   }
 
-  function hardDeleteCustomer(key, displayName) {
-    if (!confirm(`⚠️ PERMANENTLY DELETE "${displayName}"?\n\nThis will remove ALL their quotes from your pipeline and cannot be undone.`)) return;
-    // Remove all quotes for this customer
-    savedQuotes = savedQuotes.filter(q => (q.name || 'Unknown').trim().toUpperCase() !== key);
+  function hardDeleteCustomer(customerId) {
+    const c = customers[customerId];
+    if (!c) return;
+    if (!confirm(`⚠️ PERMANENTLY DELETE "${c.name}"?\n\nThis will remove ALL their quotes from your pipeline and cannot be undone.`)) return;
+    // Remove all quotes linked to this customer
+    savedQuotes = savedQuotes.filter(q => q.customerId !== customerId &&
+      (q.name || '').trim().toUpperCase() !== (c.name || '').trim().toUpperCase());
     localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
-    // Remove from archived list
-    crmArchived = crmArchived.filter(k => k !== key);
-    localStorage.setItem('twc_crm_archived', JSON.stringify(crmArchived));
-    // Remove notes and overrides
-    delete crmNotes[key];
-    delete crmOverrides[key];
+    // Delete customer record
+    delete customers[customerId];
+    saveCustomers();
+    // Clean up notes and photos
+    delete crmNotes[customerId];
+    delete crmNotes[(c.name || '').trim().toUpperCase()];
     localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
-    localStorage.setItem('twc_crm_overrides', JSON.stringify(crmOverrides));
-    renderCRM();
     renderSaved();
+    renderRecurring();
+    renderCRM();
     autoSync();
   }
 
   function renderCRM() {
-    const customers = getCustomers();
+    const custList = getCustomers();
     const search = document.getElementById('crmSearch').value.toLowerCase();
 
-    const filtered = customers.filter(c => {
-      const key = c.name.trim().toUpperCase();
-      const isArchived = crmArchived.includes(key);
-      const matchesSearch = c.name.toLowerCase().includes(search) || c.address.toLowerCase().includes(search);
+    const filtered = custList.filter(c => {
+      const isArchived = c.archived || false;
+      const matchesSearch = c.name.toLowerCase().includes(search) ||
+                            (c.address || '').toLowerCase().includes(search) ||
+                            (c.company || '').toLowerCase().includes(search);
       return matchesSearch && (showingArchived ? isArchived : !isArchived);
     });
 
-    // Stats — always based on active (non-archived) customers only
-    const allWon = savedQuotes.filter(q => q.won === true && !crmArchived.includes((q.name||'Unknown').trim().toUpperCase()));
-    const totalRev = allWon.reduce((sum, q) => sum + q.grand, 0);
-    const activeQuotes = savedQuotes.filter(q => !crmArchived.includes((q.name||'Unknown').trim().toUpperCase()));
-    const winRate = activeQuotes.length ? Math.round(allWon.length / activeQuotes.length * 100) : 0;
-    const activeCustomers = customers.filter(c => !crmArchived.includes(c.name.trim().toUpperCase()));
-    document.getElementById('stat-customers').textContent = activeCustomers.length;
-    document.getElementById('stat-quotes').textContent = activeQuotes.length;
-    document.getElementById('stat-won').textContent = allWon.length;
-    document.getElementById('stat-wonpct').textContent = `${winRate}% win rate`;
-    document.getElementById('stat-revenue').textContent = `$${totalRev.toFixed(0)}`;
+    // Stats — always based on active customers only
+    const activeCusts = custList.filter(c => !c.archived);
+    const activeIds   = new Set(activeCusts.map(c => c.customerId));
+    const allWon      = savedQuotes.filter(q => q.won === true && activeIds.has(q.customerId));
+    const activeQuotes = savedQuotes.filter(q => activeIds.has(q.customerId));
+    const totalRev  = allWon.reduce((sum, q) => sum + q.grand, 0);
+    const winRate   = activeQuotes.length ? Math.round(allWon.length / activeQuotes.length * 100) : 0;
+    document.getElementById('stat-customers').textContent = activeCusts.length;
+    document.getElementById('stat-quotes').textContent    = activeQuotes.length;
+    document.getElementById('stat-won').textContent       = allWon.length;
+    document.getElementById('stat-wonpct').textContent    = `${winRate}% win rate`;
+    document.getElementById('stat-revenue').textContent   = `$${totalRev.toFixed(0)}`;
 
     const el = document.getElementById('crmList');
 
@@ -3053,19 +3176,20 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       return;
     }
 
-    // Archived view banner
     const archivedBanner = showingArchived ? `
       <div style="background:#fef3c7;border:2px solid #f0d000;border-radius:10px;padding:12px 18px;margin-bottom:16px;font-size:13px;font-weight:700;color:#92400e;">
         📦 Showing ${filtered.length} archived customer${filtered.length !== 1 ? 's' : ''} — these are hidden from your main CRM view.
       </div>` : '';
 
     el.innerHTML = archivedBanner + filtered.map(c => {
-      const key = c.name.trim().toUpperCase();
-      const isArchived = crmArchived.includes(key);
-      const notes = crmNotes[key] || [];
-      const wonJobs = c.jobs.filter(j => j.won === true);
+      const cid        = c.customerId;
+      const safeId     = cid.replace(/\W/g, '_');
+      const isArchived = c.archived || false;
+      const notes      = getNotesForCustomer(cid, c.legacyKey);
+      const photos     = getPhotosForCustomer(cid, c.legacyKey);
+      const wonJobs    = c.jobs.filter(j => j.won === true);
       const totalSpend = wonJobs.reduce((sum, j) => sum + j.grand, 0);
-      const initials = c.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+      const initials   = c.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
       const jobRows = c.jobs.map(j => `
         <div class="job-row">
@@ -3083,40 +3207,31 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       const noteRows = notes.map((n, ni) => `
         <div class="note-entry">
           ${n.text}
-          <div class="note-entry-meta">${n.date} <button onclick="deleteNote('${key}', ${ni})" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:11px;margin-left:8px;">delete</button></div>
+          <div class="note-entry-meta">${n.date} <button onclick="deleteNote('${cid}', ${ni})" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:11px;margin-left:8px;">delete</button></div>
         </div>`).join('');
 
       const actionButtons = isArchived ? `
-        <button onclick="unarchiveCustomer('${key}');event.stopPropagation()" style="background:#10b981;color:white;border:none;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;margin-left:4px;flex-shrink:0;">↩ Restore</button>
-        <button onclick="hardDeleteCustomer('${key}', '${c.name.replace(/'/g,"\\'")}');event.stopPropagation()" style="background:#fee2e2;color:#dc2626;border:2px solid #fca5a5;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;margin-left:4px;flex-shrink:0;">🗑 Delete All</button>
+        <button onclick="unarchiveCustomer('${cid}');event.stopPropagation()" style="background:#10b981;color:white;border:none;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;margin-left:4px;flex-shrink:0;">↩ Restore</button>
+        <button onclick="hardDeleteCustomer('${cid}');event.stopPropagation()" style="background:#fee2e2;color:#dc2626;border:2px solid #fca5a5;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;margin-left:4px;flex-shrink:0;">🗑 Delete All</button>
       ` : `
-        <button onclick="openCrmEdit('${key}');event.stopPropagation()" style="background:var(--blue);color:white;border:none;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;margin-left:4px;flex-shrink:0;">✏️ Edit</button>
-        <button onclick="archiveCustomer('${key}');event.stopPropagation()" style="background:#f1f5f9;color:#6b9aaa;border:2px solid #e8f4f7;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;margin-left:4px;flex-shrink:0;">📦 Archive</button>
+        <button onclick="openCrmEdit('${cid}');event.stopPropagation()" style="background:var(--blue);color:white;border:none;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;margin-left:4px;flex-shrink:0;">✏️ Edit</button>
+        <button onclick="archiveCustomer('${cid}');event.stopPropagation()" style="background:#f1f5f9;color:#6b9aaa;border:2px solid #e8f4f7;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;margin-left:4px;flex-shrink:0;">📦 Archive</button>
       `;
 
       const cardStyle = isArchived ? 'opacity:0.8; border-color: #f0d000;' : '';
 
       return `
-      <div class="customer-card" id="cc-${key.replace(/\W/g,'_')}" style="${cardStyle}">
-        <div class="customer-header" onclick="toggleCustomer('${key.replace(/\W/g,'_')}')">
+      <div class="customer-card" id="cc-${safeId}" style="${cardStyle}">
+        <div class="customer-header" onclick="toggleCustomer('${safeId}')">
           <div class="cust-avatar" style="${isArchived ? 'background:linear-gradient(135deg,#aac4cc,#6b9aaa);' : ''}">${initials}</div>
           <div class="cust-info">
-            <div class="cust-name">${c.name}${isArchived ? ' <span style="font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;padding:2px 7px;border-radius:10px;margin-left:6px;">Archived</span>' : ''}</div>
+            <div class="cust-name">${c.company ? `<span style="font-size:11px;font-weight:700;color:var(--teal-dark);">${c.company} · </span>` : ''}${c.name}${isArchived ? ' <span style="font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;padding:2px 7px;border-radius:10px;margin-left:6px;">Archived</span>' : ''}</div>
             <div class="cust-meta">${[c.address, c.contact].filter(Boolean).join(' · ')}</div>
           </div>
           <div class="cust-stats">
-            <div class="cust-stat">
-              <div class="cust-stat-val">${c.jobs.length}</div>
-              <div class="cust-stat-lbl">Quotes</div>
-            </div>
-            <div class="cust-stat">
-              <div class="cust-stat-val">${wonJobs.length}</div>
-              <div class="cust-stat-lbl">Won</div>
-            </div>
-            <div class="cust-stat">
-              <div class="cust-stat-val">$${totalSpend.toFixed(0)}</div>
-              <div class="cust-stat-lbl">Revenue</div>
-            </div>
+            <div class="cust-stat"><div class="cust-stat-val">${c.jobs.length}</div><div class="cust-stat-lbl">Quotes</div></div>
+            <div class="cust-stat"><div class="cust-stat-val">${wonJobs.length}</div><div class="cust-stat-lbl">Won</div></div>
+            <div class="cust-stat"><div class="cust-stat-val">$${totalSpend.toFixed(0)}</div><div class="cust-stat-lbl">Revenue</div></div>
           </div>
           <div class="cust-chevron">▼</div>
           ${actionButtons}
@@ -3129,28 +3244,28 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
             </div>
             <div class="notes-section">
               <div class="notes-label">📷 Site Photos
-                ${(customerPhotos[key]||[]).length > 0 ? `<span style="background:var(--teal);color:white;border-radius:20px;padding:2px 8px;font-size:10px;margin-left:6px;">${(customerPhotos[key]||[]).length}</span>` : ''}
+                ${photos.length > 0 ? `<span style="background:var(--teal);color:white;border-radius:20px;padding:2px 8px;font-size:10px;margin-left:6px;">${photos.length}</span>` : ''}
               </div>
               ${!gAccessToken
-                ? `<div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:10px;">Sign in to Drive to view & upload photos.</div>`
-                : (customerPhotos[key]||[]).length === 0
+                ? `<div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:10px;">Sign in to Drive to view &amp; upload photos.</div>`
+                : photos.length === 0
                   ? `<div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;">No site photos yet.</div>`
-                  : `<div id="crm-photos-${key.replace(/\W/g,'_')}" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;">
-                      ${(customerPhotos[key]||[]).map(p => `
+                  : `<div id="crm-photos-${safeId}" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;">
+                      ${photos.map(p => `
                         <div style="border-radius:8px;overflow:hidden;background:#f1f5f9;aspect-ratio:1;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="openPhotoLightbox('${p.fileId}')">
                           <img id="crm-img-${p.fileId}" src="" style="width:100%;height:100%;object-fit:cover;display:none;">
                           <span id="crm-spin-${p.fileId}" style="font-size:18px;color:var(--muted);">⟳</span>
                         </div>`).join('')}
                     </div>`
               }
-              <button onclick="openPhotoModal('${key}', '${c.name.replace(/\\/g,'').replace(/'/g,'')}');event.stopPropagation()" style="background:var(--teal);color:white;border:none;border-radius:20px;padding:7px 16px;font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;cursor:pointer;margin-bottom:14px;">📷 Manage Photos</button>
+              <button onclick="openPhotoModal('${cid}', '${c.name.replace(/\\/g,'').replace(/'/g,'')}');event.stopPropagation()" style="background:var(--teal);color:white;border:none;border-radius:20px;padding:7px 16px;font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;cursor:pointer;margin-bottom:14px;">📷 Manage Photos</button>
             </div>
             <div class="notes-section">
               <div class="notes-label">Notes History</div>
-              <div id="notes-${key.replace(/\W/g,'_')}">${noteRows || '<div style="color:var(--muted);font-size:13px;margin-bottom:10px;">No notes yet.</div>'}</div>
+              <div id="notes-${safeId}">${noteRows || '<div style="color:var(--muted);font-size:13px;margin-bottom:10px;">No notes yet.</div>'}</div>
               <div class="note-input-row">
-                <input type="text" class="note-input" id="ni-${key.replace(/\W/g,'_')}" placeholder="Add a note..." onkeydown="if(event.key==='Enter')addNote('${key}','${key.replace(/\W/g,'_')}')">
-                <button class="note-add-btn" onclick="addNote('${key}','${key.replace(/\W/g,'_')}')">+ Add Note</button>
+                <input type="text" class="note-input" id="ni-${safeId}" placeholder="Add a note..." onkeydown="if(event.key==='Enter')addNote('${cid}','${safeId}')">
+                <button class="note-add-btn" onclick="addNote('${cid}','${safeId}')">+ Add Note</button>
               </div>
             </div>
           </div>
@@ -3185,14 +3300,13 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     }
   }
 
-  function openCrmEdit(key) {
-    const customers = getCustomers();
-    const c = customers.find(c => c.name.trim().toUpperCase() === key);
+  function openCrmEdit(customerId) {
+    const c = customers[customerId];
     if (!c) return;
     document.getElementById('crmEdit-name').value    = c.name;
     document.getElementById('crmEdit-address').value = c.address || '';
     document.getElementById('crmEdit-contact').value = c.contact || '';
-    document.getElementById('crmEdit-key').value     = key;
+    document.getElementById('crmEdit-key').value     = customerId;
     document.getElementById('crmEditModal').style.display = 'block';
     document.body.style.overflow = 'hidden';
   }
@@ -3203,23 +3317,27 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   function saveCrmEdit() {
-    const key     = document.getElementById('crmEdit-key').value;
+    const customerId = document.getElementById('crmEdit-key').value;
     const name    = document.getElementById('crmEdit-name').value.trim();
     const address = document.getElementById('crmEdit-address').value.trim();
     const contact = document.getElementById('crmEdit-contact').value.trim();
-    if (!key) return;
-    crmOverrides[key] = { name, address, contact };
-    localStorage.setItem('twc_crm_overrides', JSON.stringify(crmOverrides));
+    if (!customerId || !customers[customerId]) return;
+    // Write directly to customer record — it IS the source of truth now
+    customers[customerId].name    = name;
+    customers[customerId].address = address;
+    customers[customerId].contact = contact;
+    saveCustomers();
     closeCrmEdit();
     renderCRM();
+    autoSync();
   }
 
-  function addNote(key, safeKey) {
-    const input = document.getElementById('ni-' + safeKey);
+  function addNote(customerId, safeId) {
+    const input = document.getElementById('ni-' + safeId);
     const text = input.value.trim();
     if (!text) return;
-    if (!crmNotes[key]) crmNotes[key] = [];
-    crmNotes[key].unshift({
+    if (!crmNotes[customerId]) crmNotes[customerId] = [];
+    crmNotes[customerId].unshift({
       text,
       date: new Date().toLocaleDateString('en-CA', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
     });
@@ -3227,16 +3345,32 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     input.value = '';
     renderCRM();
     autoSync();
-    // re-open the card
     setTimeout(() => {
-      const card = document.getElementById('cc-' + safeKey);
+      const card = document.getElementById('cc-' + safeId);
       if (card) card.classList.add('open');
     }, 10);
   }
 
-  function deleteNote(key, idx) {
+  function deleteNote(customerId, idx) {
     if (!confirm('Delete this note?')) return;
-    crmNotes[key].splice(idx, 1);
+    // Check both customerId key and legacy name key
+    const notesById = crmNotes[customerId] || [];
+    const c = Object.values(customers).find(c => c.customerId === customerId);
+    const legacyKey = c ? (c.name || '').trim().toUpperCase() : null;
+    const notesByName = legacyKey ? (crmNotes[legacyKey] || []) : [];
+    // Combined array (same as getNotesForCustomer)
+    const seen = new Set(notesById.map(n => n.text + n.date));
+    const combined = [...notesById];
+    notesByName.forEach(n => { if (!seen.has(n.text + n.date)) combined.push(n); });
+    const toDelete = combined[idx];
+    if (!toDelete) return;
+    // Remove from whichever list it lives in
+    const idIdx = notesById.findIndex(n => n.text === toDelete.text && n.date === toDelete.date);
+    if (idIdx !== -1) notesById.splice(idIdx, 1);
+    const nameIdx = notesByName.findIndex(n => n.text === toDelete.text && n.date === toDelete.date);
+    if (nameIdx !== -1) notesByName.splice(nameIdx, 1);
+    if (crmNotes[customerId]) crmNotes[customerId] = notesById;
+    if (legacyKey && crmNotes[legacyKey]) crmNotes[legacyKey] = notesByName;
     localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
     renderCRM();
   }
@@ -3245,7 +3379,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   function exportJSON() {
     const data = {
       exported: new Date().toISOString(),
-      version: '1.0',
+      version: '2.0',
+      customers,
       savedQuotes,
       crmNotes
     };
@@ -3266,7 +3401,14 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         const data = JSON.parse(ev.target.result);
         if (!data.savedQuotes) { alert('Invalid backup file.'); return; }
         if (!confirm(`This will merge ${data.savedQuotes.length} quotes from the backup with your current data. Continue?`)) return;
-        // Merge — add quotes not already present by quoteNum
+        // Merge customers (v2.0+)
+        if (data.customers) {
+          Object.keys(data.customers).forEach(cid => {
+            if (!customers[cid]) customers[cid] = data.customers[cid];
+          });
+          localStorage.setItem('twc_customers', JSON.stringify(customers));
+        }
+        // Merge quotes
         const existingNums = new Set(savedQuotes.map(q => q.quoteNum));
         const newQuotes = data.savedQuotes.filter(q => !existingNums.has(q.quoteNum));
         savedQuotes = [...newQuotes, ...savedQuotes];
@@ -3410,8 +3552,10 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       savedQuotes = merged.savedQuotes;
       crmNotes = merged.crmNotes;
       customerPhotos = merged.customerPhotos || {};
+      customers = merged.customers || customers;
       localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
       localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
+      localStorage.setItem('twc_customers', JSON.stringify(customers));
       renderSaved();
       renderRecurring();
       if (document.getElementById('tab-crm').classList.contains('active')) renderCRM();
@@ -3537,10 +3681,23 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         if (!existingIds.has(p.fileId)) mergedPhotos[k].push(p);
       });
     });
+    // Merge customers — remote wins on conflict, but local archived flag is sticky
+    const mergedCustomers = Object.assign({}, remote.customers || {});
+    Object.keys(customers).forEach(cid => {
+      if (!mergedCustomers[cid]) {
+        mergedCustomers[cid] = customers[cid];
+      } else {
+        // Merge: take remote as base, but preserve local archived flag if true
+        mergedCustomers[cid] = Object.assign({}, mergedCustomers[cid], {
+          archived: mergedCustomers[cid].archived || customers[cid].archived
+        });
+      }
+    });
     return {
       savedQuotes: Object.values(remoteMap).sort((a, b) => (b.date || '').localeCompare(a.date || '')),
       crmNotes: mergedNotes,
-      customerPhotos: mergedPhotos
+      customerPhotos: mergedPhotos,
+      customers: mergedCustomers
     };
   }
 
