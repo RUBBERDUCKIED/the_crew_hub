@@ -1396,6 +1396,17 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
         <div class="input-wrap"><input type="text" id="bizEmail" value="amadeus@thewindowcrew.ca"></div>
       </div>
     </div>
+    <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:200px;">
+        <label class="field-label">Logo — Drive File ID <span style="font-weight:600;text-transform:none;letter-spacing:0;font-size:11px;">(right-click file in Drive → Share → Copy link, paste here and I extract the ID)</span></label>
+        <div class="input-wrap"><input type="text" id="bizLogoId" placeholder="e.g. 1aBcD2eFgH... or paste full Drive share link" oninput="extractLogoId(this)"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button onclick="fetchAndCacheLogo()" style="background:var(--teal);color:white;border:none;border-radius:20px;padding:9px 18px;font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;cursor:pointer;">⬆ Load Logo</button>
+        <span id="logoStatus" style="font-size:12px;font-weight:700;color:var(--muted);"></span>
+        <img id="logoPreview" src="" style="height:40px;display:none;border-radius:6px;border:1.5px solid #e2e8f0;">
+      </div>
+    </div>
   </div>
 
   <!-- Quote Result -->
@@ -2020,9 +2031,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
         <!-- Header bar -->
         <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:24px 28px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
           <div style="min-width:0; flex:1;">
-            <div style="background:#f0d000; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;">
-              <span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:#145689; letter-spacing:0.02em;">${bizName}</span>
-            </div>
+            ${logoImgTag(48) ? `<div style="margin-bottom:10px;">${logoImgTag(48)}</div>` : `<div style="background:#f0d000; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;"><span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:#145689; letter-spacing:0.02em;">${bizName}</span></div>`}
             ${bizAddress ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:4px;">📍 ${bizAddress}</div>` : ''}
             ${bizPhone ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">📞 ${bizPhone}</div>` : ''}
             ${bizEmail ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">✉️ ${bizEmail}</div>` : ''}
@@ -2130,9 +2139,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
         <!-- Header -->
         <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:24px 28px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
           <div style="min-width:0; flex:1;">
-            <div style="background:#f0d000; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;">
-              <span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:#145689; letter-spacing:0.02em;">${bizName}</span>
-            </div>
+            ${logoImgTag(48) ? `<div style="margin-bottom:10px;">${logoImgTag(48)}</div>` : `<div style="background:#f0d000; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;"><span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:#145689; letter-spacing:0.02em;">${bizName}</span></div>`}
             ${bizAddress ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:4px;">📍 ${bizAddress}</div>` : ''}
             ${bizPhone ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">📞 ${bizPhone}</div>` : ''}
             ${bizEmail ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">✉️ ${bizEmail}</div>` : ''}
@@ -2783,9 +2790,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       <div style="font-family:'Nunito',sans-serif;">
         <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:24px 28px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
           <div style="min-width:0; flex:1;">
-            <div style="background:#f0d000; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;">
-              <span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:#145689; letter-spacing:0.02em;">${bizName}</span>
-            </div>
+            ${logoImgTag(48) ? `<div style="margin-bottom:10px;">${logoImgTag(48)}</div>` : `<div style="background:#f0d000; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;"><span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:#145689; letter-spacing:0.02em;">${bizName}</span></div>`}
             ${bizAddress ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:4px;">📍 ${bizAddress}</div>` : ''}
             ${bizPhone ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">📞 ${bizPhone}</div>` : ''}
             ${bizEmail ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">✉️ ${bizEmail}</div>` : ''}
@@ -2871,9 +2876,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         <!-- Header -->
         <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:24px 28px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
           <div style="min-width:0; flex:1;">
-            <div style="background:#f0d000; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;">
-              <span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:#145689; letter-spacing:0.02em;">${bizName}</span>
-            </div>
+            ${logoImgTag(48) ? `<div style="margin-bottom:10px;">${logoImgTag(48)}</div>` : `<div style="background:#f0d000; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;"><span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:#145689; letter-spacing:0.02em;">${bizName}</span></div>`}
             ${bizAddress ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:4px;">📍 ${bizAddress}</div>` : ''}
             ${bizPhone ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">📞 ${bizPhone}</div>` : ''}
             ${bizEmail ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">✉️ ${bizEmail}</div>` : ''}
@@ -4553,6 +4556,58 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const uploaded = await res.json();
     return { fileId: uploaded.id, name: file.name, uploadedAt: new Date().toISOString() };
   }
+
+  // ── LOGO ──
+  let cachedLogoB64 = localStorage.getItem('twc_logo_b64') || '';
+
+  function extractLogoId(input) {
+    // Accept full share URL or raw file ID
+    const m = input.value.match(/\/d\/([a-zA-Z0-9_-]{10,})/);
+    if (m) input.value = m[1];
+  }
+
+  async function fetchAndCacheLogo() {
+    const fileId = document.getElementById('bizLogoId').value.trim();
+    const status = document.getElementById('logoStatus');
+    const preview = document.getElementById('logoPreview');
+    if (!fileId) { status.textContent = 'Enter a file ID first.'; return; }
+    if (!gAccessToken) { status.textContent = 'Sign in to Drive first.'; return; }
+    status.textContent = 'Loading...'; status.style.color = 'var(--teal)';
+    try {
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+        headers: { Authorization: `Bearer ${gAccessToken}` }
+      });
+      if (!res.ok) throw new Error('Could not fetch — check file ID and sharing settings');
+      const blob = await res.blob();
+      const reader = new FileReader();
+      reader.onload = e => {
+        cachedLogoB64 = e.target.result;
+        localStorage.setItem('twc_logo_b64', cachedLogoB64);
+        localStorage.setItem('twc_logo_fileid', fileId);
+        preview.src = cachedLogoB64; preview.style.display = 'inline-block';
+        status.textContent = '✓ Logo saved!'; status.style.color = '#16a34a';
+      };
+      reader.readAsDataURL(blob);
+    } catch(e) {
+      status.textContent = e.message; status.style.color = '#dc2626';
+    }
+  }
+
+  function logoImgTag(height) {
+    if (!cachedLogoB64) return null;
+    return `<img src="${cachedLogoB64}" style="height:${height}px;max-width:160px;object-fit:contain;display:block;" alt="logo">`;
+  }
+
+  // Restore logo preview on load
+  window.addEventListener('load', () => {
+    const savedId = localStorage.getItem('twc_logo_fileid') || '';
+    if (savedId) document.getElementById('bizLogoId').value = savedId;
+    if (cachedLogoB64) {
+      const p = document.getElementById('logoPreview');
+      if (p) { p.src = cachedLogoB64; p.style.display = 'inline-block'; }
+      document.getElementById('logoStatus').textContent = '✓ Logo loaded';
+    }
+  });
 
   async function fetchPhotoBlob(fileId) {
     if (photoBlobCache[fileId]) return photoBlobCache[fileId];
