@@ -653,6 +653,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
 /* ─── TAB NAV ─── */
 .tab-nav {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   gap: 6px;
   padding: 16px 24px 0;
@@ -982,6 +983,106 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   #quoteModal > div > div:first-child button { width: 100%; }
 }
 
+
+/* ══════════════════════════════════════════
+   PHONE-ONLY STYLES  (≤ 480px)
+   Tablet (481px+) and desktop are untouched
+   ══════════════════════════════════════════ */
+@media (max-width: 480px) {
+
+  /* ── Hero ── */
+  .hero-banner { padding: 16px 14px 20px; }
+  .hero-title { font-size: 26px; }
+
+  /* ── Tab nav: scrollable strip ── */
+  .tab-nav {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 8px 8px 0;
+    gap: 4px;
+    justify-content: flex-start;
+  }
+  .tab-nav::-webkit-scrollbar { display: none; }
+
+  /* Sync status moves below tabs on its own row */
+  #syncStatus {
+    order: 99;
+    flex-shrink: 0;
+    margin-left: 0 !important;
+    padding: 0 0 6px 2px !important;
+    width: 100%;
+    flex-basis: 100%;
+  }
+
+  /* Tab buttons: compact, no shrink so they don't squish */
+  .tab-btn {
+    flex-shrink: 0;
+    padding: 7px 11px;
+    font-size: 11px;
+    white-space: nowrap;
+    border-radius: 10px 10px 0 0;
+  }
+
+  /* Sync button strip */
+  #syncBtn { padding: 4px 10px; font-size: 10px; }
+  #syncLabel { font-size: 10px; }
+
+  /* ── Page content padding ── */
+  .page-wrap { padding: 12px 10px 60px; gap: 10px; }
+  .card { padding: 14px 12px; }
+
+  /* ── Quoting tab ── */
+  .customer-grid { grid-template-columns: 1fr !important; }
+  .two { grid-template-columns: 1fr !important; }
+  .type-btn { padding: 7px 12px; font-size: 12px; }
+  .action-row { flex-direction: column; gap: 8px; }
+  .action-row .btn { width: 100%; justify-content: center; }
+  .total-amt { font-size: 34px; }
+
+  /* ── Pipeline ── */
+  .saved-item { padding: 9px 10px; }
+  .si-top-row { gap: 6px; }
+  .si-btn-row { gap: 4px; flex-wrap: wrap; }
+  .si-date { display: none; }
+  .si-gen, .won-btn { padding: 5px 9px; font-size: 10px; }
+  .si-badge { font-size: 8px; padding: 2px 5px; }
+  .pipe-filter { padding: 5px 9px; font-size: 10px; }
+  .pipeline-section-header { font-size: 10px; padding: 8px 10px; }
+  .pipeline-section-body { padding: 6px; gap: 5px; }
+
+  /* ── Today tab ── */
+  #tab-today > div { padding: 12px 10px 60px; }
+
+  /* ── CRM ── */
+  .crm-wrap { padding: 12px 10px 60px; }
+  .crm-stats { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-val { font-size: 20px; }
+  .crm-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
+  .crm-search { max-width: 100% !important; }
+  .crm-btn { text-align: center; }
+  .customer-header { padding: 10px 12px; gap: 8px; flex-wrap: wrap; }
+  .cust-name { font-size: 13px; }
+  .customer-body-inner { padding: 12px; }
+  .job-row { font-size: 11px; flex-wrap: wrap; gap: 5px; }
+  .note-input-row { flex-direction: column; }
+  .note-add-btn { width: 100%; }
+
+  /* ── Modals: full-width on phone ── */
+  #quoteModal { padding: 10px 6px; }
+  #quoteModal > div { border-radius: 12px; }
+  #quoteModal > div > div:first-child { flex-wrap: wrap; gap: 6px; }
+  #quoteModal > div > div:first-child button { flex: 1 1 calc(50% - 6px); font-size: 11px; padding: 8px 4px; }
+
+  #schedModal { padding: 16px 8px; }
+  #schedModal > div { border-radius: 12px; }
+
+  /* ── Reports ── */
+  #tab-reports > div { padding: 12px 10px 60px; }
+}
 </style>
 </head>
 <body>
