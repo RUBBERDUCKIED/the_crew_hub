@@ -2350,13 +2350,25 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     btn.textContent = '⏳ Sending...';
     btn.disabled = true;
     try {
-      const htmlContent = document.getElementById('quoteDocument').innerHTML;
+      // Replace base64 logo with Drive URL in email (avoids EmailJS 50kb limit)
+      // Customers still see the logo — it loads from Google Drive
+      const rawContent = document.getElementById('quoteDocument').innerHTML;
+      const logoFileId = localStorage.getItem('twc_logo_fileid') || '';
+      const driveLogoUrl = logoFileId
+        ? `https://drive.google.com/uc?export=view&id=${logoFileId}`
+        : '';
+      const emailContent = rawContent.replace(
+        /<img src="data:image[^"]*"([^>]*)>/g,
+        driveLogoUrl
+          ? `<img src="${driveLogoUrl}"$1>`
+          : ''
+      );
       // Wrap in minimal email shell with fonts
       const emailHtml = `<!DOCTYPE html><html><head>
         <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
         <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
         <style>body{margin:0;padding:0;background:#f0f4f8;} .wrap{max-width:680px;margin:0 auto;}</style>
-      </head><body><div class="wrap">${htmlContent}</div></body></html>`;
+      </head><body><div class="wrap">${emailContent}</div></body></html>`;
       await emailjs.send('service_wseo91x', 'template_f6w8c79', {
         to_email: toEmail,
         subject: subject,
