@@ -4509,6 +4509,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         if (q.scheduled) { r.scheduled = true; r.scheduledISO = q.scheduledISO; }
         if (q.invoicedDate) r.invoicedDate = q.invoicedDate;
         if (q.notes) r.notes = q.notes;
+        if (q.paymentMethod) r.paymentMethod = q.paymentMethod;
         // Always preserve customerId — remote may be stale and lack it
         if (q.customerId && !r.customerId) r.customerId = q.customerId;
       } else {
