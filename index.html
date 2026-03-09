@@ -1162,6 +1162,26 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
         </div>
       </div>
       <div>
+        <label class="field-label">How Did They Hear About Us? <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:none;">(saved to CRM — not on quote)</span></label>
+        <div class="input-wrap">
+          <select id="custLeadSource" style="width:100%;background:var(--gray);border:2px solid transparent;border-radius:10px;padding:11px 14px;font-family:'Nunito',sans-serif;font-size:16px;font-weight:700;color:var(--text);outline:none;cursor:pointer;transition:border-color 0.15s,background 0.15s;">
+            <option value="">— Select or leave blank —</option>
+          <option value="Web Search">Web Search</option>
+          <option value="Facebook Ad">Facebook Ad</option>
+          <option value="Instagram Ad">Instagram Ad</option>
+          <option value="Google Ad">Google Ad</option>
+          <option value="Radio Ad">Radio Ad</option>
+          <option value="TV Ad">TV Ad</option>
+          <option value="Billboard / Real World Ad">Billboard / Real World Ad</option>
+          <option value="YouTube Ad">YouTube Ad</option>
+          <option value="Flyer / Door Hanger">Flyer / Door Hanger</option>
+          <option value="Referral Program">Referral Program</option>
+          <option value="Email Marketing">Email Marketing</option>
+          <option value="Cold Call / Door Knock">Cold Call / Door Knock</option>
+          </select>
+        </div>
+      </div>
+      <div>
         <label class="field-label">Internal Notes <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:none;">(saved to CRM — not on quote)</span></label>
         <div class="input-wrap">
           <input type="text" id="custNotes" placeholder="e.g. Dogs in yard, gate code, access notes">
@@ -1725,6 +1745,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
     document.getElementById('custAddress').value = c.address || '';
     document.getElementById('custPhone').value   = c.phone || '';
     document.getElementById('custEmail').value   = c.email || '';
+    document.getElementById('custLeadSource').value = c.leadSource || '';
     document.getElementById('custCompany').value = c.company || '';
     document.getElementById('cust-dropdown').style.display = 'none';
     updateCustBadge();
@@ -1739,6 +1760,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
       document.getElementById('custAddress').value = '';
       document.getElementById('custPhone').value   = '';
       document.getElementById('custEmail').value   = '';
+      document.getElementById('custLeadSource').value = '';
       document.getElementById('custCompany').value = '';
       document.getElementById('custName').focus();
     }
@@ -2235,7 +2257,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
 
       </div>`;
 
-    setEmailMeta(q.email || '', `Receipt – ${bizName}`, 'receipt');
+    setEmailMeta(resolveEmail(q), `Receipt – ${bizName}`, 'receipt');
     document.getElementById('quoteModal').style.display = 'block';
     document.body.style.overflow = 'hidden';
 
@@ -2353,6 +2375,16 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     if (input.value !== formatted) input.value = formatted;
   }
 
+  function resolveEmail(q) {
+    // Check CRM customer record first (may have been updated after quote was saved)
+    if (q.customerId) {
+      const cust = customers.find(c => c.customerId === q.customerId);
+      if (cust && cust.email) return cust.email;
+    }
+    // Fall back to email stored on quote at time of creation
+    return q.email || '';
+  }
+
   function setEmailMeta(toEmail, subject, docType) {
     _emailDocMeta = { toEmail, subject, docType };
     // Show/hide send button based on whether we have an email
@@ -2453,7 +2485,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
   // ═══ CUSTOMER TABLE ═══
 
-  function findOrCreateCustomer(name, address, phone, email, company) {
+  function findOrCreateCustomer(name, address, phone, email, company, leadSource) {
     const normName = (name || '').trim().toUpperCase();
     if (!normName) return null;
     const contact = (phone + (phone && email ? ' · ' : '') + email).trim();
@@ -2461,11 +2493,12 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       c => (c.name || '').trim().toUpperCase() === normName
     );
     if (existing) {
-      if (address) existing.address = address;
-      if (phone)   existing.phone   = phone;
-      if (email)   existing.email   = email;
-      if (contact) existing.contact = contact;
-      if (company) existing.company = company;
+      if (address)    existing.address    = address;
+      if (phone)      existing.phone      = phone;
+      if (email)      existing.email      = email;
+      if (contact)    existing.contact    = contact;
+      if (company)    existing.company    = company;
+      if (leadSource && !existing.leadSource) existing.leadSource = leadSource; // only set if not already known
       localStorage.setItem('twc_customers', JSON.stringify(customers));
       return existing.customerId;
     }
@@ -2478,6 +2511,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       email: email || '',
       contact: contact || '',
       company: company || '',
+      leadSource: leadSource || '',
       archived: false,
       createdAt: new Date().toISOString()
     };
@@ -2594,6 +2628,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       window._cur.phone || '',
       window._cur.email || '',
       window._cur.company
+    ,
+      (document.getElementById('custLeadSource')?.value || '')
     );
 
     // Push any internal notes into CRM — keyed by customerId
@@ -2894,7 +2930,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         </div>
       </div>`;
 
-    setEmailMeta(q.email || '', `Quote ${quoteNum} – ${bizName}`, 'quote');
+    setEmailMeta(resolveEmail(q), `Quote ${quoteNum} – ${bizName}`, 'quote');
     document.getElementById('quoteModal').style.display = 'block';
     document.body.style.overflow = 'hidden';
 
@@ -3013,7 +3049,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
       </div>`;
 
-    setEmailMeta(q.email || '', `Invoice ${invoiceNum} – ${bizName}`, 'invoice');
+    setEmailMeta(resolveEmail(q), `Invoice ${invoiceNum} – ${bizName}`, 'invoice');
     document.getElementById('quoteModal').style.display = 'block';
     document.body.style.overflow = 'hidden';
 
@@ -4081,6 +4117,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           <div class="cust-info">
             <div class="cust-name">${c.company ? `<span style="font-size:11px;font-weight:700;color:var(--teal-dark);">${esc(c.company)} · </span>` : ''}${esc(c.name)}${isArchived ? ' <span style="font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;padding:2px 7px;border-radius:10px;margin-left:6px;">Archived</span>' : ''}</div>
             <div class="cust-meta">${[esc(c.address)].filter(Boolean).join('')}${c.address && (c.phone||c.email) ? ' · ' : ''}${[esc(c.phone), esc(c.email)].filter(Boolean).join(' · ')}</div>
+            ${c.leadSource ? `<div style="margin-top:3px;"><span style="font-size:10px;font-weight:700;background:#f0f4f8;color:#1a6ea8;border-radius:20px;padding:2px 9px;letter-spacing:0.04em;">📣 ${esc(c.leadSource)}</span></div>` : ''}
           </div>
           <div class="cust-stats">
             <div class="cust-stat"><div class="cust-stat-val">${c.jobs.length}</div><div class="cust-stat-lbl">Quotes</div></div>
@@ -4161,8 +4198,9 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     document.getElementById('crmEdit-address').value = c.address || '';
     document.getElementById('crmEdit-phone').value   = c.phone || '';
     setTimeout(() => attachPlacesAutocomplete('crmEdit-address'), 100);
-    document.getElementById('crmEdit-email').value   = c.email || '';
-    document.getElementById('crmEdit-key').value     = customerId;
+    document.getElementById('crmEdit-email').value      = c.email || '';
+    document.getElementById('crmEdit-leadSource').value = c.leadSource || '';
+    document.getElementById('crmEdit-key').value        = customerId;
     document.getElementById('crmEditModal').style.display = 'block';
     document.body.style.overflow = 'hidden';
   }
@@ -4179,11 +4217,13 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const phone   = document.getElementById('crmEdit-phone').value.trim();
     const email   = document.getElementById('crmEdit-email').value.trim();
     if (!customerId || !customers[customerId]) return;
-    customers[customerId].name    = name;
-    customers[customerId].address = address;
-    customers[customerId].phone   = phone;
-    customers[customerId].email   = email;
-    customers[customerId].contact = (phone + (phone && email ? ' · ' : '') + email).trim();
+    const leadSource = document.getElementById('crmEdit-leadSource').value;
+    customers[customerId].name       = name;
+    customers[customerId].address    = address;
+    customers[customerId].phone      = phone;
+    customers[customerId].email      = email;
+    customers[customerId].contact    = (phone + (phone && email ? ' · ' : '') + email).trim();
+    customers[customerId].leadSource = leadSource;
     saveCustomers();
     closeCrmEdit();
     renderCRM();
@@ -5051,6 +5091,24 @@ ${bizEmail}`
       <div>
         <label style="font-size:12px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;">Email Address</label>
         <input id="crmEdit-email" type="email" style="width:100%;padding:10px 14px;border:2px solid #e2e8f0;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;outline:none;">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;">How Did They Hear About Us?</label>
+        <select id="crmEdit-leadSource" style="width:100%;padding:10px 14px;border:2px solid #e2e8f0;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;color:#1a3a4a;background:#f8fafc;outline:none;cursor:pointer;">
+          <option value="">— Not recorded —</option>
+          <option value="Web Search">Web Search</option>
+          <option value="Facebook Ad">Facebook Ad</option>
+          <option value="Instagram Ad">Instagram Ad</option>
+          <option value="Google Ad">Google Ad</option>
+          <option value="Radio Ad">Radio Ad</option>
+          <option value="TV Ad">TV Ad</option>
+          <option value="Billboard / Real World Ad">Billboard / Real World Ad</option>
+          <option value="YouTube Ad">YouTube Ad</option>
+          <option value="Flyer / Door Hanger">Flyer / Door Hanger</option>
+          <option value="Referral Program">Referral Program</option>
+          <option value="Email Marketing">Email Marketing</option>
+          <option value="Cold Call / Door Knock">Cold Call / Door Knock</option>
+        </select>
       </div>
       <input type="hidden" id="crmEdit-key">
       <div style="display:flex;gap:10px;margin-top:4px;">
