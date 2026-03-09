@@ -2434,6 +2434,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const q = savedQuotes[i];
     document.getElementById('schedModal-title').textContent = q.name + (q.address ? ' — ' + q.address : '');
     document.getElementById('schedModal-idx').value = i;
+    document.getElementById('schedModal-duration').value = 4;
+    updateDurationLabel(4);
     if (q.scheduledISO) {
       document.getElementById('schedModal-date').value = q.scheduledISO.slice(0,10);
       document.getElementById('schedModal-time').value = q.scheduledISO.slice(11,16);
@@ -2443,6 +2445,16 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     }
     document.getElementById('schedModal').style.display = 'block';
     document.body.style.overflow = 'hidden';
+  }
+
+  function updateDurationLabel(val) {
+    const totalMins = parseInt(val) * 15;
+    const hrs  = Math.floor(totalMins / 60);
+    const mins = totalMins % 60;
+    const label = hrs > 0
+      ? (mins > 0 ? `${hrs} hr ${mins} min` : `${hrs} hr`)
+      : `${mins} min`;
+    document.getElementById('schedModal-duration-label').textContent = label;
   }
 
   function closeScheduleModal() {
@@ -2468,12 +2480,15 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
     const q = savedQuotes[i];
     const [hh, mm] = time.split(':').map(Number);
-    const endHH = String(hh + 2).padStart(2, '0');
+    const durationMins = parseInt(document.getElementById('schedModal-duration').value) * 15;
+    const endTotalMins = hh * 60 + mm + durationMins;
+    const endHH = String(Math.floor(endTotalMins / 60) % 24).padStart(2, '0');
+    const endMM = String(endTotalMins % 60).padStart(2, '0');
 
     // Use America/Vancouver timezone (Penticton, BC)
     const tz = 'America/Vancouver';
     const startISO = `${date}T${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:00`;
-    const endISO   = `${date}T${endHH}:${String(mm).padStart(2,'0')}:00`;
+    const endISO   = `${date}T${endHH}:${endMM}:00`;
 
     const event = {
       summary: `Window Cleaning — ${q.name}`,
@@ -4707,7 +4722,17 @@ ${bizEmail}`
         <label style="font-size:12px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;">Start Time</label>
         <input id="schedModal-time" type="time" value="08:00" style="width:100%;padding:10px 14px;border:2px solid #e2e8f0;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;outline:none;">
       </div>
-      <div style="font-size:12px; color:#6b9aaa;">Event will be created as a 2-hour block in your Google Calendar.</div>
+      <div>
+        <label style="font-size:12px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;">
+          Estimated Duration — <span id="schedModal-duration-label" style="color:#1a3a4a;font-size:13px;">1 hr 0 min</span>
+        </label>
+        <input id="schedModal-duration" type="range" min="1" max="20" value="4" step="1"
+          oninput="updateDurationLabel(this.value)"
+          style="width:100%;accent-color:#1a6ea8;cursor:pointer;height:6px;margin-top:4px;">
+        <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700;color:#aac4cc;margin-top:4px;">
+          <span>15 min</span><span>1 hr</span><span>2 hr</span><span>3 hr</span><span>4 hr</span><span>5 hr</span>
+        </div>
+      </div>
       <input type="hidden" id="schedModal-idx">
       <div style="display:flex; gap:10px; margin-top:4px;">
         <button id="schedModal-confirm" onclick="confirmSchedule()" style="flex:1;background:#1a6ea8;color:white;border:none;border-radius:30px;padding:12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;cursor:pointer;">Add to Calendar</button>
