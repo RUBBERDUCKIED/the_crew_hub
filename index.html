@@ -6,6 +6,8 @@
 <title>The Crew Hub</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script>emailjs.init('KtGQ8f9DC3qUId0wU');</script>
 <style>
@@ -973,6 +975,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
 <!-- Tab Nav -->
 <div class="tab-nav">
   <button class="tab-btn active" onclick="switchTab('quotes', this)">📋 Quoting</button>
+  <button class="tab-btn" id="todayTabBtn" onclick="switchTab('today', this)">📍 Today</button>
   <button class="tab-btn" onclick="switchTab('pipeline', this)">⚡ Job Pipeline</button>
   <button class="tab-btn" onclick="switchTab('crm', this)">👥 CRM</button>
   <button class="tab-btn" onclick="switchTab('reports', this)">📊 Reports</button>
@@ -1327,6 +1330,37 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
     <div id="recurringPanel" style="margin-bottom:24px;"></div>
 
     <div id="savedList"></div>
+
+  </div>
+</div>
+
+<!-- ═══ TODAY TAB ═══ -->
+<div id="tab-today" class="tab-panel">
+  <div style="max-width:960px;margin:0 auto;padding:20px 16px 60px;">
+
+    <!-- Header row -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px;">
+      <div>
+        <div style="font-family:'Montserrat',sans-serif;font-weight:900;font-size:22px;color:var(--text);" id="today-date-heading">Today's Jobs</div>
+        <div style="font-size:13px;font-weight:600;color:var(--muted);margin-top:2px;" id="today-subtitle">Loading...</div>
+      </div>
+      <div id="today-weather" style="background:white;border-radius:14px;padding:10px 18px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,0.07);min-width:160px;"></div>
+    </div>
+
+    <!-- Revenue bar -->
+    <div id="today-revenue-bar" style="background:linear-gradient(135deg,#1e7d93,#1a6ea8);border-radius:14px;padding:14px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:18px;">
+      <div style="color:rgba(255,255,255,0.8);font-weight:800;font-size:13px;letter-spacing:0.06em;text-transform:uppercase;">Today's Revenue</div>
+      <div id="today-revenue-total" style="font-family:'Montserrat',sans-serif;font-weight:900;font-size:28px;color:#f0d000;">$0.00</div>
+      <div id="today-job-count" style="color:rgba(255,255,255,0.7);font-weight:700;font-size:13px;"></div>
+    </div>
+
+    <!-- Map -->
+    <div id="today-map" style="border-radius:14px;overflow:hidden;height:300px;margin-bottom:18px;box-shadow:0 2px 12px rgba(0,0,0,0.1);background:#e8f4f7;display:flex;align-items:center;justify-content:center;">
+      <div style="color:var(--muted);font-weight:700;font-size:13px;">Map loading...</div>
+    </div>
+
+    <!-- Job cards -->
+    <div id="today-cards" style="display:flex;flex-direction:column;gap:12px;"></div>
 
   </div>
 </div>
@@ -3161,6 +3195,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     btn.classList.add('active');
     if (tab === 'crm') renderCRM();
     if (tab === 'pipeline') { renderSaved(); renderRecurring(); }
+    if (tab === 'today') { renderToday(); }
     if (tab === 'reports') renderReports();
   }
 
@@ -3414,6 +3449,237 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     renderRecurring();
     renderCRM();
     pushSync();
+  }
+
+
+  // ═══ TODAY'S JOBS DASHBOARD ═══
+  let todayMap = null;
+  let todayMarkers = [];
+  let todayJobDoneState = JSON.parse(localStorage.getItem('twc_today_done') || '{}');
+
+  function renderToday() {
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+    const dayLabel = today.toLocaleDateString('en-CA', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
+    document.getElementById('today-date-heading').textContent = "Today's Jobs";
+    document.getElementById('today-subtitle').textContent = dayLabel;
+
+    // Find all jobs scheduled for today
+    const todayJobs = savedQuotes
+      .map((q, i) => ({ ...q, _idx: i }))
+      .filter(q => q.scheduled && q.scheduledISO && q.scheduledISO.slice(0, 10) === todayStr)
+      .sort((a, b) => (a.scheduledISO || '').localeCompare(b.scheduledISO || ''));
+
+    // Revenue bar
+    const totalRev = todayJobs.reduce((sum, q) => sum + (q.grand || 0), 0);
+    document.getElementById('today-revenue-total').textContent = '$' + totalRev.toFixed(2);
+    document.getElementById('today-job-count').textContent = todayJobs.length + ' job' + (todayJobs.length !== 1 ? 's' : '') + ' scheduled';
+
+    // Weather
+    fetchTodayWeather();
+
+    // Cards
+    renderTodayCards(todayJobs);
+
+    // Map
+    initTodayMap(todayJobs);
+  }
+
+  async function fetchTodayWeather() {
+    const el = document.getElementById('today-weather');
+    try {
+      // Penticton BC coordinates
+      const resp = await fetch('https://api.open-meteo.com/v1/forecast?latitude=49.4991&longitude=-119.5937&current=temperature_2m,weathercode,windspeed_10m&temperature_unit=celsius&windspeed_unit=kmh&timezone=America%2FVancouver');
+      const data = await resp.json();
+      const temp = Math.round(data.current.temperature_2m);
+      const wind = Math.round(data.current.windspeed_10m);
+      const code = data.current.weathercode;
+      const icon = weatherIcon(code);
+      const desc = weatherDesc(code);
+      const safe = isWindowCleaningWeather(code, temp, wind);
+      el.innerHTML = `
+        <div style="font-size:28px;line-height:1;">${icon}</div>
+        <div>
+          <div style="font-weight:900;font-size:18px;color:var(--text);">${temp}°C</div>
+          <div style="font-size:11px;font-weight:700;color:var(--muted);">${desc} · 💨 ${wind} km/h</div>
+          <div style="font-size:11px;font-weight:800;margin-top:3px;color:${safe ? '#059669' : '#dc2626'};">${safe ? '✓ Good conditions' : '⚠ Check conditions'}</div>
+        </div>`;
+    } catch(e) {
+      el.innerHTML = '<div style="font-size:12px;font-weight:600;color:var(--muted);">Weather unavailable</div>';
+    }
+  }
+
+  function weatherIcon(code) {
+    if (code === 0) return '☀️';
+    if (code <= 2) return '⛅';
+    if (code <= 3) return '☁️';
+    if (code <= 49) return '🌫️';
+    if (code <= 59) return '🌦️';
+    if (code <= 69) return '🌧️';
+    if (code <= 79) return '🌨️';
+    if (code <= 82) return '🌧️';
+    if (code <= 86) return '❄️';
+    return '⛈️';
+  }
+
+  function weatherDesc(code) {
+    if (code === 0) return 'Clear sky';
+    if (code <= 2) return 'Partly cloudy';
+    if (code <= 3) return 'Overcast';
+    if (code <= 49) return 'Foggy';
+    if (code <= 59) return 'Drizzle';
+    if (code <= 69) return 'Rain';
+    if (code <= 79) return 'Snow';
+    if (code <= 82) return 'Rain showers';
+    if (code <= 86) return 'Snow showers';
+    return 'Thunderstorm';
+  }
+
+  function isWindowCleaningWeather(code, temp, wind) {
+    // Bad if raining, snowing, thunderstorm, very windy, or freezing
+    if (code >= 51) return false;
+    if (wind > 40) return false;
+    if (temp < 2) return false;
+    return true;
+  }
+
+  function renderTodayCards(jobs) {
+    const el = document.getElementById('today-cards');
+    if (!jobs.length) {
+      el.innerHTML = `<div style="background:white;border-radius:14px;padding:48px 24px;text-align:center;">
+        <div style="font-size:40px;margin-bottom:14px;">📅</div>
+        <div style="font-weight:800;font-size:17px;color:var(--text);margin-bottom:6px;">No jobs scheduled for today</div>
+        <div style="font-size:13px;font-weight:600;color:var(--muted);">Schedule jobs from the Pipeline tab using the 📅 Schedule button.</div>
+      </div>`;
+      return;
+    }
+
+    el.innerHTML = jobs.map((q, cardIdx) => {
+      const isDone = !!todayJobDoneState[q.quoteNum || q._idx];
+      const timeStr = q.scheduledISO ? new Date(q.scheduledISO).toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'No time set';
+      const cust = customers[q.customerId];
+      const company = q.company || (cust && cust.company) || '';
+      const phone = q.phone || (cust && cust.phone) || '';
+      const stageColor = isDone ? '#059669' : '#1e7d93';
+      const stageBg = isDone ? '#d1fae5' : '#e8f4f7';
+
+      return `<div id="today-card-${cardIdx}" style="background:white;border-radius:14px;padding:0;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.07);border:2px solid ${isDone ? '#6ee7b7' : '#e8f4f7'};transition:border-color 0.2s;" onclick="focusTodayJob(${cardIdx})">
+        <!-- Card header bar -->
+        <div style="background:${stageBg};padding:10px 18px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="font-family:'Montserrat',sans-serif;font-weight:900;font-size:16px;color:${stageColor};">${timeStr}</div>
+            <div style="background:${stageColor};color:white;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:800;">${esc(q.type || 'Job')}</div>
+            ${isDone ? '<div style="background:#059669;color:white;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:800;">✓ DONE</div>' : ''}
+          </div>
+          <div style="font-family:'Montserrat',sans-serif;font-weight:900;font-size:18px;color:${stageColor};">$${(q.grand||0).toFixed(2)}</div>
+        </div>
+        <!-- Card body -->
+        <div style="padding:14px 18px;">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:0;">
+              ${company ? `<div style="font-size:11px;font-weight:800;color:var(--teal-dark);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:3px;">${esc(company)}</div>` : ''}
+              <div style="font-weight:900;font-size:16px;color:var(--text);margin-bottom:4px;">${esc(q.name || '—')}</div>
+              ${q.address ? `<div style="font-size:13px;font-weight:600;color:var(--muted);">📍 ${esc(q.address)}</div>` : ''}
+              ${phone ? `<div style="font-size:13px;font-weight:600;color:var(--muted);margin-top:2px;">📞 ${esc(phone)}</div>` : ''}
+            </div>
+          </div>
+          <!-- Action buttons -->
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
+            ${q.address ? `<a href="https://maps.google.com/?q=${encodeURIComponent(q.address + ', Penticton BC')}" target="_blank" style="background:#1e7d93;color:white;border:none;border-radius:20px;padding:8px 16px;font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:5px;">🗺 Navigate</a>` : ''}
+            ${phone ? `<a href="tel:${encodeURIComponent(phone.replace(/[^0-9+]/g,''))}" style="background:#0d9488;color:white;border:none;border-radius:20px;padding:8px 16px;font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:5px;">📞 Call</a>` : ''}
+            <button onclick="toggleTodayDone('${q.quoteNum || q._idx}', ${cardIdx}, event)" style="background:${isDone ? '#f1f5f9' : '#f0d000'};color:${isDone ? 'var(--muted)' : 'var(--blue-dark)'};border:none;border-radius:20px;padding:8px 16px;font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;cursor:pointer;">
+              ${isDone ? '↩ Mark Undone' : '✓ Mark Done'}
+            </button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function toggleTodayDone(key, cardIdx, e) {
+    e.stopPropagation();
+    if (todayJobDoneState[key]) {
+      delete todayJobDoneState[key];
+    } else {
+      todayJobDoneState[key] = true;
+    }
+    localStorage.setItem('twc_today_done', JSON.stringify(todayJobDoneState));
+    renderToday();
+  }
+
+  function focusTodayJob(cardIdx) {
+    if (todayMarkers[cardIdx]) {
+      todayMap.setView(todayMarkers[cardIdx].getLatLng(), 15);
+      todayMarkers[cardIdx].openPopup();
+    }
+    // Highlight card
+    document.querySelectorAll('[id^="today-card-"]').forEach((c, i) => {
+      c.style.borderColor = i === cardIdx ? 'var(--teal)' : '#e8f4f7';
+    });
+  }
+
+  async function geocodeAddress(address) {
+    try {
+      const query = encodeURIComponent(address + ', Penticton, BC, Canada');
+      const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`, {
+        headers: { 'Accept-Language': 'en' }
+      });
+      const data = await resp.json();
+      if (data && data[0]) return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+    } catch(e) {}
+    return null;
+  }
+
+  async function initTodayMap(jobs) {
+    const mapEl = document.getElementById('today-map');
+    mapEl.innerHTML = '';
+    mapEl.style.display = 'block';
+
+    // Penticton default center
+    const defaultCenter = [49.4991, -119.5937];
+
+    if (todayMap) {
+      todayMap.remove();
+      todayMap = null;
+    }
+    todayMarkers = [];
+
+    todayMap = L.map('today-map').setView(defaultCenter, 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(todayMap);
+
+    if (!jobs.length) return;
+
+    const bounds = [];
+
+    for (let i = 0; i < jobs.length; i++) {
+      const q = jobs[i];
+      if (!q.address) { todayMarkers.push(null); continue; }
+
+      const coords = await geocodeAddress(q.address);
+      if (!coords) { todayMarkers.push(null); continue; }
+
+      bounds.push(coords);
+      const timeStr = q.scheduledISO
+        ? new Date(q.scheduledISO).toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit', hour12: true })
+        : '';
+
+      const markerHtml = `<div style="background:#1e7d93;color:white;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${i + 1}</div>`;
+      const icon = L.divIcon({ html: markerHtml, className: '', iconSize: [30, 30], iconAnchor: [15, 15] });
+      const marker = L.marker(coords, { icon })
+        .addTo(todayMap)
+        .bindPopup(`<b>${esc(q.name || '—')}</b><br>${esc(q.address || '')}<br><span style="color:#1e7d93;font-weight:700;">${timeStr}</span>`);
+
+      marker.on('click', () => focusTodayJob(i));
+      todayMarkers.push(marker);
+    }
+
+    if (bounds.length) {
+      todayMap.fitBounds(bounds, { padding: [40, 40] });
+    }
   }
 
   function renderCRM() {
