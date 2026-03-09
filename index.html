@@ -2273,31 +2273,6 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 </head>
 <body>
 <div class="doc">${content}</div>
-
-<!-- Payment Method Modal -->
-<div id="paymentMethodModal" style="display:none; position:fixed; inset:0; background:rgba(10,30,45,0.75); z-index:1200; align-items:center; justify-content:center; padding:20px;">
-  <div style="background:white; border-radius:16px; overflow:hidden; box-shadow:0 12px 48px rgba(26,110,168,0.3); max-width:360px; width:100%;">
-    <div style="background:#1a3a4a; padding:20px 24px; display:flex; justify-content:space-between; align-items:center;">
-      <div style="color:white; font-weight:800; font-size:15px;">💳 How did they pay?</div>
-      <button onclick="document.getElementById('paymentMethodModal').style.display='none'" style="background:none;border:none;color:white;font-size:24px;cursor:pointer;line-height:1;">×</button>
-    </div>
-    <div style="padding:24px; display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-      <button onclick="selectPaymentMethod('Cash')" style="background:#f0fdf4;border:2px solid #10b981;border-radius:12px;padding:18px 12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:15px;color:#065f46;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
-        💵<span>Cash</span>
-      </button>
-      <button onclick="selectPaymentMethod('Debit')" style="background:#eff6ff;border:2px solid #3b82f6;border-radius:12px;padding:18px 12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:15px;color:#1e40af;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
-        💳<span>Debit</span>
-      </button>
-      <button onclick="selectPaymentMethod('Credit')" style="background:#fdf4ff;border:2px solid #a855f7;border-radius:12px;padding:18px 12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:15px;color:#6b21a8;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
-        💳<span>Credit</span>
-      </button>
-      <button onclick="selectPaymentMethod('Cheque')" style="background:#fff7ed;border:2px solid #f97316;border-radius:12px;padding:18px 12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:15px;color:#c2410c;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
-        📝<span>Cheque</span>
-      </button>
-    </div>
-  </div>
-</div>
-
 </body>
 </html>`;
   }
@@ -5263,5 +5238,29 @@ ${bizEmail}`
 </div>
 
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCgAGOJoIJsKfcbqWBMuib63aH6M4T089Y&libraries=places&v=weekly&callback=initGooglePlaces" defer></script>
+
+<!-- Payment Method Modal -->
+<div id="paymentMethodModal" style="display:none; position:fixed; inset:0; background:rgba(10,30,45,0.75); z-index:1200; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:white; border-radius:16px; overflow:hidden; box-shadow:0 12px 48px rgba(26,110,168,0.3); max-width:360px; width:100%;">
+    <div style="background:#1a3a4a; padding:20px 24px; display:flex; justify-content:space-between; align-items:center;">
+      <div style="color:white; font-weight:800; font-size:15px;">💳 How did they pay?</div>
+      <button onclick="document.getElementById('paymentMethodModal').style.display='none'" style="background:none;border:none;color:white;font-size:24px;cursor:pointer;line-height:1;">×</button>
+    </div>
+    <div style="padding:24px; display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      <button onclick="selectPaymentMethod('Cash')" style="background:#f0fdf4;border:2px solid #10b981;border-radius:12px;padding:18px 12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:15px;color:#065f46;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
+        💵<span>Cash</span>
+      </button>
+      <button onclick="selectPaymentMethod('Debit')" style="background:#eff6ff;border:2px solid #3b82f6;border-radius:12px;padding:18px 12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:15px;color:#1e40af;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
+        💳<span>Debit</span>
+      </button>
+      <button onclick="selectPaymentMethod('Credit')" style="background:#fdf4ff;border:2px solid #a855f7;border-radius:12px;padding:18px 12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:15px;color:#6b21a8;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
+        💳<span>Credit</span>
+      </button>
+      <button onclick="selectPaymentMethod('Cheque')" style="background:#fff7ed;border:2px solid #f97316;border-radius:12px;padding:18px 12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:15px;color:#c2410c;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
+        📝<span>Cheque</span>
+      </button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
