@@ -2162,10 +2162,10 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   // ═══ GOOGLE PLACES AUTOCOMPLETE ═══
   let placesReady = false;
 
-  function initGooglePlaces() {
+  window.initGooglePlaces = function() {
     placesReady = true;
     attachPlacesAutocomplete('custAddress');
-  }
+  };
 
   function attachPlacesAutocomplete(inputId) {
     if (!placesReady || !window.google) return;
@@ -2173,54 +2173,27 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     if (!input || input._placesAttached) return;
     input._placesAttached = true;
 
-    // Use new PlaceAutocompleteElement API (replaces deprecated Autocomplete)
     try {
-      const pac = new google.maps.places.PlaceAutocompleteElement({
+      const autocomplete = new google.maps.places.Autocomplete(input, {
         componentRestrictions: { country: 'ca' },
-        types: ['address'],
+        fields: ['formatted_address'],
+        types: ['address']
       });
 
-      // Style the element to match the app
-      pac.style.width = '100%';
-      pac.style.fontFamily = "'Nunito', sans-serif";
+      // Bias toward Penticton area
+      autocomplete.setBounds(new google.maps.LatLngBounds(
+        new google.maps.LatLng(49.40, -119.70),
+        new google.maps.LatLng(49.60, -119.45)
+      ));
 
-      // Wrap in a container and swap with original input
-      const wrapper = document.createElement('div');
-      wrapper.style.cssText = 'position:relative;width:100%;';
-      input.parentNode.insertBefore(wrapper, input);
-      wrapper.appendChild(pac);
-      input.style.display = 'none';
-
-      pac.addEventListener('gmp-placeselect', async (e) => {
-        const place = e.placeName || (e.place && e.place.formattedAddress) || '';
-        // Fetch full details
-        if (e.place) {
-          await e.place.fetchFields({ fields: ['formattedAddress'] });
-          const addr = e.place.formattedAddress || place;
-          input.value = addr.replace(', Canada', '').replace(/, Canada$/, '');
-        } else {
-          input.value = place;
+      autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
+        if (place.formatted_address) {
+          input.value = place.formatted_address.replace(/, Canada$/, '');
         }
-        // Trigger any listeners on original input
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        input.dispatchEvent(new Event('change', { bubbles: true }));
       });
-
     } catch(e) {
-      // Fallback to legacy Autocomplete if new API unavailable
-      try {
-        const autocomplete = new google.maps.places.Autocomplete(input, {
-          componentRestrictions: { country: 'ca' },
-          fields: ['formatted_address'],
-          types: ['address']
-        });
-        autocomplete.addListener('place_changed', () => {
-          const place = autocomplete.getPlace();
-          if (place.formatted_address) {
-            input.value = place.formatted_address.replace(/, Canada$/, '');
-          }
-        });
-      } catch(e2) { console.warn('Places autocomplete unavailable', e2); }
+      console.warn('Places autocomplete unavailable', e);
     }
   }
 
