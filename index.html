@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCgAGOJoIJsKfcbqWBMuib63aH6M4T089Y&libraries=places&callback=initGooglePlaces" async defer></script>
 <script>emailjs.init('KtGQ8f9DC3qUId0wU');</script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -676,6 +677,25 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
 .tab-btn.active { background: var(--offwhite); color: var(--teal-dark); }
 
 .tab-panel { display: none; }
+
+/* Google Places autocomplete dropdown — must sit above modals */
+.pac-container {
+  z-index: 9999 !important;
+  font-family: 'Nunito', sans-serif;
+  border-radius: 10px;
+  border: 2px solid #e8f4f7;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  margin-top: 2px;
+}
+.pac-item {
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pac-item:hover { background: #f0f7fa; }
+.pac-item-selected { background: #e8f4f7; }
+.pac-matched { font-weight: 800; color: #1e7d93; }
 .tab-panel.active { display: block; }
 
 /* ─── CRM STYLES ─── */
@@ -2139,6 +2159,43 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   // Tracks current doc for email sending
   let _emailDocMeta = { toEmail: '', subject: '', docType: '' };
 
+  // ═══ GOOGLE PLACES AUTOCOMPLETE ═══
+  let placesReady = false;
+
+  function initGooglePlaces() {
+    placesReady = true;
+    attachPlacesAutocomplete('custAddress');
+  }
+
+  function attachPlacesAutocomplete(inputId) {
+    if (!placesReady || !window.google) return;
+    const input = document.getElementById(inputId);
+    if (!input || input._placesAttached) return;
+    input._placesAttached = true;
+
+    const autocomplete = new google.maps.places.Autocomplete(input, {
+      componentRestrictions: { country: 'ca' },
+      fields: ['formatted_address', 'geometry'],
+      types: ['address']
+    });
+
+    // Bias results toward Penticton
+    const pentictonBounds = new google.maps.LatLngBounds(
+      new google.maps.LatLng(49.40, -119.70),
+      new google.maps.LatLng(49.60, -119.45)
+    );
+    autocomplete.setBounds(pentictonBounds);
+
+    autocomplete.addListener('place_changed', () => {
+      const place = autocomplete.getPlace();
+      if (place.formatted_address) {
+        input.value = place.formatted_address
+          .replace(', Canada', '')
+          .replace(', BC', ', BC'); // keep BC, drop Canada
+      }
+    });
+  }
+
   function esc(str) {
     if (str == null) return '';
     return String(str)
@@ -3254,6 +3311,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   updateMeta(); calc(); renderSaved(); renderRecurring();
+  // Attach Places autocomplete to quote address field (may fire before Google loads — handled by initGooglePlaces callback too)
+  setTimeout(() => attachPlacesAutocomplete('custAddress'), 1500);
 
   // ═══ TAB SWITCHING ═══
   function switchTab(tab, btn) {
@@ -3696,15 +3755,24 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   async function geocodeAddress(address) {
-    try {
-      const query = encodeURIComponent(address + ', Penticton, BC, Canada');
-      const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`, {
-        headers: { 'Accept-Language': 'en' }
-      });
-      const data = await resp.json();
-      if (data && data[0]) return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-    } catch(e) {}
-    return null;
+    const attempts = [
+      encodeURIComponent(address + ', Penticton, BC, Canada'),
+      encodeURIComponent(address + ', Penticton, BC'),
+      encodeURIComponent(address + ', BC, Canada'),
+    ];
+    for (const query of attempts) {
+      try {
+        const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`, {
+          headers: { 'Accept-Language': 'en' }
+        });
+        const data = await resp.json();
+        if (data && data[0]) return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+      } catch(e) {}
+      // Small delay between retries to respect Nominatim rate limit
+      await new Promise(r => setTimeout(r, 300));
+    }
+    // Fallback: return Penticton city center so pin always appears
+    return [49.4991, -119.5937];
   }
 
   async function initTodayMap(jobs) {
@@ -3736,7 +3804,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       if (!q.address) { todayMarkers.push(null); continue; }
 
       const coords = await geocodeAddress(q.address);
-      if (!coords) { todayMarkers.push(null); continue; }
+      const isFallback = coords[0] === 49.4991 && coords[1] === -119.5937;
 
       bounds.push(coords);
       const timeStr = q.scheduledISO
@@ -3747,7 +3815,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       const icon = L.divIcon({ html: markerHtml, className: '', iconSize: [30, 30], iconAnchor: [15, 15] });
       const marker = L.marker(coords, { icon })
         .addTo(todayMap)
-        .bindPopup(`<b>${esc(q.name || '—')}</b><br>${esc(q.address || '')}<br><span style="color:#1e7d93;font-weight:700;">${timeStr}</span>`);
+        .bindPopup(`<b>${esc(q.name || '—')}</b><br>${esc(q.address || '')}<br><span style="color:#1e7d93;font-weight:700;">${timeStr}</span>${isFallback ? '<br><span style="color:#f97316;font-size:11px;">⚠ Approximate location</span>' : ''}`);
 
       marker.on('click', () => focusTodayJob(i));
       todayMarkers.push(marker);
@@ -3924,6 +3992,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     document.getElementById('crmEdit-name').value    = c.name;
     document.getElementById('crmEdit-address').value = c.address || '';
     document.getElementById('crmEdit-phone').value   = c.phone || '';
+    setTimeout(() => attachPlacesAutocomplete('crmEdit-address'), 100);
     document.getElementById('crmEdit-email').value   = c.email || '';
     document.getElementById('crmEdit-key').value     = customerId;
     document.getElementById('crmEditModal').style.display = 'block';
