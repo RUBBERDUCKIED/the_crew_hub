@@ -1535,7 +1535,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
         style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f1f5f9; display:flex; flex-direction:column; gap:2px;"
         onmouseover="this.style.background='#f0fdf4'" onmouseout="this.style.background='white'">
         <div style="font-size:13px; font-weight:800; color:var(--text);">
-          ${c.company ? `<span style="color:var(--teal-dark);font-size:11px;">${c.company} · </span>` : ''}${c.name}
+          ${c.company ? `<span style="color:var(--teal-dark);font-size:11px;">${esc(c.company)} · </span>` : ''}${esc(c.name)}
         </div>
         <div style="font-size:11px; font-weight:600; color:var(--muted);">${[c.address, c.phone, c.email].filter(Boolean).join(' · ') || 'No address on file'}</div>
       </div>`).join('');
@@ -1799,7 +1799,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
     document.getElementById('lineItems').innerHTML = lines.length
       ? lines.map(l => `
         <div class="line-item ${l.c}">
-          <span class="li-label">${l.l}</span>
+          <span class="li-label">${esc(l.l)}</span>
           <span class="li-amt">${l.a < 0 ? '−' : ''}$${Math.abs(l.a).toFixed(2)}</span>
         </div>`).join('')
       : '<div style="color:rgba(255,255,255,0.4);font-size:13px;padding:8px 0;">Enter window details above to build your quote.</div>';
@@ -1847,7 +1847,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
 
     const lineRows = currentLines.filter(l => l.c !== 'tax-l' && l.c !== 'disc').map(l => `
       <tr>
-        <td style="padding:13px 20px; font-size:14px; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">${l.l.replace(/\s{2,}/g, ' ')}</td>
+        <td style="padding:13px 20px; font-size:14px; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">${esc(l.l.replace(/\s{2,}/g, ' '))}</td>
         <td style="padding:13px 20px; text-align:right; font-size:14px; font-weight:700; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">$${l.a.toFixed(2)}</td>
       </tr>`).join('');
 
@@ -1956,7 +1956,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
     const discLine = q.lines.find(l => l.c === 'disc');
     const lineRows = q.lines.filter(l => l.c !== 'tax-l' && l.c !== 'disc').map(l => `
       <tr>
-        <td style="padding:13px 20px; font-size:14px; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">${l.l.replace(/\s{2,}/g, ' ')}</td>
+        <td style="padding:13px 20px; font-size:14px; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">${esc(l.l.replace(/\s{2,}/g, ' '))}</td>
         <td style="padding:13px 20px; text-align:right; font-size:14px; font-weight:700; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">$${l.a.toFixed(2)}</td>
       </tr>`).join('');
 
@@ -1990,9 +1990,9 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
         <div style="background:#f4fbfc; padding:22px 36px; display:flex; gap:40px; flex-wrap:wrap; border-bottom:2px solid #eaf4f7;">
           <div>
             <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:6px;">Receipt For</div>
-            <div style="font-size:16px; font-weight:800; color:#1a3a4a;">${q.name || '—'}</div>
-            ${q.address ? `<div style="font-size:13px; font-weight:600; color:#6b9aaa; margin-top:2px;">${q.address}</div>` : ''}
-            ${q.contact ? `<div style="font-size:13px; font-weight:600; color:#6b9aaa; margin-top:2px;">${q.contact}</div>` : ''}
+            <div style="font-size:16px; font-weight:800; color:#1a3a4a;">${esc(q.name || '—')}</div>
+            ${q.address ? `<div style="font-size:13px; font-weight:600; color:#6b9aaa; margin-top:2px;">${esc(q.address)}</div>` : ''}
+            ${q.contact ? `<div style="font-size:13px; font-weight:600; color:#6b9aaa; margin-top:2px;">${esc(q.contact)}</div>` : ''}
           </div>
           <div>
             <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:6px;">Service Type</div>
@@ -2104,6 +2104,16 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
   // Tracks current doc for email sending
   let _emailDocMeta = { toEmail: '', subject: '', docType: '' };
+
+  function esc(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
 
   function formatPhone(input) {
     // Strip everything except digits
@@ -2493,7 +2503,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const discLine = q.lines.find(l => l.c === 'disc');
     const lineRows = q.lines.filter(l => l.c !== 'tax-l' && l.c !== 'disc').map(l => `
       <tr>
-        <td style="padding:13px 20px; font-size:14px; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">${l.l.replace(/\s{2,}/g, ' ')}</td>
+        <td style="padding:13px 20px; font-size:14px; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">${esc(l.l.replace(/\s{2,}/g, ' '))}</td>
         <td style="padding:13px 20px; text-align:right; font-size:14px; font-weight:700; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">$${l.a.toFixed(2)}</td>
       </tr>`).join('');
 
@@ -2522,9 +2532,9 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         <div style="background:#f4fbfc; padding:22px 36px; display:flex; gap:40px; flex-wrap:wrap; border-bottom:2px solid #eaf4f7;">
           <div>
             <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:6px;">Prepared For</div>
-            <div style="font-size:16px; font-weight:800; color:#1a3a4a;">${q.name || '—'}</div>
-            ${q.address ? `<div style="font-size:13px; font-weight:600; color:#6b9aaa; margin-top:2px;">${q.address}</div>` : ''}
-            ${q.contact ? `<div style="font-size:13px; font-weight:600; color:#6b9aaa; margin-top:2px;">${q.contact}</div>` : ''}
+            <div style="font-size:16px; font-weight:800; color:#1a3a4a;">${esc(q.name || '—')}</div>
+            ${q.address ? `<div style="font-size:13px; font-weight:600; color:#6b9aaa; margin-top:2px;">${esc(q.address)}</div>` : ''}
+            ${q.contact ? `<div style="font-size:13px; font-weight:600; color:#6b9aaa; margin-top:2px;">${esc(q.contact)}</div>` : ''}
           </div>
           <div>
             <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:6px;">Service Type</div>
@@ -2550,7 +2560,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:42px; color:#f0d000; letter-spacing:-0.01em;">$${q.grand.toFixed(2)}</div>
         </div>
         <div style="padding:22px 36px 28px; background:white;">
-          ${q.notes ? `<div style="margin-bottom:16px; background:#f4fbfc; border-left:4px solid #2a9db5; padding:12px 16px; border-radius:0 8px 8px 0;"><div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:4px;">Job Notes</div><div style="font-size:13px; font-weight:600; color:#1a3a4a;">${q.notes}</div></div>` : ''}
+          ${q.notes ? `<div style="margin-bottom:16px; background:#f4fbfc; border-left:4px solid #2a9db5; padding:12px 16px; border-radius:0 8px 8px 0;"><div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:4px;">Job Notes</div><div style="font-size:13px; font-weight:600; color:#1a3a4a;">${esc(q.notes)}</div></div>` : ''}
           <div style="font-size:11px; font-weight:600; color:#aac4cc; text-align:center; margin-top:8px;">This quote is valid for 30 days from the date of issue. Prices may vary if site conditions differ from those described. Thank you for choosing ${bizName}!</div>
         </div>
       </div>`;
@@ -2580,7 +2590,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const discLine = q.lines.find(l => l.c === 'disc');
     const lineRows = q.lines.filter(l => l.c !== 'tax-l' && l.c !== 'disc').map(l => `
       <tr>
-        <td style="padding:13px 20px; font-size:14px; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">${l.l.replace(/\s{2,}/g, ' ')}</td>
+        <td style="padding:13px 20px; font-size:14px; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">${esc(l.l.replace(/\s{2,}/g, ' '))}</td>
         <td style="padding:13px 20px; text-align:right; font-size:14px; font-weight:700; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">$${l.a.toFixed(2)}</td>
       </tr>`).join('');
 
@@ -2612,9 +2622,9 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         <div style="background:#f4fbfc; padding:22px 36px; display:flex; gap:40px; flex-wrap:wrap; border-bottom:2px solid #eaf4f7;">
           <div>
             <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:6px;">Bill To</div>
-            <div style="font-size:16px; font-weight:800; color:#1a3a4a;">${q.name || '—'}</div>
-            ${q.address ? `<div style="font-size:13px; font-weight:600; color:#6b9aaa; margin-top:2px;">${q.address}</div>` : ''}
-            ${q.contact ? `<div style="font-size:13px; font-weight:600; color:#6b9aaa; margin-top:2px;">${q.contact}</div>` : ''}
+            <div style="font-size:16px; font-weight:800; color:#1a3a4a;">${esc(q.name || '—')}</div>
+            ${q.address ? `<div style="font-size:13px; font-weight:600; color:#6b9aaa; margin-top:2px;">${esc(q.address)}</div>` : ''}
+            ${q.contact ? `<div style="font-size:13px; font-weight:600; color:#6b9aaa; margin-top:2px;">${esc(q.contact)}</div>` : ''}
           </div>
           <div>
             <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:6px;">Service Type</div>
@@ -2655,7 +2665,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
         <!-- Payment & notes -->
         <div style="padding:22px 36px 28px; background:white;">
-          ${q.notes ? `<div style="margin-bottom:16px; background:#f4fbfc; border-left:4px solid #2a9db5; padding:12px 16px; border-radius:0 8px 8px 0;"><div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:4px;">Job Notes</div><div style="font-size:13px; font-weight:600; color:#1a3a4a;">${q.notes}</div></div>` : ''}
+          ${q.notes ? `<div style="margin-bottom:16px; background:#f4fbfc; border-left:4px solid #2a9db5; padding:12px 16px; border-radius:0 8px 8px 0;"><div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:4px;">Job Notes</div><div style="font-size:13px; font-weight:600; color:#1a3a4a;">${esc(q.notes)}</div></div>` : ''}
           <div style="background:#fffbea; border:2px solid #f0d000; border-radius:10px; padding:14px 18px; margin-bottom:16px;">
             <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#b45309; margin-bottom:8px;">Payment Info</div>
             <div style="font-size:13px; font-weight:600; color:#1a3a4a; margin-bottom:10px;">Payment is due within <strong>15 days</strong> of the invoice date <strong>(Net 15)</strong>.</div>
@@ -2862,7 +2872,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       return `
         <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:${rowBg};border:2px solid ${rowBorder};border-radius:10px;flex-wrap:wrap;">
           <div style="flex:1;min-width:0;">
-            <div style="font-weight:800;font-size:14px;color:var(--text);">${q.name}</div>
+            <div style="font-weight:800;font-size:14px;color:var(--text);">${esc(q.name)}</div>
             <div style="font-size:11px;font-weight:600;color:var(--muted);margin-top:1px;">
               ${q.address ? q.address + ' · ' : ''}${planLabel[q.plan]} · ${baseDateStr}
             </div>
@@ -2939,7 +2949,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const legacyKey = (q.name || '').trim().toUpperCase();
 
     document.getElementById('qnm-customer').textContent =
-      `${q.name}${q.address ? ' — ' + q.address : ''} · ${q.quoteNum || ''} · $${q.grand ? q.grand.toFixed(2) : '0.00'}`;
+      `${esc(q.name)}${q.address ? ' — ' + esc(q.address) : ''} · ${esc(q.quoteNum || '')} · $${q.grand ? q.grand.toFixed(2) : '0.00'}`;
 
     // Show existing notes — check both customerId key and legacy name key
     const existing = cid ? getNotesForCustomer(cid, legacyKey) : (crmNotes[legacyKey] || []);
@@ -2949,7 +2959,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Previous Notes</div>
         ${existing.slice().reverse().map(n => `
           <div style="background:#f8fafc;border:1.5px solid var(--gray);border-radius:8px;padding:8px 12px;margin-bottom:6px;">
-            <div style="font-size:12px;font-weight:600;color:var(--text);">${n.text}</div>
+            <div style="font-size:12px;font-weight:600;color:var(--text);">${esc(n.text)}</div>
             <div style="font-size:11px;font-weight:600;color:var(--muted);margin-top:3px;">${n.date}</div>
           </div>`).join('')}`;
     } else {
@@ -3064,8 +3074,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           <div class="si-top-row">
             <div class="si-badge">${q.type}</div>
             <div style="flex:1;min-width:0;">
-              <div class="si-name">${q.company ? `<span style="font-size:10px;font-weight:700;color:var(--muted);display:block;line-height:1.2;">${q.company}</span>` : ''}${q.name}</div>
-              ${q.address ? `<div style="font-size:11px;font-weight:600;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${q.address}</div>` : ''}
+              <div class="si-name">${q.company ? `<span style="font-size:10px;font-weight:700;color:var(--muted);display:block;line-height:1.2;">${esc(q.company)}</span>` : ''}${esc(q.name)}</div>
+              ${q.address ? `<div style="font-size:11px;font-weight:600;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(q.address)}</div>` : ''}
             </div>
             <div class="si-total">$${q.grand.toFixed(2)}</div>
             <div class="si-date">${q.date}</div>
@@ -3472,7 +3482,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
       const noteRows = notes.map((n, ni) => `
         <div class="note-entry">
-          ${n.text}
+          ${esc(n.text)}
           <div class="note-entry-meta">${n.date} <button onclick="deleteNote('${cid}', ${ni})" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:11px;margin-left:8px;">delete</button></div>
         </div>`).join('');
 
@@ -3491,8 +3501,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         <div class="customer-header" onclick="toggleCustomer('${safeId}')">
           <div class="cust-avatar" style="${isArchived ? 'background:linear-gradient(135deg,#aac4cc,#6b9aaa);' : ''}">${initials}</div>
           <div class="cust-info">
-            <div class="cust-name">${c.company ? `<span style="font-size:11px;font-weight:700;color:var(--teal-dark);">${c.company} · </span>` : ''}${c.name}${isArchived ? ' <span style="font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;padding:2px 7px;border-radius:10px;margin-left:6px;">Archived</span>' : ''}</div>
-            <div class="cust-meta">${[c.address].filter(Boolean).join('')}${c.address && (c.phone||c.email) ? ' · ' : ''}${[c.phone, c.email].filter(Boolean).join(' · ')}</div>
+            <div class="cust-name">${c.company ? `<span style="font-size:11px;font-weight:700;color:var(--teal-dark);">${esc(c.company)} · </span>` : ''}${esc(c.name)}${isArchived ? ' <span style="font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;padding:2px 7px;border-radius:10px;margin-left:6px;">Archived</span>' : ''}</div>
+            <div class="cust-meta">${[esc(c.address)].filter(Boolean).join('')}${c.address && (c.phone||c.email) ? ' · ' : ''}${[esc(c.phone), esc(c.email)].filter(Boolean).join(' · ')}</div>
           </div>
           <div class="cust-stats">
             <div class="cust-stat"><div class="cust-stat-val">${c.jobs.length}</div><div class="cust-stat-lbl">Quotes</div></div>
@@ -4193,8 +4203,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       const hasEmail = !!(q.email);
       return `<div style="background:white;border-radius:12px;padding:16px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;border:2px solid ${isSent ? '#d1fae5' : '#e8f4f7'};">
         <div style="flex:1;min-width:0;">
-          <div style="font-weight:800;font-size:14px;color:var(--text);">${q.name || '—'}</div>
-          <div style="font-size:12px;font-weight:600;color:var(--muted);margin-top:2px;">${q.address || ''}</div>
+          <div style="font-weight:800;font-size:14px;color:var(--text);">${esc(q.name || '—')}</div>
+          <div style="font-size:12px;font-weight:600;color:var(--muted);margin-top:2px;">${esc(q.address || '')}</div>
           <div style="font-size:12px;font-weight:600;color:${hasEmail ? 'var(--teal)' : '#f97316'};margin-top:2px;">${hasEmail ? '✉️ ' + q.email : '⚠️ No email on file'}</div>
         </div>
         <div style="font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap;">${q.quoteNum || ''}</div>
