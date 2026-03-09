@@ -2377,8 +2377,9 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
   function resolveEmail(q) {
     // Check CRM customer record first (may have been updated after quote was saved)
+    // customers is a keyed object so use direct lookup, not .find()
     if (q.customerId) {
-      const cust = customers.find(c => c.customerId === q.customerId);
+      const cust = customers[q.customerId];
       if (cust && cust.email) return cust.email;
     }
     // Fall back to email stored on quote at time of creation
