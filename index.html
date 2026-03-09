@@ -2438,6 +2438,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
       // Rebuild email content: table header + everything after
       let emailContent = tableHeader + afterHeader;
+      // Strip ALL base64 data URIs — catches logo anywhere it may have slipped through
+      emailContent = emailContent.replace(/<img[^>]*src="data:[^"]*"[^>]*>/gi, '');
       // Wrap in minimal email shell with fonts
       const emailHtml = `<!DOCTYPE html><html><head>
         <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
