@@ -3459,7 +3459,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
   function renderToday() {
     const today = new Date();
-    const todayStr = today.toISOString().slice(0, 10);
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
     const dayLabel = today.toLocaleDateString('en-CA', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
     document.getElementById('today-date-heading').textContent = "Today's Jobs";
