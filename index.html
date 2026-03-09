@@ -3570,7 +3570,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           <div style="display:flex;align-items:center;gap:10px;">
             <div style="font-family:'Montserrat',sans-serif;font-weight:900;font-size:16px;color:${stageColor};">${timeStr}</div>
             <div style="background:${stageColor};color:white;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:800;">${esc(q.type || 'Job')}</div>
-            ${isDone ? '<div style="background:#059669;color:white;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:800;">✓ DONE</div>' : ''}
+            ${isDone ? '<div style="background:#059669;color:white;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:800;">🧾 INVOICED</div>' : ''}
           </div>
           <div style="font-family:'Montserrat',sans-serif;font-weight:900;font-size:18px;color:${stageColor};">$${(q.grand||0).toFixed(2)}</div>
         </div>
@@ -3588,7 +3588,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
             ${q.address ? `<a href="https://maps.google.com/?q=${encodeURIComponent(q.address + ', Penticton BC')}" target="_blank" style="background:#1e7d93;color:white;border:none;border-radius:20px;padding:8px 16px;font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:5px;">🗺 Navigate</a>` : ''}
             ${phone ? `<a href="tel:${encodeURIComponent(phone.replace(/[^0-9+]/g,''))}" style="background:#0d9488;color:white;border:none;border-radius:20px;padding:8px 16px;font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:5px;">📞 Call</a>` : ''}
-            <button onclick="toggleTodayDone('${q.quoteNum || q._idx}', ${cardIdx}, event)" style="background:${isDone ? '#f1f5f9' : '#f0d000'};color:${isDone ? 'var(--muted)' : 'var(--blue-dark)'};border:none;border-radius:20px;padding:8px 16px;font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;cursor:pointer;">
+            <button onclick="toggleTodayDone('${q.quoteNum || q._idx}', ${cardIdx}, event, ${q._idx})" style="background:${isDone ? '#f1f5f9' : '#f0d000'};color:${isDone ? 'var(--muted)' : 'var(--blue-dark)'};border:none;border-radius:20px;padding:8px 16px;font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;cursor:pointer;">
               ${isDone ? '↩ Mark Undone' : '✓ Mark Done'}
             </button>
           </div>
@@ -3597,15 +3597,23 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     }).join('');
   }
 
-  function toggleTodayDone(key, cardIdx, e) {
+  function toggleTodayDone(key, cardIdx, e, quoteIdx) {
     e.stopPropagation();
     if (todayJobDoneState[key]) {
+      // Undo done — just remove from done state, leave invoice flag as-is
       delete todayJobDoneState[key];
+      localStorage.setItem('twc_today_done', JSON.stringify(todayJobDoneState));
+      renderToday();
     } else {
+      // Mark done — generate invoice
       todayJobDoneState[key] = true;
+      localStorage.setItem('twc_today_done', JSON.stringify(todayJobDoneState));
+      renderToday();
+      // Generate invoice (same as Pipeline 🧾 Invoice button)
+      if (quoteIdx !== undefined && quoteIdx >= 0) {
+        generateInvoiceFromSaved(quoteIdx);
+      }
     }
-    localStorage.setItem('twc_today_done', JSON.stringify(todayJobDoneState));
-    renderToday();
   }
 
   function focusTodayJob(cardIdx) {
