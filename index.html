@@ -2372,18 +2372,13 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     btn.textContent = '⏳ Sending...';
     btn.disabled = true;
     try {
-      // Replace base64 logo with Drive URL in email (avoids EmailJS 50kb limit)
-      // Customers still see the logo — it loads from Google Drive
+      // Strip logo from email entirely — replace with business name badge
+      // (Drive URLs are too slow in email clients; base64 exceeds EmailJS 50kb limit)
       const rawContent = document.getElementById('quoteDocument').innerHTML;
-      const logoFileId = localStorage.getItem('twc_logo_fileid') || '';
-      const driveLogoUrl = logoFileId
-        ? `https://drive.google.com/uc?export=view&id=${logoFileId}`
-        : '';
+      const bizNameEmail = s('bizName') || 'The Window Crew';
       const emailContent = rawContent.replace(
-        /<img src="data:image[^"]*"([^>]*)>/g,
-        driveLogoUrl
-          ? `<img src="${driveLogoUrl}"$1>`
-          : ''
+        /<img src="data:image[^"]*"[^>]*>/g,
+        `<div style="background:#f0d000;display:inline-block;border-radius:10px;padding:8px 14px;"><span style="font-family:'Montserrat',sans-serif;font-weight:900;font-size:18px;color:#145689;letter-spacing:0.02em;">${bizNameEmail}</span></div>`
       );
       // Wrap in minimal email shell with fonts
       const emailHtml = `<!DOCTYPE html><html><head>
