@@ -1650,10 +1650,17 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   }
 
   function getActivePhotoKey() {
-    // Returns the best key for photos: customerId if linked, else legacy name key
+    // Always prefer customerId — fall back to name-key only if no customer record exists at all
     if (currentCustomerId) return currentCustomerId;
     const name = (document.getElementById('custName')?.value || '').trim();
-    return name ? name.toUpperCase() : null;
+    if (!name) return null;
+    // Try to find an existing customer with this name and use their ID
+    const match = Object.values(customers).find(c =>
+      (c.name || '').trim().toLowerCase() === name.toLowerCase() && !c.archived
+    );
+    if (match) return match.customerId;
+    // Truly new customer not yet saved — use name key as last resort
+    return name.toUpperCase();
   }
 
   function updateQuotePhotoPanel() {
