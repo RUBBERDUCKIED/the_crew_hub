@@ -2469,9 +2469,18 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     }
 
     const rows = dayJobs.map(q => {
-      const timeStr = new Date(q.scheduledISO).toLocaleTimeString('en-CA', { hour:'2-digit', minute:'2-digit', hour12:true });
+      const startStr = new Date(q.scheduledISO).toLocaleTimeString('en-CA', { hour:'2-digit', minute:'2-digit', hour12:true });
+      let endStr = '';
+      if (q.scheduledEndISO) {
+        endStr = new Date(q.scheduledEndISO).toLocaleTimeString('en-CA', { hour:'2-digit', minute:'2-digit', hour12:true });
+      } else if (q.scheduledMins) {
+        // fallback: calc from stored mins
+        const endMs = new Date(q.scheduledISO).getTime() + q.scheduledMins * 60000;
+        endStr = new Date(endMs).toLocaleTimeString('en-CA', { hour:'2-digit', minute:'2-digit', hour12:true });
+      }
+      const timeRange = endStr ? `${startStr} – ${endStr}` : startStr;
       return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #eaf4f7;">
-        <div style="font-weight:800;font-size:12px;color:#1a6ea8;white-space:nowrap;min-width:70px;">${timeStr}</div>
+        <div style="font-weight:800;font-size:12px;color:#1a6ea8;white-space:nowrap;min-width:110px;">${timeRange}</div>
         <div style="flex:1;min-width:0;">
           <div style="font-weight:800;font-size:12px;color:#1a3a4a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(q.name || '—')}</div>
           ${q.address ? `<div style="font-size:11px;color:#6b9aaa;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(q.address)}</div>` : ''}
@@ -2557,8 +2566,10 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       });
       const data = await resp.json();
       if (data.id) {
-        savedQuotes[i].scheduled    = true;
-        savedQuotes[i].scheduledISO = startISO;
+        savedQuotes[i].scheduled        = true;
+        savedQuotes[i].scheduledISO     = startISO;
+        savedQuotes[i].scheduledEndISO  = endISO;
+        savedQuotes[i].scheduledMins    = durationMins;
         localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
         closeScheduleModal();
         alert('📅 Job scheduled! Event added to your Google Calendar.');
