@@ -2461,6 +2461,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
     renderSaved();
     renderRecurring();
+    resetForm();
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('tab-pipeline').classList.add('active');
