@@ -2704,6 +2704,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     document.getElementById('schedModal-idx').value = i;
     document.getElementById('schedModal-duration').value = 4;
     updateDurationLabel(4);
+    setTimeout(() => updateDurationLabel(document.getElementById('schedModal-duration').value), 50);
     document.getElementById('schedModal-day-preview').style.display = 'none';
     if (q.scheduledISO) {
       document.getElementById('schedModal-date').value = q.scheduledISO.slice(0,10);
@@ -2774,6 +2775,19 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       ? (mins > 0 ? `${hrs} hr ${mins} min` : `${hrs} hr`)
       : `${mins} min`;
     document.getElementById('schedModal-duration-label').textContent = label;
+    // Compute and display end time
+    const timeInput = document.getElementById('schedModal-time');
+    const endEl = document.getElementById('schedModal-endtime');
+    if (endEl && timeInput && timeInput.value) {
+      const [h, m] = timeInput.value.split(':').map(Number);
+      const startMins = h * 60 + m;
+      const endMins = startMins + totalMins;
+      const endH = Math.floor(endMins / 60) % 24;
+      const endM = endMins % 60;
+      const ampm = endH >= 12 ? 'p.m.' : 'a.m.';
+      const endH12 = endH % 12 || 12;
+      endEl.textContent = `${endH12}:${String(endM).padStart(2,'0')} ${ampm}`;
+    }
   }
 
   function closeScheduleModal() {
@@ -5199,8 +5213,14 @@ ${bizEmail}`
 
       <div>
         <label style="font-size:12px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;">Start Time</label>
-        <input id="schedModal-time" type="time" value="08:00" style="width:100%;padding:10px 14px;border:2px solid #e2e8f0;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;outline:none;">
+        <input id="schedModal-time" type="time" value="08:00" onchange="updateDurationLabel(document.getElementById('schedModal-duration').value)" oninput="updateDurationLabel(document.getElementById('schedModal-duration').value)" style="width:100%;padding:10px 14px;border:2px solid #e2e8f0;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;outline:none;">
       </div>
+      <!-- End time display -->
+      <div style="background:#f0f7fa; border-radius:10px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center;">
+        <div style="font-size:12px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;">End Time</div>
+        <div id="schedModal-endtime" style="font-size:16px;font-weight:800;color:#1a6ea8;">—</div>
+      </div>
+
       <div>
         <label style="font-size:12px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;">
           Estimated Duration — <span id="schedModal-duration-label" style="color:#1a3a4a;font-size:13px;">1 hr 0 min</span>
