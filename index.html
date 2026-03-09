@@ -2112,7 +2112,12 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   }
 
   function generateReceiptFromSaved(i) {
-    // Show payment method picker first
+    const q = savedQuotes[i];
+    // If payment method already chosen, go straight to receipt — no re-picking
+    if (q.paymentMethod) {
+      _buildReceipt(i, q.paymentMethod);
+      return;
+    }
     _pendingReceiptIdx = i;
     document.getElementById('paymentMethodModal').style.display = 'flex';
   }
