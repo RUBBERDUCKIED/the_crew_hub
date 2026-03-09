@@ -4645,7 +4645,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         if (q.reviewRequestSent) { r.reviewRequestSent = true; r.reviewPending = false; }
         if (q.won === true) r.won = true;
         if (q.won === false && r.won !== true) r.won = false;
-        if (q.scheduled) { r.scheduled = true; r.scheduledISO = q.scheduledISO; }
+        if (q.scheduled) { r.scheduled = true; r.scheduledISO = q.scheduledISO; if (q.scheduledEndISO) r.scheduledEndISO = q.scheduledEndISO; if (q.scheduledMins) r.scheduledMins = q.scheduledMins; }
         if (q.invoicedDate) r.invoicedDate = q.invoicedDate;
         if (q.notes) r.notes = q.notes;
         if (q.paymentMethod) r.paymentMethod = q.paymentMethod;
