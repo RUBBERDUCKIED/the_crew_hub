@@ -3660,6 +3660,65 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       </div>`
     ).join('');
 
+    // ── Lead source pie chart ──
+    const leadColors = [
+      '#1e7d93','#f97316','#6366f1','#10b981','#f0d000',
+      '#e11d48','#0ea5e9','#8b5cf6','#14b8a6','#f59e0b','#64748b','#ec4899'
+    ];
+    const leadCounts = {};
+    Object.values(customers).forEach(c => {
+      if (!c.archived) {
+        const key = c.leadSource || 'Unreported';
+        leadCounts[key] = (leadCounts[key]||0)+1;
+      }
+    });
+    const leadTotal = Object.values(leadCounts).reduce((s,v)=>s+v,0) || 0;
+    // Give Unreported a muted grey so it reads as "unknown" visually
+    const unreportedColor = '#cbd5e1';
+    const leadCanvas = document.getElementById('rpt-lead-pie');
+    const leadEmptyMsg = document.getElementById('rpt-lead-empty');
+    if (leadCanvas) {
+      if (leadTotal === 0) {
+        leadCanvas.style.display = 'none';
+        if (leadEmptyMsg) leadEmptyMsg.style.display = 'block';
+        document.getElementById('rpt-lead-legend').innerHTML = '';
+      } else {
+        leadCanvas.style.display = 'block';
+        if (leadEmptyMsg) leadEmptyMsg.style.display = 'none';
+        const lCtx = leadCanvas.getContext('2d');
+        lCtx.clearRect(0,0,180,180);
+        let lAngle = -Math.PI/2;
+        const lcx=90, lcy=90, lr=75;
+        Object.entries(leadCounts).forEach(([source,count],idx) => {
+          const slice = (count/leadTotal)*Math.PI*2;
+          lCtx.beginPath();
+          lCtx.moveTo(lcx,lcy);
+          lCtx.arc(lcx,lcy,lr,lAngle,lAngle+slice);
+          lCtx.closePath();
+          lCtx.fillStyle = source === 'Unreported' ? unreportedColor : leadColors[idx % leadColors.length];
+          lCtx.fill();
+          lCtx.strokeStyle='white'; lCtx.lineWidth=2; lCtx.stroke();
+          lAngle += slice;
+        });
+        // Donut hole
+        lCtx.beginPath(); lCtx.arc(lcx,lcy,38,0,Math.PI*2);
+        lCtx.fillStyle='white'; lCtx.fill();
+        lCtx.fillStyle='#1a3a4a'; lCtx.font='800 13px Nunito,sans-serif'; lCtx.textAlign='center';
+        lCtx.fillText(leadTotal, lcx, lcy+2);
+        lCtx.fillStyle='#94a3b8'; lCtx.font='600 9px Nunito,sans-serif';
+        lCtx.fillText('tracked', lcx, lcy+14);
+        // Legend with percentages
+        document.getElementById('rpt-lead-legend').innerHTML = Object.entries(leadCounts)
+          .sort((a,b)=>b[1]-a[1])
+          .map(([source,count],idx) =>
+            `<div style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--text);">
+              <div style="width:12px;height:12px;border-radius:3px;background:${source==='Unreported' ? unreportedColor : leadColors[idx%leadColors.length]};flex-shrink:0;"></div>
+              ${source} <span style="color:var(--muted);font-weight:600;">(${count} · ${Math.round(count/leadTotal*100)}%)</span>
+            </div>`
+          ).join('');
+      }
+    }
+
     // ── Top customers ──
     const custRev = {};
     completed.forEach(q => {
@@ -5224,6 +5283,14 @@ ${bizEmail}`
         <canvas id="rpt-pie" width="180" height="180"></canvas>
         <div id="rpt-pie-legend" style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:14px;"></div>
       </div>
+    </div>
+
+    <!-- Lead source pie chart -->
+    <div class="stat-card" style="display:flex; flex-direction:column; align-items:center;">
+      <div style="font-size:13px; font-weight:800; color:var(--teal-dark); margin-bottom:14px; align-self:flex-start;">How Customers Found Us</div>
+      <div id="rpt-lead-empty" style="display:none; color:var(--muted); font-size:13px; font-weight:600; padding:20px 0;">No lead source data recorded yet.</div>
+      <canvas id="rpt-lead-pie" width="180" height="180"></canvas>
+      <div id="rpt-lead-legend" style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:14px;"></div>
     </div>
 
     <!-- Top customers -->
