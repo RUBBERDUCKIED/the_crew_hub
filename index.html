@@ -2410,34 +2410,34 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       const bizPhoneEmail = s('bizPhone') || '';
       const bizEmailEmail = s('bizEmail') || '';
 
-      // Extract the right-column content (doc title, number, dates) from the rendered header
-      const rightColMatch = rawContent.match(/<div style="text-align:right; flex-shrink:0;">([\s\S]*?)<\/div>\s*<\/div>\s*<!-- Customer/);
-      const rightColHtml = rightColMatch ? rightColMatch[1].trim() : '';
+      // Strip original header, keep only the body (customer info + line items)
+      // Body starts at the light-background customer info section
+      const bodyStart = rawContent.indexOf('<div style="background:#f4fbfc;');
+      const docBody = bodyStart !== -1 ? rawContent.slice(bodyStart) : rawContent;
 
-      // Extract body (everything after the blue header div)
-      const headerEndIdx = rawContent.indexOf('<!-- Customer');
-      const afterHeader = headerEndIdx !== -1 ? rawContent.slice(headerEndIdx) : rawContent;
+      // Extract right-col content (QUOTE/INVOICE/RECEIPT title, number, dates)
+      const rightColMatch = rawContent.match(/text-align:right; flex-shrink:0;">([\s\S]*?)<\/div>\s*<\/div>/);
+      const docRightCol = rightColMatch ? rightColMatch[1].trim() : '';
 
+      // Build clean table-based header
+      const tableHeader = '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%);">' +
+        '<tr>' +
+          '<td style="padding:24px 28px; vertical-align:middle;">' +
+            '<div style="background:#f0d000;display:inline-block;border-radius:10px;padding:8px 14px;margin-bottom:10px;">' +
+              '<span style="font-family:Montserrat,Arial,sans-serif;font-weight:900;font-size:18px;color:#145689;letter-spacing:0.02em;">' + bizNameEmail + '</span>' +
+            '</div>' +
+            (bizAddrEmail ? '<div style="color:rgba(255,255,255,0.85);font-size:13px;font-weight:600;margin-top:4px;">📍 ' + bizAddrEmail + '</div>' : '') +
+            (bizPhoneEmail ? '<div style="color:rgba(255,255,255,0.85);font-size:13px;font-weight:600;margin-top:2px;">📞 ' + bizPhoneEmail + '</div>' : '') +
+            (bizEmailEmail ? '<div style="color:rgba(255,255,255,0.85);font-size:13px;font-weight:600;margin-top:2px;">✉️ ' + bizEmailEmail + '</div>' : '') +
+          '</td>' +
+          '<td align="right" style="padding:24px 28px 24px 0; vertical-align:middle; text-align:right;">' +
+            docRightCol +
+          '</td>' +
+        '</tr>' +
+      '</table>';
 
-      // Build table-based header
-      const tableHeader = `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%);border-radius:0;">
-        <tr>
-          <td style="padding:24px 28px; vertical-align:top; width:55%;">
-            <div style="background:#f0d000;display:inline-block;border-radius:10px;padding:8px 14px;margin-bottom:10px;">
-              <span style="font-family:'Montserrat',sans-serif;font-weight:900;font-size:18px;color:#145689;letter-spacing:0.02em;">${bizNameEmail}</span>
-            </div>
-            ${bizAddrEmail ? `<div style="color:rgba(255,255,255,0.85);font-size:13px;font-weight:600;margin-top:4px;">📍 ${bizAddrEmail}</div>` : ''}
-            ${bizPhoneEmail ? `<div style="color:rgba(255,255,255,0.85);font-size:13px;font-weight:600;margin-top:2px;">📞 ${bizPhoneEmail}</div>` : ''}
-            ${bizEmailEmail ? `<div style="color:rgba(255,255,255,0.85);font-size:13px;font-weight:600;margin-top:2px;">✉️ ${bizEmailEmail}</div>` : ''}
-          </td>
-          <td style="padding:24px 28px 24px 0; vertical-align:top; text-align:right; width:45%;">
-            ${rightColHtml}
-          </td>
-        </tr>
-      </table>`;
-
-      // Rebuild email content: table header + everything after
-      let emailContent = tableHeader + afterHeader;
+      // Final email content: clean table header + body only
+      let emailContent = tableHeader + docBody;
       // Strip ALL base64 data URIs — catches logo anywhere it may have slipped through
       emailContent = emailContent.replace(/<img[^>]*src="data:[^"]*"[^>]*>/gi, '');
       // Wrap in minimal email shell with fonts
