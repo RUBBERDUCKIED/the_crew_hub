@@ -2112,6 +2112,19 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   }
 
   function generateReceiptFromSaved(i) {
+    // Show payment method picker first
+    _pendingReceiptIdx = i;
+    document.getElementById('paymentMethodModal').style.display = 'flex';
+  }
+
+  let _pendingReceiptIdx = null;
+
+  function selectPaymentMethod(method) {
+    document.getElementById('paymentMethodModal').style.display = 'none';
+    _buildReceipt(_pendingReceiptIdx, method);
+  }
+
+  function _buildReceipt(i, paymentMethod) {
     const q = savedQuotes[i];
     if (!q.lines) { alert('This job was saved before receipt generation was added. Please rebuild it.'); return; }
 
@@ -2197,6 +2210,9 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
           <div>
             <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:16px; color:rgba(255,255,255,0.85); letter-spacing:0.06em; text-transform:uppercase;">Amount Paid</div>
             <div style="font-size:12px; font-weight:600; color:rgba(255,255,255,0.65); margin-top:4px;">${fmt(today)}</div>
+            <div style="margin-top:6px; background:rgba(255,255,255,0.2); display:inline-block; border-radius:20px; padding:3px 12px;">
+              <span style="color:white; font-size:12px; font-weight:800;">💳 ${paymentMethod}</span>
+            </div>
           </div>
           <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:42px; color:white; letter-spacing:-0.01em;">$${q.grand.toFixed(2)}</div>
         </div>
@@ -2221,6 +2237,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
     document.body.style.overflow = 'hidden';
 
     savedQuotes[i].receipted = true;
+    savedQuotes[i].paymentMethod = paymentMethod;
     localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
     renderSaved();
     autoSync();
@@ -2256,6 +2273,31 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 </head>
 <body>
 <div class="doc">${content}</div>
+
+<!-- Payment Method Modal -->
+<div id="paymentMethodModal" style="display:none; position:fixed; inset:0; background:rgba(10,30,45,0.75); z-index:1200; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:white; border-radius:16px; overflow:hidden; box-shadow:0 12px 48px rgba(26,110,168,0.3); max-width:360px; width:100%;">
+    <div style="background:#1a3a4a; padding:20px 24px; display:flex; justify-content:space-between; align-items:center;">
+      <div style="color:white; font-weight:800; font-size:15px;">💳 How did they pay?</div>
+      <button onclick="document.getElementById('paymentMethodModal').style.display='none'" style="background:none;border:none;color:white;font-size:24px;cursor:pointer;line-height:1;">×</button>
+    </div>
+    <div style="padding:24px; display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      <button onclick="selectPaymentMethod('Cash')" style="background:#f0fdf4;border:2px solid #10b981;border-radius:12px;padding:18px 12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:15px;color:#065f46;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
+        💵<span>Cash</span>
+      </button>
+      <button onclick="selectPaymentMethod('Debit')" style="background:#eff6ff;border:2px solid #3b82f6;border-radius:12px;padding:18px 12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:15px;color:#1e40af;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
+        💳<span>Debit</span>
+      </button>
+      <button onclick="selectPaymentMethod('Credit')" style="background:#fdf4ff;border:2px solid #a855f7;border-radius:12px;padding:18px 12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:15px;color:#6b21a8;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
+        💳<span>Credit</span>
+      </button>
+      <button onclick="selectPaymentMethod('Cheque')" style="background:#fff7ed;border:2px solid #f97316;border-radius:12px;padding:18px 12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:15px;color:#c2410c;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
+        📝<span>Cheque</span>
+      </button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>`;
   }
