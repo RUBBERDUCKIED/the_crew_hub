@@ -2029,9 +2029,11 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
       <div style="font-family:'Nunito',sans-serif;">
 
         <!-- Header bar -->
-        <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:24px 28px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+        <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:24px 28px;">
+          ${logoImgTag(110) ? `<div style="text-align:center;margin-bottom:16px;">${logoImgTag(110)}</div>` : ''}
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
           <div style="min-width:0; flex:1;">
-            ${logoImgTag(80) ? `<div style="margin-bottom:10px;">${logoImgTag(80)}</div>` : `<div style="background:#f0d000; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;"><span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:#145689; letter-spacing:0.02em;">${bizName}</span></div>`}
+            ${!logoImgTag(110) ? `<div style="background:#f0d000; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;"><span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:#145689; letter-spacing:0.02em;">${bizName}</span></div>` : ''}
             ${bizAddress ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:4px;">📍 ${bizAddress}</div>` : ''}
             ${bizPhone ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">📞 ${bizPhone}</div>` : ''}
             ${bizEmail ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">✉️ ${bizEmail}</div>` : ''}
@@ -2042,7 +2044,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
             <div style="color:rgba(255,255,255,0.85); font-size:12px; font-weight:600; margin-top:8px;">Date: ${fmt(today)}</div>
             <div style="color:#f0d000; font-size:12px; font-weight:700; margin-top:2px;">Valid until: ${fmt(expiry)}</div>
           </div>
-        </div>
+        </div></div>
 
         <!-- Customer info -->
         <div style="background:#f4fbfc; padding:22px 36px; display:flex; gap:40px; flex-wrap:wrap; border-bottom:2px solid #eaf4f7;">
@@ -2137,9 +2139,11 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
       <div style="font-family:'Nunito',sans-serif;">
 
         <!-- Header -->
-        <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:24px 28px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+        <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:24px 28px;">
+          ${logoImgTag(110) ? `<div style="text-align:center;margin-bottom:16px;">${logoImgTag(110)}</div>` : ''}
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
           <div style="min-width:0; flex:1;">
-            ${logoImgTag(80) ? `<div style="margin-bottom:10px;">${logoImgTag(80)}</div>` : `<div style="background:#f0d000; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;"><span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:#145689; letter-spacing:0.02em;">${bizName}</span></div>`}
+            ${!logoImgTag(110) ? `<div style="background:#f0d000; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;"><span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:#145689; letter-spacing:0.02em;">${bizName}</span></div>` : ''}
             ${bizAddress ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:4px;">📍 ${bizAddress}</div>` : ''}
             ${bizPhone ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">📞 ${bizPhone}</div>` : ''}
             ${bizEmail ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">✉️ ${bizEmail}</div>` : ''}
@@ -2152,7 +2156,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
               <span style="color:white; font-size:11px; font-weight:800; letter-spacing:0.06em;">✓ PAID IN FULL</span>
             </div>
           </div>
-        </div>
+        </div></div>
 
         <!-- Customer info -->
         <div style="background:#f4fbfc; padding:22px 36px; display:flex; gap:40px; flex-wrap:wrap; border-bottom:2px solid #eaf4f7;">
@@ -2788,9 +2792,11 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
     document.getElementById('quoteDocument').innerHTML = `
       <div style="font-family:'Nunito',sans-serif;">
-        <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:24px 28px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+        <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:24px 28px;">
+          ${logoImgTag(110) ? `<div style="text-align:center;margin-bottom:16px;">${logoImgTag(110)}</div>` : ''}
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
           <div style="min-width:0; flex:1;">
-            ${logoImgTag(80) ? `<div style="margin-bottom:10px;">${logoImgTag(80)}</div>` : `<div style="background:#f0d000; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;"><span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:#145689; letter-spacing:0.02em;">${bizName}</span></div>`}
+            ${!logoImgTag(110) ? `<div style="background:#f0d000; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;"><span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:#145689; letter-spacing:0.02em;">${bizName}</span></div>` : ''}
             ${bizAddress ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:4px;">📍 ${bizAddress}</div>` : ''}
             ${bizPhone ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">📞 ${bizPhone}</div>` : ''}
             ${bizEmail ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">✉️ ${bizEmail}</div>` : ''}
@@ -2874,9 +2880,11 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       <div style="font-family:'Nunito',sans-serif;">
 
         <!-- Header -->
-        <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:24px 28px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+        <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:24px 28px;">
+          ${logoImgTag(110) ? `<div style="text-align:center;margin-bottom:16px;">${logoImgTag(110)}</div>` : ''}
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
           <div style="min-width:0; flex:1;">
-            ${logoImgTag(80) ? `<div style="margin-bottom:10px;">${logoImgTag(80)}</div>` : `<div style="background:#f0d000; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;"><span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:#145689; letter-spacing:0.02em;">${bizName}</span></div>`}
+            ${!logoImgTag(110) ? `<div style="background:#f0d000; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;"><span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:#145689; letter-spacing:0.02em;">${bizName}</span></div>` : ''}
             ${bizAddress ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:4px;">📍 ${bizAddress}</div>` : ''}
             ${bizPhone ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">📞 ${bizPhone}</div>` : ''}
             ${bizEmail ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">✉️ ${bizEmail}</div>` : ''}
@@ -2887,7 +2895,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
             <div style="color:rgba(255,255,255,0.85); font-size:12px; font-weight:600; margin-top:8px;">Date: ${fmt(today)}</div>
             <div style="color:#f0d000; font-size:12px; font-weight:700; margin-top:2px;">Payment Due: ${fmt(dueDate)}</div>
           </div>
-        </div>
+        </div></div>
 
         <!-- Customer info -->
         <div style="background:#f4fbfc; padding:22px 36px; display:flex; gap:40px; flex-wrap:wrap; border-bottom:2px solid #eaf4f7;">
@@ -4608,7 +4616,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
   function logoImgTag(height) {
     if (!cachedLogoB64) return null;
-    return `<img src="${cachedLogoB64}" style="height:${height}px;max-width:160px;object-fit:contain;display:block;" alt="logo">`;
+    return `<img src="${cachedLogoB64}" style="height:${height}px;max-width:200px;object-fit:contain;display:block;margin:0 auto;" alt="logo">`;
   }
 
   // Restore logo preview on load
