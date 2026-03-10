@@ -2369,6 +2369,21 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       .replace(/'/g, '&#39;');
   }
 
+  // Parses note date strings like "Mar 9, 2026, 11:17 a.m." reliably
+  // Returns numeric timestamp; falls back to 0 for unknown formats
+  function parseNoteDate(n) {
+    if (n.ts) return n.ts;
+    try {
+      const s = (n.date || '')
+        .replace(/\.(?=\s)/g, '')   // remove trailing dots from month abbrs
+        .replace(/\ba\.?m\.?\b/gi, 'AM')
+        .replace(/\bp\.?m\.?\b/gi, 'PM');
+      const d = new Date(s);
+      if (!isNaN(d.getTime())) return d.getTime();
+    } catch(e) {}
+    return 0;
+  }
+
   function formatPhone(input) {
     // Strip everything except digits
     let digits = input.value.replace(/\D/g, '').slice(0, 10);
@@ -3340,7 +3355,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const existing = cid ? getNotesForCustomer(cid, legacyKey) : (crmNotes[legacyKey] || []);
     const existEl = document.getElementById('qnm-existing');
     if (existing.length) {
-      const qnmSorted = existing.slice().map((n,i)=>({...n,_i:i})).sort((a,b) => (b.ts||0)-(a.ts||0) || a._i-b._i);
+      const qnmSorted = existing.slice().sort((a,b) => parseNoteDate(b) - parseNoteDate(a));
       const qnmLatestText = qnmSorted[0]?.text;
       const qnmLatestDate = qnmSorted[0]?.date;
       existEl.innerHTML = `
@@ -4183,7 +4198,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         </div>`).join('');
 
       // Sort by ts if available (reliable), else keep array order (unshift = newest first)
-      const notesSorted = notes.slice().map((n,i)=>({...n,_i:i})).sort((a,b) => (b.ts||0)-(a.ts||0) || a._i-b._i);
+      const notesSorted = notes.slice().sort((a,b) => parseNoteDate(b) - parseNoteDate(a));
       const latestText = notesSorted[0]?.text;
       const noteRows = notes.map((n, ni) => {
         const isLatest = n.text === latestText && n.date === notesSorted[0]?.date;
