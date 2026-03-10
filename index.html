@@ -2645,7 +2645,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       if (!crmNotes[customerId]) crmNotes[customerId] = [];
       crmNotes[customerId].push({
         text: `[Quote ${new Date().toLocaleDateString('en-CA', { day:'numeric', month:'short', year:'numeric' })}] ${noteText}`,
-        date: new Date().toLocaleDateString('en-CA', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
+        date: new Date().toLocaleDateString('en-CA', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }),
+        ts: Date.now()
       });
       localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
     }
@@ -3339,7 +3340,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const existing = cid ? getNotesForCustomer(cid, legacyKey) : (crmNotes[legacyKey] || []);
     const existEl = document.getElementById('qnm-existing');
     if (existing.length) {
-      const qnmSorted = existing.slice().sort((a,b) => new Date(b.date) - new Date(a.date));
+      const qnmSorted = existing.slice().map((n,i)=>({...n,_i:i})).sort((a,b) => (b.ts||0)-(a.ts||0) || a._i-b._i);
       const qnmLatestText = qnmSorted[0]?.text;
       const qnmLatestDate = qnmSorted[0]?.date;
       existEl.innerHTML = `
@@ -3377,7 +3378,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     if (!crmNotes[noteKey]) crmNotes[noteKey] = [];
     crmNotes[noteKey].push({
       text,
-      date: new Date().toLocaleDateString('en-CA', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
+      date: new Date().toLocaleDateString('en-CA', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }),
+      ts: Date.now()
     });
     localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
     autoSync();
@@ -4180,8 +4182,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           ${j.invoiced ? `<button class="si-gen" style="padding:4px 10px;font-size:10px;background:var(--blue);color:white;" onclick="generateReceiptFromSaved(${j._idx})">✅ Receipt</button>` : ''}
         </div>`).join('');
 
-      // Sort a copy newest-first by date string to find the true latest
-      const notesSorted = notes.slice().sort((a,b) => new Date(b.date) - new Date(a.date));
+      // Sort by ts if available (reliable), else keep array order (unshift = newest first)
+      const notesSorted = notes.slice().map((n,i)=>({...n,_i:i})).sort((a,b) => (b.ts||0)-(a.ts||0) || a._i-b._i);
       const latestText = notesSorted[0]?.text;
       const noteRows = notes.map((n, ni) => {
         const isLatest = n.text === latestText && n.date === notesSorted[0]?.date;
@@ -4330,7 +4332,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     if (!crmNotes[customerId]) crmNotes[customerId] = [];
     crmNotes[customerId].unshift({
       text,
-      date: new Date().toLocaleDateString('en-CA', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
+      date: new Date().toLocaleDateString('en-CA', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }),
+      ts: Date.now()
     });
     localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
     input.value = '';
