@@ -3339,13 +3339,19 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const existing = cid ? getNotesForCustomer(cid, legacyKey) : (crmNotes[legacyKey] || []);
     const existEl = document.getElementById('qnm-existing');
     if (existing.length) {
+      const qnmSorted = existing.slice().sort((a,b) => new Date(b.date) - new Date(a.date));
+      const qnmLatestText = qnmSorted[0]?.text;
+      const qnmLatestDate = qnmSorted[0]?.date;
       existEl.innerHTML = `
         <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Previous Notes</div>
-        ${existing.slice().reverse().map(n => `
-          <div style="background:#f8fafc;border:1.5px solid var(--gray);border-radius:8px;padding:8px 12px;margin-bottom:6px;">
+        ${qnmSorted.map(n => {
+          const isLatest = n.text === qnmLatestText && n.date === qnmLatestDate;
+          return `<div style="background:${isLatest ? '#e8f7fa' : '#f8fafc'};border:1.5px solid ${isLatest ? '#1e7d93' : 'var(--gray)'};border-radius:8px;padding:8px 12px;margin-bottom:6px;">
+            ${isLatest ? '<div style="font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#1e7d93;margin-bottom:3px;">Latest</div>' : ''}
             <div style="font-size:12px;font-weight:600;color:var(--text);">${esc(n.text)}</div>
             <div style="font-size:11px;font-weight:600;color:var(--muted);margin-top:3px;">${n.date}</div>
-          </div>`).join('')}`;
+          </div>`;
+        }).join('')}`;
     } else {
       existEl.innerHTML = `<div style="font-size:12px;font-weight:600;color:var(--muted);font-style:italic;margin-bottom:8px;">No previous notes for this customer.</div>`;
     }
@@ -4174,12 +4180,18 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           ${j.invoiced ? `<button class="si-gen" style="padding:4px 10px;font-size:10px;background:var(--blue);color:white;" onclick="generateReceiptFromSaved(${j._idx})">✅ Receipt</button>` : ''}
         </div>`).join('');
 
-      const noteRows = notes.map((n, ni) => `
-        <div class="note-entry${ni === 0 ? ' note-entry-latest' : ''}">
-          ${ni === 0 ? '<div style="font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#1e7d93;margin-bottom:4px;">Latest</div>' : ''}
+      // Sort a copy newest-first by date string to find the true latest
+      const notesSorted = notes.slice().sort((a,b) => new Date(b.date) - new Date(a.date));
+      const latestText = notesSorted[0]?.text;
+      const noteRows = notes.map((n, ni) => {
+        const isLatest = n.text === latestText && n.date === notesSorted[0]?.date;
+        return `
+        <div class="note-entry${isLatest ? ' note-entry-latest' : ''}">
+          ${isLatest ? '<div style="font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#1e7d93;margin-bottom:4px;">Latest</div>' : ''}
           ${esc(n.text)}
           <div class="note-entry-meta">${n.date} <button onclick="deleteNote('${cid}', ${ni})" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:11px;margin-left:8px;">delete</button></div>
-        </div>`).join('');
+        </div>`;
+      }).join('');
 
       const actionButtons = isArchived ? `
         <button onclick="unarchiveCustomer('${cid}');event.stopPropagation()" style="background:#10b981;color:white;border:none;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;margin-left:4px;flex-shrink:0;">↩ Restore</button>
