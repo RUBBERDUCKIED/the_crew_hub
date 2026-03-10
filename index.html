@@ -2720,10 +2720,22 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
   function openScheduleModal(i) {
     const q = savedQuotes[i];
+    const isReschedule = !!(q.scheduled && q.scheduledISO);
+    // Update modal header and button to reflect reschedule vs first schedule
+    document.getElementById('schedModal-heading').textContent = isReschedule ? '📅 Reschedule Job' : '📅 Schedule Job';
+    document.getElementById('schedModal-confirm').textContent = isReschedule ? '🔄 Reschedule' : 'Add to Calendar';
+    document.getElementById('schedModal-confirm').style.background = isReschedule ? '#f97316' : '#1a6ea8';
+    if (isReschedule) {
+      const oldDate = new Date(q.scheduledISO).toLocaleDateString('en-CA', { weekday:'short', month:'short', day:'numeric' });
+      document.getElementById('schedModal-current').textContent = 'Currently: ' + oldDate + ' at ' + q.scheduledISO.slice(11,16);
+      document.getElementById('schedModal-current').style.display = 'block';
+    } else {
+      document.getElementById('schedModal-current').style.display = 'none';
+    }
     document.getElementById('schedModal-title').textContent = q.name + (q.address ? ' — ' + q.address : '');
     document.getElementById('schedModal-idx').value = i;
-    document.getElementById('schedModal-duration').value = 4;
-    updateDurationLabel(4);
+    document.getElementById('schedModal-duration').value = q.scheduledMins ? q.scheduledMins/15 : 4;
+    updateDurationLabel(document.getElementById('schedModal-duration').value);
     setTimeout(() => updateDurationLabel(document.getElementById('schedModal-duration').value), 50);
     document.getElementById('schedModal-day-preview').style.display = 'none';
     if (q.scheduledISO) {
@@ -2858,23 +2870,40 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     };
 
     try {
-      const resp = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${gAccessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(event)
-      });
+      const existingEventId = q.gcalEventId;
+      let resp;
+      if (existingEventId) {
+        // PATCH existing calendar event — updates instead of creating duplicate
+        resp = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${existingEventId}`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${gAccessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(event)
+        });
+      } else {
+        // POST new event
+        resp = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${gAccessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(event)
+        });
+      }
       const data = await resp.json();
       if (data.id) {
+        const wasReschedule = !!(q.scheduled && q.scheduledISO);
         savedQuotes[i].scheduled        = true;
         savedQuotes[i].scheduledISO     = startISO;
         savedQuotes[i].scheduledEndISO  = endISO;
         savedQuotes[i].scheduledMins    = durationMins;
+        savedQuotes[i].gcalEventId      = data.id;
         localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
         closeScheduleModal();
-        alert('📅 Job scheduled! Event added to your Google Calendar.');
+        alert(wasReschedule ? '🔄 Job rescheduled! Calendar event updated.' : '📅 Job scheduled! Event added to your Google Calendar.');
         renderSaved();
         autoSync();
       } else {
@@ -3497,7 +3526,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
               ${q.won === true ? '' : `<button class="won-btn lost-btn ${q.won===false?'active-lost':''}" onclick="toggleWon(${i},${q.won===false?'null':'false'});event.stopPropagation()">✗ Lost</button>`}
             </div>
             <button class="si-gen" onclick="generateQuoteFromSaved(${i});event.stopPropagation()">📄 Quote</button>
-            ${q.won===true ? `<button class="si-gen" style="background:${q.scheduled ? '#16a34a' : '#f97316'};color:white;" onclick="openScheduleModal(${i});event.stopPropagation()">${q.scheduled ? '📅 Scheduled' : '📅 Schedule'}</button>` : ''}
+            ${q.won===true ? `<button class="si-gen" style="background:${q.scheduled ? '#16a34a' : '#f97316'};color:white;" onclick="openScheduleModal(${i});event.stopPropagation()">${q.scheduled ? '🔄 Reschedule' : '📅 Schedule'}</button>` : ''}
             ${q.won===true ? `<button class="si-gen" style="background:var(--yellow);color:var(--blue-dark);" onclick="generateInvoiceFromSaved(${i});event.stopPropagation()">🧾 Invoice</button>` : ''}
             ${q.invoiced ? `<button class="si-gen" style="background:var(--blue);color:white;" onclick="generateReceiptFromSaved(${i});event.stopPropagation()">✅ Receipt</button>` : ''}
           </div>
@@ -4681,6 +4710,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         if (q.won === true) r.won = true;
         if (q.won === false && r.won !== true) r.won = false;
         if (q.scheduled) { r.scheduled = true; r.scheduledISO = q.scheduledISO; if (q.scheduledEndISO) r.scheduledEndISO = q.scheduledEndISO; if (q.scheduledMins) r.scheduledMins = q.scheduledMins; }
+        if (q.gcalEventId) r.gcalEventId = q.gcalEventId;
         if (q.invoicedDate) r.invoicedDate = q.invoicedDate;
         if (q.notes) r.notes = q.notes;
         if (q.paymentMethod) r.paymentMethod = q.paymentMethod;
@@ -5234,11 +5264,12 @@ ${bizEmail}`
 <div id="schedModal" style="display:none; position:fixed; inset:0; background:rgba(10,30,45,0.75); z-index:1100; overflow-y:auto; padding:30px 16px;">
   <div style="max-width:440px; margin:0 auto; background:white; border-radius:16px; overflow:hidden; box-shadow:0 12px 48px rgba(26,110,168,0.25);">
     <div style="background:#1a3a4a; padding:20px 24px; display:flex; justify-content:space-between; align-items:center;">
-      <div style="color:white; font-weight:800; font-size:15px;">📅 Schedule Job</div>
+      <div id="schedModal-heading" style="color:white; font-weight:800; font-size:15px;">📅 Schedule Job</div>
       <button onclick="closeScheduleModal()" style="background:none;border:none;color:white;font-size:24px;cursor:pointer;line-height:1;">×</button>
     </div>
     <div style="padding:24px; display:flex; flex-direction:column; gap:16px;">
       <div id="schedModal-title" style="font-weight:700; font-size:14px; color:#1a3a4a; background:#f0f7fa; padding:10px 14px; border-radius:10px;"></div>
+      <div id="schedModal-current" style="display:none; background:#fff7ed; border:2px solid #f97316; border-radius:10px; padding:10px 14px; font-size:13px; font-weight:700; color:#c2410c;">📅 Currently scheduled — pick a new date &amp; time below</div>
       <div>
         <label style="font-size:12px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;">Date</label>
         <input id="schedModal-date" type="date" onchange="renderSchedDayPreview()" style="width:100%;padding:10px 14px;border:2px solid #e2e8f0;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;outline:none;">
