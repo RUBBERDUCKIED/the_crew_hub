@@ -851,6 +851,10 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   font-weight: 600;
   color: var(--text);
 }
+.note-entry-latest {
+  background: #e8f7fa;
+  border-left: 3px solid #1e7d93;
+}
 .note-entry-meta { font-size: 10px; color: var(--muted); font-weight: 600; margin-top: 4px; }
 
 .note-input-row { display: flex; gap: 8px; margin-top: 10px; }
@@ -4171,7 +4175,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         </div>`).join('');
 
       const noteRows = notes.map((n, ni) => `
-        <div class="note-entry">
+        <div class="note-entry${ni === 0 ? ' note-entry-latest' : ''}">
+          ${ni === 0 ? '<div style="font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#1e7d93;margin-bottom:4px;">Latest</div>' : ''}
           ${esc(n.text)}
           <div class="note-entry-meta">${n.date} <button onclick="deleteNote('${cid}', ${ni})" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:11px;margin-left:8px;">delete</button></div>
         </div>`).join('');
