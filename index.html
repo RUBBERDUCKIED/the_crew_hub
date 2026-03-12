@@ -1471,12 +1471,12 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
 
 <!-- Tab Nav -->
 <div class="tab-nav">
-  <button class="tab-btn active" onclick="switchTab('quotes', this)">📋 Quoting</button>
-  <button class="tab-btn" id="todayTabBtn" onclick="switchTab('today', this)">📍 Today</button>
+  <button class="tab-btn active" id="todayTabBtn" onclick="switchTab('today', this)">📍 Today</button>
+  <button class="tab-btn" onclick="switchTab('leads', this)">🎯 Lead Pipeline</button>
+  <button class="tab-btn" onclick="switchTab('quotes', this)">📋 Quoting</button>
   <button class="tab-btn" onclick="switchTab('pipeline', this)">⚡ Job Pipeline</button>
   <button class="tab-btn" onclick="switchTab('crm', this)">👥 CRM</button>
   <button class="tab-btn" onclick="switchTab('reports', this)">📊 Reports</button>
-  <button class="tab-btn" onclick="switchTab('leads', this)">🎯 Lead Pipeline</button>
   <div id="syncStatus" style="margin-left:auto; display:flex; align-items:center; gap:8px; padding-bottom:4px;">
     <div id="syncIndicator" style="width:8px;height:8px;border-radius:50%;background:#aac4cc;flex-shrink:0;"></div>
     <span id="syncLabel" style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.6);">Not signed in</span>
@@ -1485,7 +1485,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
 </div>
 
 <!-- ═══ QUOTES TAB ═══ -->
-<div id="tab-quotes" class="tab-panel active">
+<div id="tab-quotes" class="tab-panel">
 
 <!-- Main -->
 <div class="page-wrap">
@@ -1864,7 +1864,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
 </div>
 
 <!-- ═══ TODAY TAB ═══ -->
-<div id="tab-today" class="tab-panel">
+<div id="tab-today" class="tab-panel active">
   <div style="max-width:960px;margin:0 auto;padding:20px 16px 60px;">
 
     <!-- Header row -->
