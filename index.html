@@ -4927,6 +4927,17 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
       localStorage.setItem('twc_customers', JSON.stringify(customers));
       localStorage.setItem('twc_deleted_customers', JSON.stringify(deletedCustomerIds));
+      // Sync leads across devices
+      if (merged.leads && merged.leads.length) {
+        leads = merged.leads;
+        saveLeads();
+      }
+      if (merged.neighborhoods && merged.neighborhoods.length) {
+        neighborhoods = merged.neighborhoods;
+        saveNeighborhoods();
+      }
+      if (merged.leadsLastRun) localStorage.setItem('twc_leads_lastrun', merged.leadsLastRun);
+      renderLeads();
       // Propagate logo file ID across devices — fetch & cache if this device doesn't have it yet
       if (merged.logoFileId) {
         const el = document.getElementById('bizLogoId');
@@ -5083,13 +5094,23 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const localLogoId  = localStorage.getItem('twc_logo_fileid') || '';
     const remoteLogoId = remote.logoFileId || '';
     const mergedLogoId = localLogoId || remoteLogoId;
+    // Merge leads — use whichever device ran the generator most recently
+    const localLeadsRun  = localStorage.getItem('twc_leads_lastrun') || '';
+    const remoteLeadsRun = remote.leadsLastRun || '';
+    const useLocal = localLeadsRun >= remoteLeadsRun;
+    const mergedLeads         = (useLocal && leads.length)         ? leads         : (remote.leads         || leads         || []);
+    const mergedNeighborhoods = (useLocal && neighborhoods.length) ? neighborhoods : (remote.neighborhoods || neighborhoods || []);
+    const mergedLeadsRun      = localLeadsRun >= remoteLeadsRun    ? localLeadsRun : remoteLeadsRun;
     return {
       savedQuotes: finalQuotes,
       crmNotes: mergedNotes,
       customerPhotos: mergedPhotos,
       customers: mergedCustomers,
       deletedCustomerIds: mergedDeletedIds,
-      logoFileId: mergedLogoId
+      logoFileId: mergedLogoId,
+      leads: mergedLeads,
+      neighborhoods: mergedNeighborhoods,
+      leadsLastRun: mergedLeadsRun
     };
   }
 
@@ -5726,11 +5747,16 @@ ${bizEmail}`
               `<option value="${s}" ${lead.status===s?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`
             ).join('')}
           </select>
+          <button class="lead-btn" style="background:#f0fdf4;color:#16a34a;border:1.5px solid #86efac;" onclick="quoteFromLead('${lead.id}')">📋 Quote</button>
           <button class="lead-btn lead-btn-teal" onclick="sendLeadToCRM('${lead.id}')">👥 CRM</button>
           <button class="lead-btn lead-btn-red" onclick="deleteLead('${lead.id}')">✕</button>
         </div>
       </div>
-      ${notes.length ? `<div class="lead-notes-list">${notes.map(n => `<div class="lead-note-entry">${escHtml(n.text)}<div class="lead-note-meta">${n.date}</div></div>`).join('')}</div>` : ''}
+      ${notes.length ? `<div class="lead-notes-list">${notes.map((n, i) => `
+        <div class="lead-note-entry" style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+          <div style="flex:1;">${escHtml(n.text)}<div class="lead-note-meta">${n.date}</div></div>
+          <button onclick="deleteLeadNote('${lead.id}',${i})" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:15px;font-weight:900;padding:0 2px;flex-shrink:0;line-height:1;" title="Delete note">✕</button>
+        </div>`).join('')}</div>` : ''}
       <div class="lead-note-row">
         <input class="lead-note-input" id="ln-${lead.id}" type="text" placeholder="Add a note before you call..." onkeydown="if(event.key==='Enter')addLeadNote('${lead.id}')">
         <button class="lead-btn lead-btn-teal" onclick="addLeadNote('${lead.id}')">+ Note</button>
@@ -5782,6 +5808,51 @@ ${bizEmail}`
     input.value = '';
     saveLeads();
     renderLeads();
+  }
+
+  function deleteLeadNote(id, index) {
+    const lead = leads.find(l => l.id === id);
+    if (!lead || !lead.notes) return;
+    lead.notes.splice(index, 1);
+    saveLeads();
+    autoSync();
+    renderLeads();
+  }
+
+  function quoteFromLead(id) {
+    const lead = leads.find(l => l.id === id);
+    if (!lead) return;
+
+    // Switch to quotes tab
+    const quotesBtn = document.querySelector('.tab-btn[onclick*="\'quotes\'"]');
+    if (quotesBtn) switchTab('quotes', quotesBtn);
+
+    // Set property type button (Commercial / Storefront / Residential)
+    const seg = lead.lead_segment || 'commercial';
+    const typeMap = { commercial: 'Commercial', storefront: 'Storefront', residential: 'Residential' };
+    const typeName = typeMap[seg] || 'Commercial';
+    const typeBtn = document.querySelector(`.type-btn[data-type="${typeName}"]`);
+    if (typeBtn) setType(typeBtn);
+
+    // Fill customer fields
+    const isResidential = seg === 'residential';
+    document.getElementById('custCompany').value = isResidential ? '' : (lead.name || '');
+    document.getElementById('custName').value    = isResidential ? (lead.name || '') : (lead.owner_name || '');
+    document.getElementById('custAddress').value = lead.address || '';
+    document.getElementById('custPhone').value   = lead.phone   || '';
+    document.getElementById('custEmail').value   = lead.email   || '';
+
+    // Set lead source to Lead Finder if the option exists
+    const srcSelect = document.getElementById('custLeadSource');
+    if (srcSelect) {
+      const opt = Array.from(srcSelect.options).find(o =>
+        o.value.toLowerCase().includes('lead') || o.text.toLowerCase().includes('lead')
+      );
+      if (opt) srcSelect.value = opt.value;
+    }
+
+    // Scroll to top of quote form
+    document.getElementById('tab-quotes').scrollTop = 0;
   }
 
   function deleteLead(id) {
