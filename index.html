@@ -1962,19 +1962,31 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
 </style>
 
 <script>
+  // ── Safe localStorage read — returns fallback if data is missing or corrupted ──
+  function safeGet(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw === null || raw === '') return fallback;
+      return JSON.parse(raw);
+    } catch(e) {
+      console.warn('[CrewHub] localStorage parse error for "' + key + '" — resetting to default.', e);
+      return fallback;
+    }
+  }
+
   let propType = 'Residential';
-  let savedQuotes = JSON.parse(localStorage.getItem('twc_quotes') || '[]');
+  let savedQuotes = safeGet('twc_quotes', []);
   let currentLines = [];
   let currentGrand = 0;
   let currentSubtotal = 0;
-  let crmArchived = JSON.parse(localStorage.getItem('twc_crm_archived') || '[]'); // kept for migration
+  let crmArchived = safeGet('twc_crm_archived', []); // kept for migration
   let showingArchived = false;
   let customerPhotos = {};
   let photoFolderId = null;
   let photoBlobCache = {};
   // ── Customer table (source of truth) ──
-  let customers = JSON.parse(localStorage.getItem('twc_customers') || '{}');
-  let deletedCustomerIds = JSON.parse(localStorage.getItem('twc_deleted_customers') || '[]');
+  let customers = safeGet('twc_customers', {});
+  let deletedCustomerIds = safeGet('twc_deleted_customers', []);
   let currentCustomerId = null; // set when a customer is selected/linked in the quote form
 
   let cleaningSide = 'outside';
@@ -2549,6 +2561,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
       </tr>`).join('');
 
     const prevLines = currentLines, prevGrand = currentGrand, prevSub = currentSubtotal;
+    try {
     currentLines = q.lines; currentGrand = q.grand; currentSubtotal = q.subtotal;
 
     document.getElementById('quoteDocument').innerHTML = `
@@ -2651,7 +2664,9 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
       localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
     }
 
-    currentLines = prevLines; currentGrand = prevGrand; currentSubtotal = prevSub;
+    } finally {
+      currentLines = prevLines; currentGrand = prevGrand; currentSubtotal = prevSub;
+    }
   }
 
   function buildStandaloneHTML() {
@@ -3271,6 +3286,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
     // Temporarily set globals so buildStandaloneHTML works
     const prevLines = currentLines, prevGrand = currentGrand, prevSub = currentSubtotal;
+    try {
     currentLines = q.lines; currentGrand = q.grand; currentSubtotal = q.subtotal;
 
     document.getElementById('quoteDocument').innerHTML = `
@@ -3330,7 +3346,9 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     document.body.style.overflow = 'hidden';
 
     // restore globals
-    currentLines = prevLines; currentGrand = prevGrand; currentSubtotal = prevSub;
+    } finally {
+      currentLines = prevLines; currentGrand = prevGrand; currentSubtotal = prevSub;
+    }
   }
 
   function generateInvoiceFromSaved(i) {
@@ -3355,6 +3373,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       </tr>`).join('');
 
     const prevLines = currentLines, prevGrand = currentGrand, prevSub = currentSubtotal;
+    try {
     currentLines = q.lines; currentGrand = q.grand; currentSubtotal = q.subtotal;
 
     document.getElementById('quoteDocument').innerHTML = `
@@ -3456,7 +3475,9 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     renderSaved();
     autoSync();
 
-    currentLines = prevLines; currentGrand = prevGrand; currentSubtotal = prevSub;
+    } finally {
+      currentLines = prevLines; currentGrand = prevGrand; currentSubtotal = prevSub;
+    }
   }
 
   function getQuoteAgeDays(q) {
@@ -4852,8 +4873,14 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   const GOOG_SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/calendar.events';
   const SYNC_FILE_NAME = 'crewdata_hub.json';
   let gAccessToken = null;
+  let gTokenExpiry = 0; // timestamp (ms) after which the token should be considered expired
   let syncFileId = null;
   let isSyncing = false;
+
+  // Returns true only if we have a token AND it hasn't expired (with a 2-min safety buffer)
+  function isTokenValid() {
+    return !!gAccessToken && Date.now() < (gTokenExpiry - 2 * 60 * 1000);
+  }
 
   function setSyncUI(state, msg) {
     const dot = document.getElementById('syncIndicator');
@@ -4875,7 +4902,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   function handleSyncBtn() {
-    if (gAccessToken) { syncNow(); } else { signIn(); }
+    if (isTokenValid()) { syncNow(); } else { gAccessToken = null; signIn(); }
   }
 
   function signIn() {
@@ -4888,6 +4915,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           return;
         }
         gAccessToken = resp.access_token;
+        gTokenExpiry = Date.now() + 55 * 60 * 1000; // Google tokens last ~60 min; we treat as 55
         syncFileId = null;
         setSyncUI('idle', 'Signed in — syncing...');
         updateQuotePhotoPanel();
@@ -4898,7 +4926,12 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   async function syncNow() {
-    if (isSyncing || !gAccessToken) return;
+    if (isSyncing) return;
+    if (!isTokenValid()) {
+      gAccessToken = null;
+      setSyncUI('error', 'Session expired — click "Sign in to Sync"');
+      return;
+    }
     isSyncing = true;
     setSyncUI('syncing', 'Syncing...');
     try {
@@ -4914,7 +4947,10 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       // Step 3: merge local + remote
       const merged = mergeData(remote);
 
-      // Step 4: write merged back to Drive
+      // Step 4: sanity-check merged data before writing — prevents Drive corruption
+      if (!merged || !Array.isArray(merged.savedQuotes) || typeof merged.crmNotes !== 'object') {
+        throw new Error('Merge produced invalid data structure — aborting write to protect Drive.');
+      }
       await writeFile(syncFileId, merged);
 
       // Step 5: update local state
@@ -5533,8 +5569,13 @@ ${bizEmail}`
     document.getElementById('quoteModal').style.display = 'block';
   }
 
+  let _autoSyncTimer = null;
   function autoSync() {
-    if (gAccessToken && !isSyncing) syncNow();
+    if (!isTokenValid()) return;
+    clearTimeout(_autoSyncTimer);
+    _autoSyncTimer = setTimeout(() => {
+      if (isTokenValid() && !isSyncing) syncNow();
+    }, 2000); // batch rapid saves — only sync 2s after the last change
   }
 
   // Push local state directly to Drive — no read, no merge.
@@ -5561,8 +5602,8 @@ ${bizEmail}`
   // ═══ LEAD FINDER ═══
   // ═══════════════════════════════════════════════════════════════
 
-  let leads = JSON.parse(localStorage.getItem('twc_leads') || '[]');
-  let neighborhoods = JSON.parse(localStorage.getItem('twc_neighborhoods') || '[]');
+  let leads = safeGet('twc_leads', []);
+  let neighborhoods = safeGet('twc_neighborhoods', []);
   let currentLeadTab = 'commercial';
 
   function saveLeads() {
@@ -5721,6 +5762,8 @@ ${bizEmail}`
   }
 
   function renderLeadCard(lead) {
+    // Sanitize id for safe embedding in onclick attributes and HTML element IDs
+    const safeLeadId = (lead.id || '').replace(/['"\\]/g, '');
     const score = lead.ai_score != null ? lead.ai_score : '?';
     const tags = (lead.ai_tags || []).filter(t => t !== 'fallback_score' && t !== 'unrated');
     const notes = lead.notes || [];
@@ -5728,7 +5771,7 @@ ${bizEmail}`
     const segLabel = seg === 'commercial' ? '🏢 Commercial' : seg === 'storefront' ? '🏪 Storefront' : '🏠 Residential';
     const segClass = 'seg-' + seg;
 
-    return `<div class="lead-card" id="lc-${lead.id}">
+    return `<div class="lead-card" id="lc-${safeLeadId}">
       <div class="lead-card-header">
         <div class="lead-score-badge ${scoreClass(lead.ai_score)}">${score}</div>
         <div class="lead-info" style="flex:1;">
@@ -5742,24 +5785,24 @@ ${bizEmail}`
           ${tags.length ? `<div class="lead-tags">${tags.map(t => `<span class="lead-tag ${t}">${t.replace(/_/g,' ')}</span>`).join('')}</div>` : ''}
         </div>
         <div class="lead-actions">
-          <select class="lead-status-select" onchange="updateLeadStatus('${lead.id}', this.value)" title="Status">
+          <select class="lead-status-select" onchange="updateLeadStatus('${safeLeadId}', this.value)" title="Status">
             ${['new','contacted','quoted','won','lost'].map(s =>
               `<option value="${s}" ${lead.status===s?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`
             ).join('')}
           </select>
-          <button class="lead-btn" style="background:#f0fdf4;color:#16a34a;border:1.5px solid #86efac;" onclick="quoteFromLead('${lead.id}')">📋 Quote</button>
-          <button class="lead-btn lead-btn-teal" onclick="sendLeadToCRM('${lead.id}')">👥 CRM</button>
-          <button class="lead-btn lead-btn-red" onclick="deleteLead('${lead.id}')">✕</button>
+          <button class="lead-btn" style="background:#f0fdf4;color:#16a34a;border:1.5px solid #86efac;" onclick="quoteFromLead('${safeLeadId}')">📋 Quote</button>
+          <button class="lead-btn lead-btn-teal" onclick="sendLeadToCRM('${safeLeadId}')">👥 CRM</button>
+          <button class="lead-btn lead-btn-red" onclick="deleteLead('${safeLeadId}')">✕</button>
         </div>
       </div>
       ${notes.length ? `<div class="lead-notes-list">${notes.map((n, i) => `
         <div class="lead-note-entry" style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
           <div style="flex:1;">${escHtml(n.text)}<div class="lead-note-meta">${n.date}</div></div>
-          <button onclick="deleteLeadNote('${lead.id}',${i})" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:15px;font-weight:900;padding:0 2px;flex-shrink:0;line-height:1;" title="Delete note">✕</button>
+          <button onclick="deleteLeadNote('${safeLeadId}',${i})" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:15px;font-weight:900;padding:0 2px;flex-shrink:0;line-height:1;" title="Delete note">✕</button>
         </div>`).join('')}</div>` : ''}
       <div class="lead-note-row">
-        <input class="lead-note-input" id="ln-${lead.id}" type="text" placeholder="Add a note before you call..." onkeydown="if(event.key==='Enter')addLeadNote('${lead.id}')">
-        <button class="lead-btn lead-btn-teal" onclick="addLeadNote('${lead.id}')">+ Note</button>
+        <input class="lead-note-input" id="ln-${safeLeadId}" type="text" placeholder="Add a note before you call..." onkeydown="if(event.key==='Enter')addLeadNote('${safeLeadId}')">
+        <button class="lead-btn lead-btn-teal" onclick="addLeadNote('${safeLeadId}')">+ Note</button>
       </div>
     </div>`;
   }
