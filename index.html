@@ -851,10 +851,6 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   font-weight: 600;
   color: var(--text);
 }
-.note-entry-latest {
-  background: #e8f7fa;
-  border-left: 3px solid #1e7d93;
-}
 .note-entry-meta { font-size: 10px; color: var(--muted); font-weight: 600; margin-top: 4px; }
 
 .note-input-row { display: flex; gap: 8px; margin-top: 10px; }
@@ -1086,6 +1082,328 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
 
   /* ── Reports ── */
   #tab-reports > div { padding: 12px 10px 60px; }
+
+  /* ── Lead Finder ── */
+  .leads-wrap { padding: 12px 10px 60px; }
+  .lead-card { margin-bottom: 10px; }
+}
+
+/* ─── LEAD FINDER STYLES ─── */
+.leads-wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 28px 16px 60px;
+}
+
+.leads-import-bar {
+  background: linear-gradient(135deg, var(--teal-dark), var(--blue));
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.leads-import-bar h2 {
+  color: white;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 900;
+  font-size: 17px;
+  margin: 0;
+  flex: 1;
+  min-width: 200px;
+}
+
+.leads-import-bar p {
+  color: rgba(255,255,255,0.75);
+  font-size: 12px;
+  font-weight: 600;
+  margin: 4px 0 0;
+}
+
+.leads-section-title {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 900;
+  font-size: 16px;
+  color: var(--teal-dark);
+  margin: 28px 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lead-card {
+  background: white;
+  border-radius: var(--radius);
+  border: 1.5px solid rgba(42,157,181,0.12);
+  box-shadow: var(--shadow);
+  margin-bottom: 12px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+
+.lead-card:hover { border-color: var(--teal-light); }
+
+.lead-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 20px;
+  flex-wrap: wrap;
+}
+
+.lead-score-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 900;
+  font-size: 16px;
+  color: white;
+  flex-shrink: 0;
+}
+
+.score-high { background: linear-gradient(135deg, #10b981, #059669); }
+.score-mid  { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.score-low  { background: linear-gradient(135deg, #6b9aaa, #4a7a8a); }
+
+.lead-info { flex: 1; min-width: 0; }
+.lead-name { font-weight: 800; font-size: 15px; color: var(--text); }
+.lead-address { font-size: 12px; font-weight: 600; color: var(--muted); margin-top: 2px; }
+.lead-phone { font-size: 12px; font-weight: 700; color: var(--teal-dark); margin-top: 3px; }
+
+.lead-ai-note {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blue);
+  font-style: italic;
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: #f0f7fb;
+  border-radius: 6px;
+  border-left: 3px solid var(--teal);
+}
+
+.lead-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.lead-tag {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--gray);
+  color: var(--teal-dark);
+}
+
+.lead-tag.high_value { background: #d1fae5; color: #065f46; }
+.lead-tag.recurring_potential { background: #dbeafe; color: #1e40af; }
+.lead-tag.seasonal { background: #fef3c7; color: #92400e; }
+.lead-tag.commercial_contract { background: #ede9fe; color: #5b21b6; }
+.lead-tag.property_management { background: #fce7f3; color: #9d174d; }
+
+.lead-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.lead-status-select {
+  padding: 6px 10px;
+  border: 2px solid var(--gray);
+  border-radius: 20px;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: 11px;
+  color: var(--text);
+  background: white;
+  cursor: pointer;
+  outline: none;
+}
+
+.lead-btn {
+  padding: 7px 14px;
+  border: none;
+  border-radius: 20px;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.lead-btn-teal { background: var(--teal); color: white; }
+.lead-btn-teal:hover { background: var(--teal-dark); }
+.lead-btn-yellow { background: var(--yellow); color: var(--blue-dark); }
+.lead-btn-yellow:hover { background: var(--yellow-dark); }
+.lead-btn-red { background: white; color: #e05; border: 2px solid #fcc; }
+.lead-btn-red:hover { background: #fee2e2; }
+
+.lead-note-row {
+  padding: 10px 20px 14px;
+  border-top: 2px solid var(--gray);
+  display: flex;
+  gap: 8px;
+}
+
+.lead-note-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 2px solid var(--gray);
+  border-radius: 8px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  outline: none;
+}
+
+.lead-note-input:focus { border-color: var(--teal); }
+
+.lead-notes-list {
+  padding: 0 20px 10px;
+}
+
+.lead-note-entry {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  padding: 6px 10px;
+  background: var(--offwhite);
+  border-left: 3px solid var(--teal);
+  border-radius: 0 6px 6px 0;
+  margin-bottom: 5px;
+}
+
+.lead-note-meta {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* Neighborhood cards */
+.nbhd-card {
+  background: white;
+  border-radius: var(--radius);
+  border: 1.5px solid rgba(42,157,181,0.12);
+  box-shadow: var(--shadow);
+  margin-bottom: 12px;
+  padding: 18px 20px;
+}
+
+.nbhd-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+.nbhd-score {
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 900;
+  font-size: 16px;
+  color: white;
+  flex-shrink: 0;
+}
+
+.nbhd-info { flex: 1; }
+.nbhd-name { font-weight: 800; font-size: 15px; color: var(--text); }
+.nbhd-meta { font-size: 12px; font-weight: 600; color: var(--muted); margin-top: 3px; }
+
+.nbhd-badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.nbhd-badge {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.badge-door-hanger { background: #dbeafe; color: #1e40af; }
+.badge-door-knock { background: #fef3c7; color: #92400e; }
+.badge-both { background: #d1fae5; color: #065f46; }
+.badge-spring { background: #fce7f3; color: #9d174d; }
+.badge-summer { background: #fef9c3; color: #854d0e; }
+.badge-fall { background: #fed7aa; color: #9a3412; }
+.badge-year_round { background: #ede9fe; color: #5b21b6; }
+
+.nbhd-summary {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.55;
+  margin-bottom: 10px;
+}
+
+.nbhd-pitch {
+  background: #f0f7fb;
+  border-left: 3px solid var(--teal);
+  border-radius: 0 8px 8px 0;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blue-dark);
+  font-style: italic;
+  line-height: 1.5;
+}
+
+.leads-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.leads-search {
+  flex: 1;
+  min-width: 180px;
+  padding: 9px 16px;
+  border: 2px solid var(--gray);
+  border-radius: 30px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  outline: none;
+  background: white;
+}
+.leads-search:focus { border-color: var(--teal); }
+
+.leads-filter-select {
+  padding: 9px 14px;
+  border: 2px solid var(--gray);
+  border-radius: 30px;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--teal-dark);
+  background: white;
+  cursor: pointer;
+  outline: none;
 }
 </style>
 </head>
@@ -1103,6 +1421,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   <button class="tab-btn" onclick="switchTab('pipeline', this)">⚡ Job Pipeline</button>
   <button class="tab-btn" onclick="switchTab('crm', this)">👥 CRM</button>
   <button class="tab-btn" onclick="switchTab('reports', this)">📊 Reports</button>
+  <button class="tab-btn" onclick="switchTab('leads', this)">🎯 Lead Finder</button>
   <div id="syncStatus" style="margin-left:auto; display:flex; align-items:center; gap:8px; padding-bottom:4px;">
     <div id="syncIndicator" style="width:8px;height:8px;border-radius:50%;background:#aac4cc;flex-shrink:0;"></div>
     <span id="syncLabel" style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.6);">Not signed in</span>
@@ -2369,21 +2688,6 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       .replace(/'/g, '&#39;');
   }
 
-  // Parses note date strings like "Mar 9, 2026, 11:17 a.m." reliably
-  // Returns numeric timestamp; falls back to 0 for unknown formats
-  function parseNoteDate(n) {
-    if (n.ts) return n.ts;
-    try {
-      const s = (n.date || '')
-        .replace(/\.(?=\s)/g, '')   // remove trailing dots from month abbrs
-        .replace(/\ba\.?m\.?\b/gi, 'AM')
-        .replace(/\bp\.?m\.?\b/gi, 'PM');
-      const d = new Date(s);
-      if (!isNaN(d.getTime())) return d.getTime();
-    } catch(e) {}
-    return 0;
-  }
-
   function formatPhone(input) {
     // Strip everything except digits
     let digits = input.value.replace(/\D/g, '').slice(0, 10);
@@ -2660,8 +2964,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       if (!crmNotes[customerId]) crmNotes[customerId] = [];
       crmNotes[customerId].push({
         text: `[Quote ${new Date().toLocaleDateString('en-CA', { day:'numeric', month:'short', year:'numeric' })}] ${noteText}`,
-        date: new Date().toLocaleDateString('en-CA', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }),
-        ts: Date.now()
+        date: new Date().toLocaleDateString('en-CA', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
       });
       localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
     }
@@ -2720,22 +3023,10 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
   function openScheduleModal(i) {
     const q = savedQuotes[i];
-    const isReschedule = !!(q.scheduled && q.scheduledISO);
-    // Update modal header and button to reflect reschedule vs first schedule
-    document.getElementById('schedModal-heading').textContent = isReschedule ? '📅 Reschedule Job' : '📅 Schedule Job';
-    document.getElementById('schedModal-confirm').textContent = isReschedule ? '🔄 Reschedule' : 'Add to Calendar';
-    document.getElementById('schedModal-confirm').style.background = isReschedule ? '#f97316' : '#1a6ea8';
-    if (isReschedule) {
-      const oldDate = new Date(q.scheduledISO).toLocaleDateString('en-CA', { weekday:'short', month:'short', day:'numeric' });
-      document.getElementById('schedModal-current').textContent = 'Currently: ' + oldDate + ' at ' + q.scheduledISO.slice(11,16);
-      document.getElementById('schedModal-current').style.display = 'block';
-    } else {
-      document.getElementById('schedModal-current').style.display = 'none';
-    }
     document.getElementById('schedModal-title').textContent = q.name + (q.address ? ' — ' + q.address : '');
     document.getElementById('schedModal-idx').value = i;
-    document.getElementById('schedModal-duration').value = q.scheduledMins ? q.scheduledMins/15 : 4;
-    updateDurationLabel(document.getElementById('schedModal-duration').value);
+    document.getElementById('schedModal-duration').value = 4;
+    updateDurationLabel(4);
     setTimeout(() => updateDurationLabel(document.getElementById('schedModal-duration').value), 50);
     document.getElementById('schedModal-day-preview').style.display = 'none';
     if (q.scheduledISO) {
@@ -2870,40 +3161,23 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     };
 
     try {
-      const existingEventId = q.gcalEventId;
-      let resp;
-      if (existingEventId) {
-        // PATCH existing calendar event — updates instead of creating duplicate
-        resp = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${existingEventId}`, {
-          method: 'PATCH',
-          headers: {
-            Authorization: `Bearer ${gAccessToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(event)
-        });
-      } else {
-        // POST new event
-        resp = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${gAccessToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(event)
-        });
-      }
+      const resp = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${gAccessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(event)
+      });
       const data = await resp.json();
       if (data.id) {
-        const wasReschedule = !!(q.scheduled && q.scheduledISO);
         savedQuotes[i].scheduled        = true;
         savedQuotes[i].scheduledISO     = startISO;
         savedQuotes[i].scheduledEndISO  = endISO;
         savedQuotes[i].scheduledMins    = durationMins;
-        savedQuotes[i].gcalEventId      = data.id;
         localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
         closeScheduleModal();
-        alert(wasReschedule ? '🔄 Job rescheduled! Calendar event updated.' : '📅 Job scheduled! Event added to your Google Calendar.');
+        alert('📅 Job scheduled! Event added to your Google Calendar.');
         renderSaved();
         autoSync();
       } else {
@@ -3384,19 +3658,13 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const existing = cid ? getNotesForCustomer(cid, legacyKey) : (crmNotes[legacyKey] || []);
     const existEl = document.getElementById('qnm-existing');
     if (existing.length) {
-      const qnmSorted = existing.slice().sort((a,b) => parseNoteDate(b) - parseNoteDate(a));
-      const qnmLatestText = qnmSorted[0]?.text;
-      const qnmLatestDate = qnmSorted[0]?.date;
       existEl.innerHTML = `
         <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Previous Notes</div>
-        ${qnmSorted.map(n => {
-          const isLatest = n.text === qnmLatestText && n.date === qnmLatestDate;
-          return `<div style="background:${isLatest ? '#e8f7fa' : '#f8fafc'};border:1.5px solid ${isLatest ? '#1e7d93' : 'var(--gray)'};border-radius:8px;padding:8px 12px;margin-bottom:6px;">
-            ${isLatest ? '<div style="font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#1e7d93;margin-bottom:3px;">Latest</div>' : ''}
+        ${existing.slice().reverse().map(n => `
+          <div style="background:#f8fafc;border:1.5px solid var(--gray);border-radius:8px;padding:8px 12px;margin-bottom:6px;">
             <div style="font-size:12px;font-weight:600;color:var(--text);">${esc(n.text)}</div>
             <div style="font-size:11px;font-weight:600;color:var(--muted);margin-top:3px;">${n.date}</div>
-          </div>`;
-        }).join('')}`;
+          </div>`).join('')}`;
     } else {
       existEl.innerHTML = `<div style="font-size:12px;font-weight:600;color:var(--muted);font-style:italic;margin-bottom:8px;">No previous notes for this customer.</div>`;
     }
@@ -3422,8 +3690,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     if (!crmNotes[noteKey]) crmNotes[noteKey] = [];
     crmNotes[noteKey].push({
       text,
-      date: new Date().toLocaleDateString('en-CA', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }),
-      ts: Date.now()
+      date: new Date().toLocaleDateString('en-CA', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
     });
     localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
     autoSync();
@@ -3526,7 +3793,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
               ${q.won === true ? '' : `<button class="won-btn lost-btn ${q.won===false?'active-lost':''}" onclick="toggleWon(${i},${q.won===false?'null':'false'});event.stopPropagation()">✗ Lost</button>`}
             </div>
             <button class="si-gen" onclick="generateQuoteFromSaved(${i});event.stopPropagation()">📄 Quote</button>
-            ${q.won===true ? `<button class="si-gen" style="background:${q.scheduled ? '#16a34a' : '#f97316'};color:white;" onclick="openScheduleModal(${i});event.stopPropagation()">${q.scheduled ? '🔄 Reschedule' : '📅 Schedule'}</button>` : ''}
+            ${q.won===true ? `<button class="si-gen" style="background:${q.scheduled ? '#16a34a' : '#f97316'};color:white;" onclick="openScheduleModal(${i});event.stopPropagation()">${q.scheduled ? '📅 Scheduled' : '📅 Schedule'}</button>` : ''}
             ${q.won===true ? `<button class="si-gen" style="background:var(--yellow);color:var(--blue-dark);" onclick="generateInvoiceFromSaved(${i});event.stopPropagation()">🧾 Invoice</button>` : ''}
             ${q.invoiced ? `<button class="si-gen" style="background:var(--blue);color:white;" onclick="generateReceiptFromSaved(${i});event.stopPropagation()">✅ Receipt</button>` : ''}
           </div>
@@ -3601,6 +3868,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     if (tab === 'pipeline') { renderSaved(); renderRecurring(); }
     if (tab === 'today') { renderToday(); }
     if (tab === 'reports') renderReports();
+    if (tab === 'leads') renderLeads();
   }
 
   // ═══ REPORTS ═══
@@ -4226,18 +4494,11 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           ${j.invoiced ? `<button class="si-gen" style="padding:4px 10px;font-size:10px;background:var(--blue);color:white;" onclick="generateReceiptFromSaved(${j._idx})">✅ Receipt</button>` : ''}
         </div>`).join('');
 
-      // Sort by ts if available (reliable), else keep array order (unshift = newest first)
-      const notesSorted = notes.slice().sort((a,b) => parseNoteDate(b) - parseNoteDate(a));
-      const latestText = notesSorted[0]?.text;
-      const noteRows = notes.map((n, ni) => {
-        const isLatest = n.text === latestText && n.date === notesSorted[0]?.date;
-        return `
-        <div class="note-entry${isLatest ? ' note-entry-latest' : ''}">
-          ${isLatest ? '<div style="font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#1e7d93;margin-bottom:4px;">Latest</div>' : ''}
+      const noteRows = notes.map((n, ni) => `
+        <div class="note-entry">
           ${esc(n.text)}
           <div class="note-entry-meta">${n.date} <button onclick="deleteNote('${cid}', ${ni})" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:11px;margin-left:8px;">delete</button></div>
-        </div>`;
-      }).join('');
+        </div>`).join('');
 
       const actionButtons = isArchived ? `
         <button onclick="unarchiveCustomer('${cid}');event.stopPropagation()" style="background:#10b981;color:white;border:none;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;margin-left:4px;flex-shrink:0;">↩ Restore</button>
@@ -4376,8 +4637,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     if (!crmNotes[customerId]) crmNotes[customerId] = [];
     crmNotes[customerId].unshift({
       text,
-      date: new Date().toLocaleDateString('en-CA', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }),
-      ts: Date.now()
+      date: new Date().toLocaleDateString('en-CA', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
     });
     localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
     input.value = '';
@@ -4421,7 +4681,10 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       version: '2.0',
       customers,
       savedQuotes,
-      crmNotes
+      crmNotes,
+      leads: JSON.parse(localStorage.getItem('twc_leads') || '[]'),
+      neighborhoods: JSON.parse(localStorage.getItem('twc_neighborhoods') || '[]'),
+      leadsLastRun: localStorage.getItem('twc_leads_lastrun') || ''
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
@@ -4464,6 +4727,18 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           });
           localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
         }
+        // Merge leads
+        if (data.leads && data.leads.length) {
+          const existingLeadIds = new Set(leads.map(l => l.id));
+          const newLeads = data.leads.filter(l => !existingLeadIds.has(l.id));
+          leads = [...leads, ...newLeads];
+          saveLeads();
+        }
+        if (data.neighborhoods && data.neighborhoods.length) {
+          neighborhoods = data.neighborhoods;
+          saveNeighborhoods();
+        }
+        if (data.leadsLastRun) localStorage.setItem('twc_leads_lastrun', data.leadsLastRun);
         renderSaved();
         renderCRM();
         alert(`✅ Import complete! ${newQuotes.length} new quotes added.`);
@@ -4710,7 +4985,6 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         if (q.won === true) r.won = true;
         if (q.won === false && r.won !== true) r.won = false;
         if (q.scheduled) { r.scheduled = true; r.scheduledISO = q.scheduledISO; if (q.scheduledEndISO) r.scheduledEndISO = q.scheduledEndISO; if (q.scheduledMins) r.scheduledMins = q.scheduledMins; }
-        if (q.gcalEventId) r.gcalEventId = q.gcalEventId;
         if (q.invoicedDate) r.invoicedDate = q.invoicedDate;
         if (q.notes) r.notes = q.notes;
         if (q.paymentMethod) r.paymentMethod = q.paymentMethod;
@@ -5207,6 +5481,305 @@ ${bizEmail}`
     isSyncing = false;
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // ═══ LEAD FINDER ═══
+  // ═══════════════════════════════════════════════════════════════
+
+  let leads = JSON.parse(localStorage.getItem('twc_leads') || '[]');
+  let neighborhoods = JSON.parse(localStorage.getItem('twc_neighborhoods') || '[]');
+
+  function saveLeads() {
+    localStorage.setItem('twc_leads', JSON.stringify(leads));
+  }
+
+  function saveNeighborhoods() {
+    localStorage.setItem('twc_neighborhoods', JSON.stringify(neighborhoods));
+  }
+
+  // ── Import agent JSON ──
+  function importLeadFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const data = JSON.parse(e.target.result);
+        const newLeads = data.commercial_leads || [];
+        const newNbhds = data.neighborhood_intelligence || [];
+        const generated = data.generated || '';
+
+        // Merge leads: preserve user-set status & notes for existing leads
+        const existingById = {};
+        leads.forEach(l => { existingById[l.id] = l; });
+
+        newLeads.forEach(lead => {
+          if (existingById[lead.id]) {
+            const existing = existingById[lead.id];
+            lead.status = existing.status || lead.status || 'new';
+            lead.notes = existing.notes || lead.notes || [];
+          }
+          lead.status = lead.status || 'new';
+          lead.notes = lead.notes || [];
+        });
+
+        leads = newLeads;
+        saveLeads();
+
+        if (newNbhds.length) {
+          neighborhoods = newNbhds;
+          saveNeighborhoods();
+        }
+
+        if (generated) localStorage.setItem('twc_leads_lastrun', generated);
+
+        renderLeads();
+        alert(`✅ Imported ${newLeads.length} leads and ${newNbhds.length} neighbourhoods from ${generated || file.name}`);
+      } catch(err) {
+        alert('Error reading file. Make sure it is a valid Lead Finder JSON export.');
+      }
+      event.target.value = '';
+    };
+    reader.readAsText(file);
+  }
+
+  // ── Render lead score badge class ──
+  function scoreClass(score) {
+    if (!score && score !== 0) return 'score-low';
+    if (score >= 8) return 'score-high';
+    if (score >= 5) return 'score-mid';
+    return 'score-low';
+  }
+
+  // ── Status color ──
+  function statusStyle(status) {
+    const map = {
+      new: 'background:#e0f2fe; color:#0369a1;',
+      contacted: 'background:#fef3c7; color:#92400e;',
+      quoted: 'background:#ede9fe; color:#5b21b6;',
+      won: 'background:#d1fae5; color:#065f46;',
+      lost: 'background:#fee2e2; color:#991b1b;',
+    };
+    return map[status] || map.new;
+  }
+
+  // ── Render the full Lead Finder tab ──
+  function renderLeads() {
+    const searchQ = (document.getElementById('leads-search')?.value || '').toLowerCase();
+    const filterCat = document.getElementById('leads-filter-cat')?.value || '';
+    const filterStatus = document.getElementById('leads-filter-status')?.value || '';
+    const filterScore = parseInt(document.getElementById('leads-filter-score')?.value || '0');
+
+    // Stats
+    document.getElementById('ls-total').textContent = leads.length;
+    document.getElementById('ls-highval').textContent = leads.filter(l => (l.ai_score||0) >= 8).length;
+    document.getElementById('ls-contacted').textContent = leads.filter(l => l.status === 'contacted').length;
+    document.getElementById('ls-won').textContent = leads.filter(l => l.status === 'won').length;
+    const lastRun = localStorage.getItem('twc_leads_lastrun') || '';
+    document.getElementById('ls-lastrun').textContent = lastRun || '—';
+
+    // Filter leads
+    let filtered = leads.filter(lead => {
+      if (filterCat && lead.category !== filterCat) return false;
+      if (filterStatus && lead.status !== filterStatus) return false;
+      if (filterScore && (lead.ai_score || 0) < filterScore) return false;
+      if (searchQ) {
+        const haystack = (lead.name + ' ' + lead.address).toLowerCase();
+        if (!haystack.includes(searchQ)) return false;
+      }
+      return true;
+    });
+
+    const leadsEl = document.getElementById('leads-list');
+    if (!filtered.length) {
+      leadsEl.innerHTML = '<div class="empty-msg">No leads found. Import agent results or add a lead manually.</div>';
+    } else {
+      leadsEl.innerHTML = filtered.map(lead => renderLeadCard(lead)).join('');
+    }
+
+    // Neighbourhoods
+    const nbhdEl = document.getElementById('nbhd-list');
+    if (!neighborhoods.length) {
+      nbhdEl.innerHTML = '<div class="empty-msg">No neighbourhood data yet. Import agent results to see marketing intelligence.</div>';
+    } else {
+      nbhdEl.innerHTML = neighborhoods.map(n => renderNbhdCard(n)).join('');
+    }
+  }
+
+  function renderLeadCard(lead) {
+    const score = lead.ai_score != null ? lead.ai_score : '?';
+    const tags = (lead.ai_tags || []).filter(t => t !== 'fallback_score' && t !== 'unrated');
+    const notes = lead.notes || [];
+
+    return `<div class="lead-card" id="lc-${lead.id}">
+      <div class="lead-card-header">
+        <div class="lead-score-badge ${scoreClass(lead.ai_score)}">${score}</div>
+        <div class="lead-info">
+          <div class="lead-name">${escHtml(lead.name)}</div>
+          <div class="lead-address">📍 ${escHtml(lead.address)}</div>
+          ${lead.phone ? `<div class="lead-phone">📞 ${escHtml(lead.phone)}</div>` : ''}
+          ${lead.ai_note ? `<div class="lead-ai-note">💡 ${escHtml(lead.ai_note)}</div>` : ''}
+          ${tags.length ? `<div class="lead-tags">${tags.map(t => `<span class="lead-tag ${t}">${t.replace(/_/g,' ')}</span>`).join('')}</div>` : ''}
+        </div>
+        <div class="lead-actions">
+          <select class="lead-status-select" onchange="updateLeadStatus('${lead.id}', this.value)" title="Status">
+            ${['new','contacted','quoted','won','lost'].map(s =>
+              `<option value="${s}" ${lead.status===s?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`
+            ).join('')}
+          </select>
+          <button class="lead-btn lead-btn-teal" onclick="sendLeadToCRM('${lead.id}')">👥 CRM</button>
+          <button class="lead-btn lead-btn-red" onclick="deleteLead('${lead.id}')">✕</button>
+        </div>
+      </div>
+      ${notes.length ? `<div class="lead-notes-list">${notes.map(n => `<div class="lead-note-entry">${escHtml(n.text)}<div class="lead-note-meta">${n.date}</div></div>`).join('')}</div>` : ''}
+      <div class="lead-note-row">
+        <input class="lead-note-input" id="ln-${lead.id}" type="text" placeholder="Add a note..." onkeydown="if(event.key==='Enter')addLeadNote('${lead.id}')">
+        <button class="lead-btn lead-btn-teal" onclick="addLeadNote('${lead.id}')">+ Note</button>
+      </div>
+    </div>`;
+  }
+
+  function renderNbhdCard(n) {
+    const score = n.score != null ? n.score : '?';
+    const rec = n.campaign_recommendation || '';
+    const season = n.best_season || '';
+    const badgeRec = rec === 'door_hanger' ? 'Door Hanger' : rec === 'door_knock' ? 'Door Knock' : rec === 'both' ? 'Door Hanger + Knock' : rec;
+
+    return `<div class="nbhd-card">
+      <div class="nbhd-header">
+        <div class="nbhd-score ${scoreClass(n.score)}">${score}</div>
+        <div class="nbhd-info">
+          <div class="nbhd-name">${escHtml(n.name)}</div>
+          <div class="nbhd-meta">${escHtml(n.housing_type || '')} · ${escHtml(n.avg_income_bracket || '')} income · ${(n.postal_codes||[]).join(', ')}</div>
+        </div>
+      </div>
+      <div class="nbhd-badges">
+        ${rec && rec !== 'skip' ? `<span class="nbhd-badge badge-${rec}">${badgeRec}</span>` : ''}
+        ${season ? `<span class="nbhd-badge badge-${season}">Best: ${season}</span>` : ''}
+      </div>
+      ${n.ai_summary ? `<div class="nbhd-summary">${escHtml(n.ai_summary)}</div>` : ''}
+      ${n.pitch_template ? `<div class="nbhd-pitch">"${escHtml(n.pitch_template)}"</div>` : ''}
+    </div>`;
+  }
+
+  // ── Lead actions ──
+  function updateLeadStatus(id, status) {
+    const lead = leads.find(l => l.id === id);
+    if (!lead) return;
+    lead.status = status;
+    lead.lastContact = status === 'contacted' ? new Date().toISOString().slice(0,10) : lead.lastContact;
+    saveLeads();
+  }
+
+  function addLeadNote(id) {
+    const input = document.getElementById('ln-' + id);
+    if (!input) return;
+    const text = input.value.trim();
+    if (!text) return;
+    const lead = leads.find(l => l.id === id);
+    if (!lead) return;
+    if (!lead.notes) lead.notes = [];
+    lead.notes.push({ text, date: new Date().toLocaleDateString('en-CA') });
+    input.value = '';
+    saveLeads();
+    renderLeads();
+  }
+
+  function deleteLead(id) {
+    if (!confirm('Delete this lead?')) return;
+    leads = leads.filter(l => l.id !== id);
+    saveLeads();
+    renderLeads();
+  }
+
+  function sendLeadToCRM(id) {
+    const lead = leads.find(l => l.id === id);
+    if (!lead) return;
+
+    // Generate a customer ID from lead id
+    const custId = 'cust_from_lead_' + id;
+    if (!customers[custId]) {
+      customers[custId] = {
+        id: custId,
+        name: lead.name,
+        address: lead.address,
+        phone: lead.phone || '',
+        email: lead.email || '',
+        source: 'lead_finder',
+        createdAt: new Date().toISOString().slice(0,10),
+      };
+      saveCustomers();
+      lead.status = 'contacted';
+      saveLeads();
+      renderLeads();
+      alert(`✅ "${lead.name}" added to CRM! Switch to the CRM tab to see them.`);
+    } else {
+      alert(`"${lead.name}" is already in your CRM.`);
+    }
+  }
+
+  // ── Manual lead add ──
+  function addManualLeadModal() {
+    document.getElementById('manualLeadModal').style.display = 'flex';
+  }
+
+  function saveManualLead() {
+    const name = document.getElementById('ml-name').value.trim();
+    if (!name) { alert('Please enter a name.'); return; }
+    const lead = {
+      id: 'lead_manual_' + Date.now(),
+      name,
+      type: document.getElementById('ml-type').value,
+      category: document.getElementById('ml-cat').value,
+      address: document.getElementById('ml-address').value.trim(),
+      phone: document.getElementById('ml-phone').value.trim(),
+      email: document.getElementById('ml-email').value.trim(),
+      website: '',
+      rating: 0,
+      review_count: 0,
+      source: 'manual',
+      place_id: '',
+      status: 'new',
+      ai_score: null,
+      ai_tags: [],
+      ai_note: '',
+      notes: [],
+      lat: null,
+      lng: null,
+    };
+    const noteText = document.getElementById('ml-notes').value.trim();
+    if (noteText) lead.notes.push({ text: noteText, date: new Date().toLocaleDateString('en-CA') });
+
+    leads.unshift(lead);
+    saveLeads();
+    document.getElementById('manualLeadModal').style.display = 'none';
+    ['ml-name','ml-address','ml-phone','ml-email','ml-notes'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    renderLeads();
+  }
+
+  // ── Export CSV ──
+  function exportLeadsCSV() {
+    if (!leads.length) { alert('No leads to export.'); return; }
+    const cols = ['Name','Category','Type','Address','Phone','Email','AI Score','Tags','Status','Source','AI Note'];
+    const rows = leads.map(l => [
+      l.name, l.category, l.type, l.address, l.phone||'', l.email||'',
+      l.ai_score||'', (l.ai_tags||[]).join('; '), l.status, l.source, l.ai_note||''
+    ]);
+    const csv = [cols, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `CrewHub_Leads_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // ── Utility: HTML escape ──
+  function escHtml(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
 </script>
 
 <!-- CRM Edit Modal -->
@@ -5264,12 +5837,11 @@ ${bizEmail}`
 <div id="schedModal" style="display:none; position:fixed; inset:0; background:rgba(10,30,45,0.75); z-index:1100; overflow-y:auto; padding:30px 16px;">
   <div style="max-width:440px; margin:0 auto; background:white; border-radius:16px; overflow:hidden; box-shadow:0 12px 48px rgba(26,110,168,0.25);">
     <div style="background:#1a3a4a; padding:20px 24px; display:flex; justify-content:space-between; align-items:center;">
-      <div id="schedModal-heading" style="color:white; font-weight:800; font-size:15px;">📅 Schedule Job</div>
+      <div style="color:white; font-weight:800; font-size:15px;">📅 Schedule Job</div>
       <button onclick="closeScheduleModal()" style="background:none;border:none;color:white;font-size:24px;cursor:pointer;line-height:1;">×</button>
     </div>
     <div style="padding:24px; display:flex; flex-direction:column; gap:16px;">
       <div id="schedModal-title" style="font-weight:700; font-size:14px; color:#1a3a4a; background:#f0f7fa; padding:10px 14px; border-radius:10px;"></div>
-      <div id="schedModal-current" style="display:none; background:#fff7ed; border:2px solid #f97316; border-radius:10px; padding:10px 14px; font-size:13px; font-weight:700; color:#c2410c;">📅 Currently scheduled — pick a new date &amp; time below</div>
       <div>
         <label style="font-size:12px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;">Date</label>
         <input id="schedModal-date" type="date" onchange="renderSchedDayPreview()" style="width:100%;padding:10px 14px;border:2px solid #e2e8f0;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;outline:none;">
@@ -5385,6 +5957,167 @@ ${bizEmail}`
       <div id="rpt-top-customers"></div>
     </div>
 
+  </div>
+</div>
+
+<!-- ═══ LEAD FINDER TAB ═══ -->
+<div id="tab-leads" class="tab-panel">
+<div class="leads-wrap">
+
+  <!-- Import Bar -->
+  <div class="leads-import-bar">
+    <div style="flex:1; min-width:200px;">
+      <h2>🎯 Lead Finder</h2>
+      <p>Import weekly agent results to see AI-rated leads and neighbourhood marketing intelligence</p>
+    </div>
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <label style="background:white; color:var(--blue); border:none; border-radius:30px; padding:10px 20px; font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; cursor:pointer; white-space:nowrap; transition:all 0.15s;">
+        📥 Import Agent Results
+        <input type="file" accept=".json" style="display:none;" onchange="importLeadFile(event)">
+      </label>
+      <button onclick="addManualLeadModal()" style="background:var(--yellow); color:var(--blue-dark); border:none; border-radius:30px; padding:10px 20px; font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; cursor:pointer; white-space:nowrap;">
+        ➕ Add Manual Lead
+      </button>
+      <button onclick="exportLeadsCSV()" style="background:rgba(255,255,255,0.15); color:white; border:2px solid rgba(255,255,255,0.35); border-radius:30px; padding:10px 20px; font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; cursor:pointer; white-space:nowrap;">
+        📤 Export CSV
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats Row -->
+  <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-bottom:24px;">
+    <div class="stat-card" style="text-align:center;">
+      <div class="stat-label">Total Leads</div>
+      <div class="stat-val" id="ls-total" style="color:var(--teal-dark);">0</div>
+    </div>
+    <div class="stat-card" style="text-align:center;">
+      <div class="stat-label">High Value (8+)</div>
+      <div class="stat-val" id="ls-highval" style="color:#059669;">0</div>
+    </div>
+    <div class="stat-card" style="text-align:center;">
+      <div class="stat-label">Contacted</div>
+      <div class="stat-val" id="ls-contacted" style="color:var(--blue);">0</div>
+    </div>
+    <div class="stat-card" style="text-align:center;">
+      <div class="stat-label">Won</div>
+      <div class="stat-val" id="ls-won" style="color:#10b981;">0</div>
+    </div>
+    <div class="stat-card" style="text-align:center;">
+      <div class="stat-label">Last Import</div>
+      <div class="stat-val" id="ls-lastrun" style="font-size:14px; color:var(--muted);">—</div>
+    </div>
+  </div>
+
+  <!-- Commercial Leads Section -->
+  <div class="leads-section-title">🏢 Commercial Leads</div>
+
+  <div class="leads-filter-bar">
+    <input type="text" class="leads-search" id="leads-search" placeholder="Search by name or address..." oninput="renderLeads()">
+    <select class="leads-filter-select" id="leads-filter-cat" onchange="renderLeads()">
+      <option value="">All Categories</option>
+      <option value="restaurant">Restaurants</option>
+      <option value="cafe">Cafes</option>
+      <option value="hotel">Hotels</option>
+      <option value="winery">Wineries</option>
+      <option value="retail">Retail</option>
+      <option value="gym">Gyms</option>
+      <option value="salon">Salons</option>
+      <option value="medical">Medical</option>
+      <option value="dental">Dental</option>
+      <option value="auto_dealer">Auto Dealers</option>
+      <option value="real_estate_agency">Real Estate</option>
+      <option value="property_management">Property Mgmt</option>
+      <option value="office">Offices</option>
+    </select>
+    <select class="leads-filter-select" id="leads-filter-status" onchange="renderLeads()">
+      <option value="">All Statuses</option>
+      <option value="new">New</option>
+      <option value="contacted">Contacted</option>
+      <option value="quoted">Quoted</option>
+      <option value="won">Won</option>
+      <option value="lost">Lost</option>
+    </select>
+    <select class="leads-filter-select" id="leads-filter-score" onchange="renderLeads()">
+      <option value="">Any Score</option>
+      <option value="8">High Value (8+)</option>
+      <option value="6">Medium+ (6+)</option>
+    </select>
+  </div>
+
+  <div id="leads-list"></div>
+
+  <!-- Neighbourhood Intelligence Section -->
+  <div class="leads-section-title">🏘️ Neighbourhood Marketing Intelligence</div>
+  <div id="nbhd-list"></div>
+
+</div>
+</div>
+
+<!-- Manual Lead Modal -->
+<div id="manualLeadModal" style="display:none; position:fixed; inset:0; background:rgba(10,30,45,0.75); z-index:1100; overflow-y:auto; padding:30px 16px;">
+  <div style="max-width:480px; margin:0 auto; background:white; border-radius:16px; overflow:hidden; box-shadow:0 12px 48px rgba(26,110,168,0.25);">
+    <div style="background:var(--teal-dark); padding:18px 24px; display:flex; justify-content:space-between; align-items:center;">
+      <div style="color:white; font-weight:800; font-size:15px;">➕ Add Manual Lead</div>
+      <button onclick="document.getElementById('manualLeadModal').style.display='none'" style="background:none;border:none;color:white;font-size:24px;cursor:pointer;line-height:1;">×</button>
+    </div>
+    <div style="padding:20px 24px; display:flex; flex-direction:column; gap:12px;">
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px;">Business / Contact Name *</label>
+        <input id="ml-name" type="text" placeholder="e.g. Tim Hortons - Main St" style="width:100%;padding:10px 14px;border:2px solid var(--gray);border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;color:var(--text);outline:none;">
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <div>
+          <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px;">Type</label>
+          <select id="ml-type" style="width:100%;padding:10px 14px;border:2px solid var(--gray);border-radius:10px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;color:var(--text);background:white;outline:none;">
+            <option value="commercial">Commercial</option>
+            <option value="residential">Residential</option>
+            <option value="realtor">Realtor</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px;">Category</label>
+          <select id="ml-cat" style="width:100%;padding:10px 14px;border:2px solid var(--gray);border-radius:10px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;color:var(--text);background:white;outline:none;">
+            <option value="restaurant">Restaurant</option>
+            <option value="cafe">Cafe</option>
+            <option value="hotel">Hotel</option>
+            <option value="retail">Retail</option>
+            <option value="office">Office</option>
+            <option value="winery">Winery</option>
+            <option value="gym">Gym</option>
+            <option value="salon">Salon</option>
+            <option value="medical">Medical</option>
+            <option value="dental">Dental</option>
+            <option value="auto_dealer">Auto Dealer</option>
+            <option value="real_estate_agency">Real Estate</option>
+            <option value="property_management">Property Mgmt</option>
+            <option value="residential">Residential Home</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px;">Address</label>
+        <input id="ml-address" type="text" placeholder="123 Main St, Penticton, BC" style="width:100%;padding:10px 14px;border:2px solid var(--gray);border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;color:var(--text);outline:none;">
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <div>
+          <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px;">Phone</label>
+          <input id="ml-phone" type="tel" placeholder="250-555-1234" style="width:100%;padding:10px 14px;border:2px solid var(--gray);border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;color:var(--text);outline:none;">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px;">Email</label>
+          <input id="ml-email" type="email" placeholder="manager@business.com" style="width:100%;padding:10px 14px;border:2px solid var(--gray);border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;color:var(--text);outline:none;">
+        </div>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px;">Notes</label>
+        <textarea id="ml-notes" rows="2" placeholder="Anything useful — who you spoke with, best time to call, etc." style="width:100%;padding:10px 14px;border:2px solid var(--gray);border-radius:10px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;color:var(--text);outline:none;resize:vertical;"></textarea>
+      </div>
+      <div style="display:flex; gap:10px; margin-top:6px;">
+        <button onclick="saveManualLead()" style="flex:1;background:var(--teal);color:white;border:none;border-radius:30px;padding:12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;cursor:pointer;">💾 Save Lead</button>
+        <button onclick="document.getElementById('manualLeadModal').style.display='none'" style="flex:1;background:#f1f5f9;color:var(--text);border:none;border-radius:30px;padding:12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;cursor:pointer;">Cancel</button>
+      </div>
+    </div>
   </div>
 </div>
 
