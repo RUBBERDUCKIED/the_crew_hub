@@ -1989,6 +1989,19 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   let deletedCustomerIds = safeGet('twc_deleted_customers', []);
   let currentCustomerId = null; // set when a customer is selected/linked in the quote form
 
+  // ── One-time migration: purge ghost customers (no customerId) left by old bug ──
+  (function purgeGhostCustomers() {
+    const raw = customers;
+    let dirty = false;
+    Object.keys(raw).forEach(k => {
+      if (!raw[k].customerId) { delete raw[k]; dirty = true; }
+    });
+    if (dirty) {
+      try { localStorage.setItem('twc_customers', JSON.stringify(raw)); } catch(e) {}
+      console.info('[CrewHub] Ghost customer records purged.');
+    }
+  })();
+
   let cleaningSide = 'outside';
   let windowCondition = 'maintenance';
   let servicePlan = 'oneoff';
@@ -4519,7 +4532,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     });
 
     // Stats — always based on active customers only
-    const activeCusts = custList.filter(c => !c.archived);
+    const activeCusts = custList.filter(c => !c.archived && !!c.customerId);
     const activeIds   = new Set(activeCusts.map(c => c.customerId));
     const allWon      = savedQuotes.filter(q => q.won === true && activeIds.has(q.customerId));
     const activeQuotes = savedQuotes.filter(q => activeIds.has(q.customerId));
