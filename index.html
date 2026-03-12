@@ -1083,7 +1083,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   /* ── Reports ── */
   #tab-reports > div { padding: 12px 10px 60px; }
 
-  /* ── Lead Finder ── */
+  /* ── Lead Pipeline ── */
   .leads-wrap { padding: 12px 10px 60px; }
   .lead-card { margin-bottom: 10px; }
 }
@@ -1476,7 +1476,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   <button class="tab-btn" onclick="switchTab('pipeline', this)">⚡ Job Pipeline</button>
   <button class="tab-btn" onclick="switchTab('crm', this)">👥 CRM</button>
   <button class="tab-btn" onclick="switchTab('reports', this)">📊 Reports</button>
-  <button class="tab-btn" onclick="switchTab('leads', this)">🎯 Lead Finder</button>
+  <button class="tab-btn" onclick="switchTab('leads', this)">🎯 Lead Pipeline</button>
   <div id="syncStatus" style="margin-left:auto; display:flex; align-items:center; gap:8px; padding-bottom:4px;">
     <div id="syncIndicator" style="width:8px;height:8px;border-radius:50%;background:#aac4cc;flex-shrink:0;"></div>
     <span id="syncLabel" style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.6);">Not signed in</span>
@@ -4547,7 +4547,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         📦 Showing ${filtered.length} archived customer${filtered.length !== 1 ? 's' : ''} — these are hidden from your main CRM view.
       </div>` : '';
 
-    el.innerHTML = archivedBanner + filtered.map(c => {
+    el.innerHTML = archivedBanner + filtered.filter(c => !!c.customerId).map(c => {
       const cid        = c.customerId;
       const safeId     = cid.replace(/\W/g, '_');
       const isArchived = c.archived || false;
@@ -5672,7 +5672,7 @@ ${bizEmail}`
         renderLeads();
         alert(`✅ Imported ${newLeads.length} leads and ${newNbhds.length} neighbourhoods from ${generated || file.name}`);
       } catch(err) {
-        alert('Error reading file. Make sure it is a valid Lead Finder JSON export.');
+        alert('Error reading file. Make sure it is a valid Lead Pipeline JSON export.');
       }
       event.target.value = '';
     };
@@ -5699,7 +5699,7 @@ ${bizEmail}`
     return map[status] || map.new;
   }
 
-  // ── Render the full Lead Finder tab ──
+  // ── Render the full Lead Pipeline tab ──
   function renderLeads() {
     const searchQ = (document.getElementById('leads-search')?.value || '').toLowerCase();
     const filterCat = document.getElementById('leads-filter-cat')?.value || '';
@@ -5885,7 +5885,7 @@ ${bizEmail}`
     document.getElementById('custPhone').value   = lead.phone   || '';
     document.getElementById('custEmail').value   = lead.email   || '';
 
-    // Set lead source to Lead Finder if the option exists
+    // Set lead source to Lead Pipeline if the option exists
     const srcSelect = document.getElementById('custLeadSource');
     if (srcSelect) {
       const opt = Array.from(srcSelect.options).find(o =>
@@ -5909,26 +5909,33 @@ ${bizEmail}`
     const lead = leads.find(l => l.id === id);
     if (!lead) return;
 
-    // Generate a customer ID from lead id
-    const custId = 'cust_from_lead_' + id;
-    if (!customers[custId]) {
-      customers[custId] = {
-        id: custId,
-        name: lead.name,
-        address: lead.address,
-        phone: lead.phone || '',
-        email: lead.email || '',
-        source: 'lead_finder',
-        createdAt: new Date().toISOString().slice(0,10),
-      };
-      saveCustomers();
-      lead.status = 'contacted';
-      saveLeads();
-      renderLeads();
-      alert(`✅ "${lead.name}" added to CRM! Switch to the CRM tab to see them.`);
-    } else {
+    // Check if a customer from this lead already exists
+    const existingKey = 'cust_from_lead_' + id;
+    const alreadyExists = customers[existingKey] || Object.values(customers).some(c => c._leadId === id);
+    if (alreadyExists) {
       alert(`"${lead.name}" is already in your CRM.`);
+      return;
     }
+
+    // Create customer using the same format as the rest of the app
+    const custId = 'cust_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+    customers[custId] = {
+      customerId: custId,   // must match the key — this is what renderCRM expects
+      _leadId: id,          // keeps the lead → customer link for duplicate detection
+      name: lead.name,
+      company: lead.name,
+      address: lead.address,
+      phone: lead.phone || '',
+      email: lead.email || '',
+      source: 'lead_pipeline',
+      createdAt: new Date().toISOString().slice(0,10),
+    };
+    saveCustomers();
+    lead.status = 'contacted';
+    saveLeads();
+    autoSync();
+    renderLeads();
+    alert(`✅ "${lead.name}" added to CRM! Switch to the CRM tab to see them.`);
   }
 
   // ── Manual lead add ──
@@ -6185,7 +6192,7 @@ ${bizEmail}`
   <!-- Import Bar -->
   <div class="leads-import-bar">
     <div style="flex:1; min-width:200px;">
-      <h2>🎯 Lead Finder</h2>
+      <h2>🎯 Lead Pipeline</h2>
       <p>Import weekly agent results to see AI-rated leads and neighbourhood marketing intelligence</p>
     </div>
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
