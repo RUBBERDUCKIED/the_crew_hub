@@ -3943,7 +3943,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     updateMeta(); calc();
   }
 
-  updateMeta(); calc(); renderSaved(); renderRecurring();
+  updateMeta(); calc(); renderSaved(); renderRecurring(); renderToday();
   // Attach Places autocomplete to quote address field (may fire before Google loads — handled by initGooglePlaces callback too)
   setTimeout(() => attachPlacesAutocomplete('custAddress'), 1500);
 
