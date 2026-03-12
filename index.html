@@ -1134,6 +1134,61 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   gap: 8px;
 }
 
+/* Lead sub-tabs */
+.leads-subtab-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid rgba(42,157,181,0.18);
+  padding-bottom: 0;
+  flex-wrap: wrap;
+}
+.leads-subtab {
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  padding: 10px 22px;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  border-radius: 8px 8px 0 0;
+  white-space: nowrap;
+}
+.leads-subtab:hover { color: var(--teal-dark); background: rgba(42,157,181,0.06); }
+.leads-subtab.active { color: var(--teal-dark); border-bottom-color: var(--teal-dark); background: rgba(42,157,181,0.06); }
+
+/* Lead card extras */
+.lead-blurb {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.55;
+  margin-top: 5px;
+  font-style: italic;
+}
+.lead-owner {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--blue);
+  margin-top: 3px;
+}
+.lead-segment-pill {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+.seg-commercial { background: #dbeafe; color: #1d4ed8; }
+.seg-storefront { background: #fef3c7; color: #92400e; }
+.seg-residential { background: #d1fae5; color: #065f46; }
+
 .lead-card {
   background: white;
   border-radius: var(--radius);
@@ -5487,6 +5542,7 @@ ${bizEmail}`
 
   let leads = JSON.parse(localStorage.getItem('twc_leads') || '[]');
   let neighborhoods = JSON.parse(localStorage.getItem('twc_neighborhoods') || '[]');
+  let currentLeadTab = 'commercial';
 
   function saveLeads() {
     localStorage.setItem('twc_leads', JSON.stringify(leads));
@@ -5494,6 +5550,25 @@ ${bizEmail}`
 
   function saveNeighborhoods() {
     localStorage.setItem('twc_neighborhoods', JSON.stringify(neighborhoods));
+  }
+
+  function switchLeadTab(tab, btn) {
+    currentLeadTab = tab;
+    document.querySelectorAll('.leads-subtab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const filterBar = document.getElementById('leads-filter-bar');
+    const leadsEl = document.getElementById('leads-list');
+    const nbhdEl = document.getElementById('nbhd-list');
+    if (tab === 'neighbourhoods') {
+      filterBar.style.display = 'none';
+      leadsEl.style.display = 'none';
+      nbhdEl.style.display = '';
+    } else {
+      filterBar.style.display = '';
+      leadsEl.style.display = '';
+      nbhdEl.style.display = 'none';
+    }
+    renderLeads();
   }
 
   // ── Import agent JSON ──
@@ -5577,13 +5652,39 @@ ${bizEmail}`
     const lastRun = localStorage.getItem('twc_leads_lastrun') || '';
     document.getElementById('ls-lastrun').textContent = lastRun || '—';
 
-    // Filter leads
+    // Sub-tab counts
+    const cCount = leads.filter(l => (l.lead_segment||'commercial') === 'commercial').length;
+    const sCount = leads.filter(l => (l.lead_segment||'') === 'storefront').length;
+    const rCount = leads.filter(l => (l.lead_segment||'') === 'residential').length;
+    const ccEl = document.getElementById('ls-count-commercial');
+    const scEl = document.getElementById('ls-count-storefront');
+    const rcEl = document.getElementById('ls-count-residential');
+    const nbEl = document.getElementById('ls-count-nbhd');
+    if (ccEl) ccEl.textContent = cCount ? `(${cCount})` : '';
+    if (scEl) scEl.textContent = sCount ? `(${sCount})` : '';
+    if (rcEl) rcEl.textContent = rCount ? `(${rCount})` : '';
+    if (nbEl) nbEl.textContent = neighborhoods.length ? `(${neighborhoods.length})` : '';
+
+    // Neighbourhood tab
+    const nbhdEl = document.getElementById('nbhd-list');
+    if (currentLeadTab === 'neighbourhoods') {
+      if (!neighborhoods.length) {
+        nbhdEl.innerHTML = '<div class="empty-msg">No neighbourhood data yet. Import agent results to see marketing intelligence.</div>';
+      } else {
+        nbhdEl.innerHTML = neighborhoods.map(n => renderNbhdCard(n)).join('');
+      }
+      return;
+    }
+
+    // Filter leads by active sub-tab + search/filters
     let filtered = leads.filter(lead => {
+      const seg = lead.lead_segment || 'commercial';
+      if (seg !== currentLeadTab) return false;
       if (filterCat && lead.category !== filterCat) return false;
       if (filterStatus && lead.status !== filterStatus) return false;
       if (filterScore && (lead.ai_score || 0) < filterScore) return false;
       if (searchQ) {
-        const haystack = (lead.name + ' ' + lead.address).toLowerCase();
+        const haystack = (lead.name + ' ' + lead.address + ' ' + (lead.owner_name||'')).toLowerCase();
         if (!haystack.includes(searchQ)) return false;
       }
       return true;
@@ -5591,17 +5692,10 @@ ${bizEmail}`
 
     const leadsEl = document.getElementById('leads-list');
     if (!filtered.length) {
-      leadsEl.innerHTML = '<div class="empty-msg">No leads found. Import agent results or add a lead manually.</div>';
+      const tabLabel = currentLeadTab === 'commercial' ? 'commercial' : currentLeadTab === 'storefront' ? 'storefront / route' : 'residential';
+      leadsEl.innerHTML = `<div class="empty-msg">No ${tabLabel} leads found. Import agent results or add a lead manually.</div>`;
     } else {
       leadsEl.innerHTML = filtered.map(lead => renderLeadCard(lead)).join('');
-    }
-
-    // Neighbourhoods
-    const nbhdEl = document.getElementById('nbhd-list');
-    if (!neighborhoods.length) {
-      nbhdEl.innerHTML = '<div class="empty-msg">No neighbourhood data yet. Import agent results to see marketing intelligence.</div>';
-    } else {
-      nbhdEl.innerHTML = neighborhoods.map(n => renderNbhdCard(n)).join('');
     }
   }
 
@@ -5609,14 +5703,20 @@ ${bizEmail}`
     const score = lead.ai_score != null ? lead.ai_score : '?';
     const tags = (lead.ai_tags || []).filter(t => t !== 'fallback_score' && t !== 'unrated');
     const notes = lead.notes || [];
+    const seg = lead.lead_segment || 'commercial';
+    const segLabel = seg === 'commercial' ? '🏢 Commercial' : seg === 'storefront' ? '🏪 Storefront' : '🏠 Residential';
+    const segClass = 'seg-' + seg;
 
     return `<div class="lead-card" id="lc-${lead.id}">
       <div class="lead-card-header">
         <div class="lead-score-badge ${scoreClass(lead.ai_score)}">${score}</div>
-        <div class="lead-info">
+        <div class="lead-info" style="flex:1;">
+          <span class="lead-segment-pill ${segClass}">${segLabel}</span>
           <div class="lead-name">${escHtml(lead.name)}</div>
+          ${lead.owner_name ? `<div class="lead-owner">👤 ${escHtml(lead.owner_name)}</div>` : ''}
           <div class="lead-address">📍 ${escHtml(lead.address)}</div>
-          ${lead.phone ? `<div class="lead-phone">📞 ${escHtml(lead.phone)}</div>` : ''}
+          ${lead.phone ? `<div class="lead-phone" style="font-size:14px;font-weight:800;color:#0d9488;margin-top:3px;">📞 ${escHtml(lead.phone)}</div>` : '<div style="font-size:12px;color:#94a3b8;margin-top:2px;">📞 No phone on file</div>'}
+          ${lead.business_blurb ? `<div class="lead-blurb">${escHtml(lead.business_blurb)}</div>` : ''}
           ${lead.ai_note ? `<div class="lead-ai-note">💡 ${escHtml(lead.ai_note)}</div>` : ''}
           ${tags.length ? `<div class="lead-tags">${tags.map(t => `<span class="lead-tag ${t}">${t.replace(/_/g,' ')}</span>`).join('')}</div>` : ''}
         </div>
@@ -5632,7 +5732,7 @@ ${bizEmail}`
       </div>
       ${notes.length ? `<div class="lead-notes-list">${notes.map(n => `<div class="lead-note-entry">${escHtml(n.text)}<div class="lead-note-meta">${n.date}</div></div>`).join('')}</div>` : ''}
       <div class="lead-note-row">
-        <input class="lead-note-input" id="ln-${lead.id}" type="text" placeholder="Add a note..." onkeydown="if(event.key==='Enter')addLeadNote('${lead.id}')">
+        <input class="lead-note-input" id="ln-${lead.id}" type="text" placeholder="Add a note before you call..." onkeydown="if(event.key==='Enter')addLeadNote('${lead.id}')">
         <button class="lead-btn lead-btn-teal" onclick="addLeadNote('${lead.id}')">+ Note</button>
       </div>
     </div>`;
@@ -5725,10 +5825,12 @@ ${bizEmail}`
   function saveManualLead() {
     const name = document.getElementById('ml-name').value.trim();
     if (!name) { alert('Please enter a name.'); return; }
+    const segVal = document.getElementById('ml-type').value;
     const lead = {
       id: 'lead_manual_' + Date.now(),
       name,
-      type: document.getElementById('ml-type').value,
+      type: segVal === 'residential' ? 'residential' : 'commercial',
+      lead_segment: segVal,
       category: document.getElementById('ml-cat').value,
       address: document.getElementById('ml-address').value.trim(),
       phone: document.getElementById('ml-phone').value.trim(),
@@ -5742,6 +5844,8 @@ ${bizEmail}`
       ai_score: null,
       ai_tags: [],
       ai_note: '',
+      business_blurb: '',
+      owner_name: '',
       notes: [],
       lat: null,
       lng: null,
@@ -6008,10 +6112,16 @@ ${bizEmail}`
     </div>
   </div>
 
-  <!-- Commercial Leads Section -->
-  <div class="leads-section-title">🏢 Commercial Leads</div>
+  <!-- Lead Sub-tabs -->
+  <div class="leads-subtab-bar">
+    <button class="leads-subtab active" onclick="switchLeadTab('commercial', this)">🏢 Commercial <span id="ls-count-commercial" style="font-size:11px;opacity:0.7;"></span></button>
+    <button class="leads-subtab" onclick="switchLeadTab('storefront', this)">🏪 Storefront / Route <span id="ls-count-storefront" style="font-size:11px;opacity:0.7;"></span></button>
+    <button class="leads-subtab" onclick="switchLeadTab('residential', this)">🏠 Residential <span id="ls-count-residential" style="font-size:11px;opacity:0.7;"></span></button>
+    <button class="leads-subtab" onclick="switchLeadTab('neighbourhoods', this)">🏘️ Neighbourhoods <span id="ls-count-nbhd" style="font-size:11px;opacity:0.7;"></span></button>
+  </div>
 
-  <div class="leads-filter-bar">
+  <!-- Filter bar (hidden for neighbourhoods tab) -->
+  <div class="leads-filter-bar" id="leads-filter-bar">
     <input type="text" class="leads-search" id="leads-search" placeholder="Search by name or address..." oninput="renderLeads()">
     <select class="leads-filter-select" id="leads-filter-cat" onchange="renderLeads()">
       <option value="">All Categories</option>
@@ -6045,10 +6155,7 @@ ${bizEmail}`
   </div>
 
   <div id="leads-list"></div>
-
-  <!-- Neighbourhood Intelligence Section -->
-  <div class="leads-section-title">🏘️ Neighbourhood Marketing Intelligence</div>
-  <div id="nbhd-list"></div>
+  <div id="nbhd-list" style="display:none;"></div>
 
 </div>
 </div>
@@ -6069,9 +6176,9 @@ ${bizEmail}`
         <div>
           <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px;">Type</label>
           <select id="ml-type" style="width:100%;padding:10px 14px;border:2px solid var(--gray);border-radius:10px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;color:var(--text);background:white;outline:none;">
-            <option value="commercial">Commercial</option>
-            <option value="residential">Residential</option>
-            <option value="realtor">Realtor</option>
+            <option value="commercial">🏢 Commercial</option>
+            <option value="storefront">🏪 Storefront / Route</option>
+            <option value="residential">🏠 Residential</option>
           </select>
         </div>
         <div>
