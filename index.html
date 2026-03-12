@@ -5880,7 +5880,7 @@ ${bizEmail}`
     // Fill customer fields
     const isResidential = seg === 'residential';
     document.getElementById('custCompany').value = isResidential ? '' : (lead.name || '');
-    document.getElementById('custName').value    = isResidential ? (lead.name || '') : (lead.owner_name || '');
+    document.getElementById('custName').value    = isResidential ? (lead.name || '') : (lead.owner_name || lead.name || '');
     document.getElementById('custAddress').value = lead.address || '';
     document.getElementById('custPhone').value   = lead.phone   || '';
     document.getElementById('custEmail').value   = lead.email   || '';
