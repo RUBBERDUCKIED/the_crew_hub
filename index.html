@@ -3224,9 +3224,11 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const time  = document.getElementById('schedModal-time').value || '08:00';
     if (!date) { alert('Please pick a date.'); return; }
 
-    // Ensure we have a token — prompt sign-in if needed
+    // Ensure we have a Google token — prompt sign-in if needed
     if (!gAccessToken) {
-      alert('Please sign in to Google first using the Sync button, then try scheduling again.');
+      if (confirm('Google Calendar access is needed to schedule jobs.\n\nClick OK to connect your Google account.')) {
+        signIn();
+      }
       return;
     }
 
