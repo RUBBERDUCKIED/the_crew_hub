@@ -1979,6 +1979,87 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
 </style>
 
 <script>
+  // ╔══════════════════════════════════════════════════════════════╗
+  // ║  THE CREW HUB — CODE MAP                                    ║
+  // ║  (Update line numbers when sections shift significantly)     ║
+  // ╠══════════════════════════════════════════════════════════════╣
+  // ║  UTILITIES & STATE .................. ~Line 2065             ║
+  // ║  CUSTOMER TYPEAHEAD & QUOTING UI .... ~Line 2200             ║
+  // ║  QUOTE / RECEIPT TEMPLATES .......... ~Line 2655             ║
+  // ║  EMAIL & COMMUNICATIONS ............. ~Line 2885             ║
+  // ║  GOOGLE PLACES ...................... ~Line 2840             ║
+  // ║  CUSTOMER TABLE ..................... ~Line 3015             ║
+  // ║  QUOTING ENGINE ..................... ~Line 3150             ║
+  // ║  PIPELINE ........................... ~Line 3925             ║
+  // ║  TAB SWITCHING ...................... ~Line 4085             ║
+  // ║  REPORTS ............................ ~Line 4100             ║
+  // ║  CRM ................................ ~Line 4315             ║
+  // ║  TODAY'S JOBS DASHBOARD ............. ~Line 4420             ║
+  // ║  EXPORT / IMPORT .................... ~Line 4915             ║
+  // ║  SUPABASE AUTH & SYNC ............... ~Line 5035             ║
+  // ║  PHOTO STORAGE (GOOGLE DRIVE) ....... ~Line 5275             ║
+  // ║  PHOTO MODAL ........................ ~Line 5405             ║
+  // ║  REVIEW REQUESTS .................... ~Line 5515             ║
+  // ║  LEAD PIPELINE ...................... ~Line 5725             ║
+  // ╚══════════════════════════════════════════════════════════════╝
+
+  // ╔══════════════════════════════════════════════════════════════╗
+  // ║  GLOBAL STATE REFERENCE                                     ║
+  // ╠══════════════════════════════════════════════════════════════╣
+  // ║  ── CORE DATA ──                                            ║
+  // ║  savedQuotes          Array   All saved quotes/jobs         ║
+  // ║  customers            Object  Keyed by customerId           ║
+  // ║  deletedCustomerIds   Array   Tombstone log for sync        ║
+  // ║  crmNotes             Object  Notes keyed by customerId     ║
+  // ║  crmOverrides         Object  Legacy overrides keyed by ID  ║
+  // ║  leads                Array   Lead pipeline entries         ║
+  // ║  neighborhoods        Array   Saved neighborhoods           ║
+  // ║  customerPhotos       Object  Photo metadata keyed by cust  ║
+  // ║  ── UI / QUOTE FORM STATE ──                                ║
+  // ║  propType             String  'Residential'|'Commercial'    ║
+  // ║  currentLines         Array   Active line items in form     ║
+  // ║  currentGrand         Number  Live grand total              ║
+  // ║  currentSubtotal      Number  Live subtotal                 ║
+  // ║  currentCustomerId    String  Linked customer in form       ║
+  // ║  cleaningSide         String  'outside'|'inside'|'both'     ║
+  // ║  windowCondition      String  Condition tier key            ║
+  // ║  servicePlan          String  Plan tier key                 ║
+  // ║  showingArchived      Bool    CRM archive toggle            ║
+  // ║  pipeFilter           String  Pipeline filter key           ║
+  // ║  pipeTypeFilter       String  Pipeline type filter key      ║
+  // ║  quickNoteIdx         Number  Open quick-note index (null)  ║
+  // ║  currentLeadTab       String  Active lead sub-tab           ║
+  // ║  photoModalKey        String  Customer key for photo modal  ║
+  // ║  _pendingReceiptIdx   Number  Awaiting payment method pick  ║
+  // ║  _emailDocMeta        Object  {toEmail, subject, docType}   ║
+  // ║  ── AUTH / SYNC ──                                          ║
+  // ║  sbUser               Object  Supabase session user (null)  ║
+  // ║  isSyncing            Bool    Sync in-flight flag           ║
+  // ║  gAccessToken         String  Google Drive OAuth token      ║
+  // ║  gTokenExpiry         Number  Token expiry timestamp (ms)   ║
+  // ║  _autoSyncTimer       TimerID Debounce handle for autoSync  ║
+  // ║  ── CONFIG CONSTANTS ──                                     ║
+  // ║  SUPABASE_URL         String  Supabase project URL          ║
+  // ║  SUPABASE_ANON        String  Supabase anon/public key      ║
+  // ║  _sb                  Client  Supabase JS client instance   ║
+  // ║  GOOG_CLIENT_ID       String  Google OAuth2 client ID       ║
+  // ║  GOOG_SCOPES          String  Google OAuth2 scopes          ║
+  // ║  PHOTO_FOLDER_NAME    String  Drive folder name for photos  ║
+  // ║  conditionMultipliers Object  Price multipliers by tier     ║
+  // ║  conditionNotes       Object  Display notes by tier         ║
+  // ║  planDiscounts        Object  Discount rates by plan        ║
+  // ║  planNotes            Object  Display notes by plan         ║
+  // ║  planIntervalDays     Object  Days between visits by plan   ║
+  // ║  planLabel            Object  Display labels by plan        ║
+  // ╚══════════════════════════════════════════════════════════════╝
+
+  // ═══════════════════════════════════════════════════════════════
+  // ═══ UTILITIES & STATE ═══
+  // Depends on: (nothing — this is the base layer)
+  // Called by:  ALL sections (safeGet used everywhere; global vars
+  //             are the single source of truth for all app data)
+  // ═══════════════════════════════════════════════════════════════
+
   // ── Safe localStorage read — returns fallback if data is missing or corrupted ──
   function safeGet(key, fallback) {
     try {
@@ -2112,7 +2193,16 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   function v(id) { return parseFloat(document.getElementById(id).value) || 0; }
   function s(id) { return document.getElementById(id).value.trim(); }
 
-  // ═══ CUSTOMER TYPEAHEAD ═══
+  // ═══════════════════════════════════════════════════════════════
+  // ═══ CUSTOMER TYPEAHEAD & QUOTING UI ═══
+  // Depends on: CUSTOMER TABLE (customers, currentCustomerId,
+  //               findOrCreateCustomer, getPhotosForCustomer)
+  //             GOOGLE PLACES (attachPlacesAutocomplete)
+  //             PHOTO STORAGE (updateQuotePhotoPanel, renderQuotePhotoGrid)
+  //             QUOTE/RECEIPT TEMPLATES (generateReceiptFromSaved)
+  //             SUPABASE (autoSync via saveQuote → pushSync)
+  // Called by:  Quote form HTML (oninput/onclick), TAB SWITCHING
+  // ═══════════════════════════════════════════════════════════════
 
   function onCustNameInput() {
     const query = document.getElementById('custName').value.trim();
@@ -2570,6 +2660,16 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
     _buildReceipt(_pendingReceiptIdx, method);
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // ═══ QUOTE / RECEIPT TEMPLATES ═══
+  // Depends on: CUSTOMER TABLE (customers for name/address lookup)
+  //             QUOTING ENGINE (savedQuotes, quoteNum generation)
+  //             EMAIL & COMMUNICATIONS (setEmailMeta to wire send btn)
+  //             SUPABASE (autoSync via pushSync after status update)
+  // Called by:  CUSTOMER TYPEAHEAD (generateQuote/Receipt),
+  //             PIPELINE (generateQuoteFromSaved, generateInvoiceFromSaved)
+  // ═══════════════════════════════════════════════════════════════
+
   function _buildReceipt(i, paymentMethod) {
     const q = savedQuotes[i];
     if (!q.lines) { alert('This job was saved before receipt generation was added. Please rebuild it.'); return; }
@@ -2740,7 +2840,22 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   // Tracks current doc for email sending
   let _emailDocMeta = { toEmail: '', subject: '', docType: '' };
 
-  // ═══ GOOGLE PLACES AUTOCOMPLETE ═══
+  // ═══════════════════════════════════════════════════════════════
+  // ═══ EMAIL & COMMUNICATIONS ═══
+  // Depends on: CUSTOMER TABLE (customers — resolves latest email)
+  //             QUOTE/RECEIPT TEMPLATES (quoteDocument innerHTML)
+  //             EmailJS SDK (window.emailjs — loaded in <head>)
+  // Called by:  QUOTE/RECEIPT TEMPLATES (setEmailMeta wires send btn),
+  //             user clicking 📧 Send Email button in quote modal
+  // ═══════════════════════════════════════════════════════════════
+
+  // ═══════════════════════════════════════════════════════════════
+  // ═══ GOOGLE PLACES ═══
+  // Depends on: Google Maps JS API (loaded async in <head>)
+  //             Leaflet.js (for Today's map — loaded in <head>)
+  // Called by:  CUSTOMER TYPEAHEAD (attachPlacesAutocomplete on
+  //               address field), page load setTimeout fallback
+  // ═══════════════════════════════════════════════════════════════
   let placesReady = false;
 
   window.initGooglePlaces = function() {
@@ -2909,7 +3024,14 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     if (e.target === this) closeModal();
   });
 
+  // ═══════════════════════════════════════════════════════════════
   // ═══ CUSTOMER TABLE ═══
+  // Depends on: UTILITIES (safeGet, customers, deletedCustomerIds)
+  // Called by:  QUOTING ENGINE (findOrCreateCustomer, saveCustomers),
+  //             CRM (getCustomers, archiveCustomer),
+  //             LEAD PIPELINE (sendLeadToCRM),
+  //             SUPABASE (sync payload reads customers object)
+  // ═══════════════════════════════════════════════════════════════
 
   function findOrCreateCustomer(name, address, phone, email, company, leadSource) {
     const normName = (name || '').trim().toUpperCase();
@@ -3038,6 +3160,18 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   function saveCustomers() {
     localStorage.setItem('twc_customers', JSON.stringify(customers));
   }
+
+  // ═══════════════════════════════════════════════════════════════
+  // ═══ QUOTING ENGINE ═══
+  // Depends on: CUSTOMER TABLE (findOrCreateCustomer, saveCustomers,
+  //               customers object for ID lookups)
+  //             QUOTE/RECEIPT TEMPLATES (generateReceiptFromSaved,
+  //               generateQuoteFromSaved, generateInvoiceFromSaved)
+  //             PHOTO MODAL (openPhotoModalByIndex)
+  //             SUPABASE (autoSync after every save/delete/toggle)
+  // Called by:  Quote form Save button, PIPELINE action buttons,
+  //             LEAD PIPELINE (quoteFromLead pre-fills form)
+  // ═══════════════════════════════════════════════════════════════
 
   function saveQuote() {
     if (!window._cur || (window._cur.std + window._cur.large) === 0) {
@@ -3614,6 +3748,20 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // ═══ PIPELINE ═══
+  // Depends on: QUOTING ENGINE (savedQuotes, deleteQuote, toggleWon,
+  //               openScheduleModal, preFillFromQuote)
+  //             CUSTOMER TABLE (customers for name/archive lookups)
+  //             QUOTE/RECEIPT TEMPLATES (generateQuoteFromSaved,
+  //               generateInvoiceFromSaved, generateReceiptFromSaved)
+  //             PHOTO MODAL (openPhotoModalByIndex)
+  //             REVIEW REQUESTS (renderReviewRequests)
+  //             SUPABASE (autoSync after status changes)
+  // Called by:  TAB SWITCHING (on pipeline tab click),
+  //             SUPABASE (afterSignIn re-renders pipeline)
+  // ═══════════════════════════════════════════════════════════════
+
   function renderRecurring() {
     const panel = document.getElementById('recurringPanel');
     if (!panel) return;
@@ -3966,7 +4114,13 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   // Attach Places autocomplete to quote address field (may fire before Google loads — handled by initGooglePlaces callback too)
   setTimeout(() => attachPlacesAutocomplete('custAddress'), 1500);
 
+  // ═══════════════════════════════════════════════════════════════
   // ═══ TAB SWITCHING ═══
+  // Depends on: CRM (renderCRM), PIPELINE (renderSaved, renderRecurring),
+  //             TODAY'S JOBS (renderToday), REPORTS (renderReports),
+  //             LEAD PIPELINE (renderLeads)
+  // Called by:  Tab button onclick="switchTab(...)" in HTML
+  // ═══════════════════════════════════════════════════════════════
   function switchTab(tab, btn) {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -3979,7 +4133,13 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     if (tab === 'leads') renderLeads();
   }
 
+  // ═══════════════════════════════════════════════════════════════
   // ═══ REPORTS ═══
+  // Depends on: QUOTING ENGINE (savedQuotes — full data source),
+  //             UTILITIES (parseQuoteDate, getAgingBadge),
+  //             REVIEW REQUESTS (renderReviewRequests sub-panel)
+  // Called by:  TAB SWITCHING (on reports tab click)
+  // ═══════════════════════════════════════════════════════════════
   function renderReports() {
     const now = new Date();
     const currentYear = now.getFullYear();
@@ -4192,7 +4352,17 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     }).join('') : '<div style="color:var(--muted);font-size:13px;font-weight:600;">No completed jobs yet for this year.</div>';
   }
 
+  // ═══════════════════════════════════════════════════════════════
   // ═══ CRM ═══
+  // Depends on: CUSTOMER TABLE (customers, saveCustomers,
+  //               findOrCreateCustomer, deletedCustomerIds)
+  //             QUOTING ENGINE (savedQuotes — job history per customer)
+  //             PHOTO MODAL (openPhotoModal for customer photos)
+  //             SUPABASE (autoSync / pushSync after note/edit changes)
+  // Called by:  TAB SWITCHING (on crm tab click),
+  //             QUOTING ENGINE (saveQuote triggers renderCRM refresh),
+  //             LEAD PIPELINE (sendLeadToCRM, then switchTab to crm)
+  // ═══════════════════════════════════════════════════════════════
   let crmNotes = JSON.parse(localStorage.getItem('twc_crm_notes') || '{}');
   let crmOverrides = JSON.parse(localStorage.getItem('twc_crm_overrides') || '{}');
 
@@ -4291,7 +4461,15 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
 
+  // ═══════════════════════════════════════════════════════════════
   // ═══ TODAY'S JOBS DASHBOARD ═══
+  // Depends on: QUOTING ENGINE (savedQuotes — filters for today's date),
+  //             CUSTOMER TABLE (customers for display names),
+  //             Leaflet.js (todayMap — loaded in <head>),
+  //             SUPABASE (autoSync after marking jobs done)
+  // Called by:  TAB SWITCHING (on today tab click),
+  //             SUPABASE (afterSignIn — default landing tab)
+  // ═══════════════════════════════════════════════════════════════
   let todayMap = null;
   let todayMarkers = [];
   let todayJobDoneState = JSON.parse(localStorage.getItem('twc_today_done') || '{}');
@@ -4782,7 +4960,13 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     pushSync();
   }
 
+  // ═══════════════════════════════════════════════════════════════
   // ═══ EXPORT / IMPORT ═══
+  // Depends on: QUOTING ENGINE (savedQuotes), CUSTOMER TABLE (customers),
+  //             CRM (crmNotes), LEAD PIPELINE (leads, neighborhoods)
+  //             UTILITIES (safeGet for re-hydrating on import)
+  // Called by:  Reports tab Export/Import buttons (onclick in HTML)
+  // ═══════════════════════════════════════════════════════════════
   function exportJSON() {
     const data = {
       exported: new Date().toISOString(),
@@ -4900,7 +5084,15 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     a.click();
     URL.revokeObjectURL(a.href);
   }
-  // ═══ SUPABASE AUTH + SYNC ═══
+  // ═══════════════════════════════════════════════════════════════
+  // ═══ SUPABASE AUTH & SYNC ═══
+  // Depends on: UTILITIES (safeGet — all data vars for sync payload)
+  //             ALL sections (autoSync called after any data mutation)
+  //             Google Identity Services (for Drive/Calendar OAuth)
+  // Called by:  Sync button (handleSyncBtn), page load session restore,
+  //             autoSync() debounce triggered throughout app,
+  //             Auth modal Sign In / Create Account buttons
+  // ═══════════════════════════════════════════════════════════════
   const SUPABASE_URL  = 'https://oiwbipwbksmiriukvdzh.supabase.co';
   const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pd2JpcHdia3NtaXJpdWt2ZHpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyOTgyMTYsImV4cCI6MjA4ODg3NDIxNn0.Bi0xr3xZpbO8Gqts5AA3-5OPuo49rs_UPiG3AqRvevQ';
   const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
@@ -5137,7 +5329,14 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     return { savedQuotes, crmNotes, customerPhotos, customers, deletedCustomerIds, leads, neighborhoods };
   }
 
+  // ═══════════════════════════════════════════════════════════════
   // ═══ PHOTO STORAGE (GOOGLE DRIVE) ═══
+  // Depends on: SUPABASE AUTH (gAccessToken — Google Drive OAuth token)
+  //             CUSTOMER TABLE (customers, customerPhotos object)
+  //             localStorage (twc_photos_* keys for metadata cache)
+  // Called by:  CUSTOMER TYPEAHEAD (updateQuotePhotoPanel, renderQuotePhotoGrid),
+  //             PHOTO MODAL (upload, delete, load photo actions)
+  // ═══════════════════════════════════════════════════════════════
   const PHOTO_FOLDER_NAME = 'CrewHub Photos';
 
   async function ensurePhotoFolder() {
@@ -5263,7 +5462,16 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     if (document.getElementById('tab-crm').classList.contains('active')) renderCRM();
   }
 
+  // ═══════════════════════════════════════════════════════════════
   // ═══ PHOTO MODAL ═══
+  // Depends on: PHOTO STORAGE (uploadPhotoToDrive, deletePhotoFromDrive,
+  //               ensurePhotoFolder, photoBlobCache)
+  //             CUSTOMER TABLE (getPhotosForCustomer, customerPhotos)
+  //             SUPABASE AUTH (gAccessToken for Drive operations)
+  // Called by:  PIPELINE (openPhotoModalByIndex from job card),
+  //             CRM (openPhotoModal from customer card),
+  //             CUSTOMER TYPEAHEAD (photo panel in quote form)
+  // ═══════════════════════════════════════════════════════════════
   let photoModalKey = null;
 
   function getPhotoLabel(customerId, legacyNameKey) {
@@ -5373,7 +5581,14 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     document.getElementById('photoLightbox').style.display = 'none';
   }
 
-  // ═══ REVIEW REQUEST ═══
+  // ═══════════════════════════════════════════════════════════════
+  // ═══ REVIEW REQUESTS ═══
+  // Depends on: QUOTING ENGINE (savedQuotes — filters receipted jobs),
+  //             EMAIL & COMMUNICATIONS (EmailJS for sending review link),
+  //             SUPABASE (autoSync after marking request sent)
+  // Called by:  REPORTS (renderReviewRequests sub-panel),
+  //             PIPELINE (⭐ review button on job cards)
+  // ═══════════════════════════════════════════════════════════════
   function renderReviewRequests(el, search) {
     const pending = savedQuotes.filter(q =>
       q.receipted && q.reviewPending && !q.reviewRequestSent &&
@@ -5585,7 +5800,14 @@ ${bizEmail}`
   });
 
   // ═══════════════════════════════════════════════════════════════
-  // ═══ LEAD FINDER ═══
+  // ═══ LEAD PIPELINE ═══
+  // Depends on: CUSTOMER TABLE (findOrCreateCustomer, saveCustomers)
+  //             CRM (renderCRM — after sendLeadToCRM creates customer)
+  //             QUOTING ENGINE (quoteFromLead pre-fills quote form)
+  //             SUPABASE (autoSync after lead status/note changes)
+  // Called by:  TAB SWITCHING (on leads tab click),
+  //             Python agent output (importLeadFile reads JSON),
+  //             SUPABASE (afterSignIn loads leads from cloud)
   // ═══════════════════════════════════════════════════════════════
 
   let leads = safeGet('twc_leads', []);
