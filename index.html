@@ -5919,8 +5919,17 @@ ${bizEmail}`
     document.getElementById('ls-highval').textContent = leads.filter(l => (l.ai_score||0) >= 8).length;
     document.getElementById('ls-contacted').textContent = leads.filter(l => l.status === 'contacted').length;
     document.getElementById('ls-won').textContent = leads.filter(l => l.status === 'won').length;
-    const lastRun = localStorage.getItem('twc_leads_lastrun') || '';
-    document.getElementById('ls-lastrun').textContent = lastRun || '—';
+    let lastRun = localStorage.getItem('twc_leads_lastrun') || '';
+    // Unwrap double-JSON-encoded string written by Supabase loadFromSupabase
+    try { const p = JSON.parse(lastRun); if (typeof p === 'string') lastRun = p; } catch(e) {}
+    let lastRunDisplay = '—';
+    if (lastRun) {
+      const d = new Date(lastRun);
+      lastRunDisplay = isNaN(d.getTime())
+        ? lastRun
+        : d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    document.getElementById('ls-lastrun').textContent = lastRunDisplay;
 
     // Sub-tab counts
     const cCount = leads.filter(l => (l.lead_segment||'commercial') === 'commercial').length;
