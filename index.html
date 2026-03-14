@@ -978,6 +978,11 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   .note-input-row { flex-direction: column; }
   .note-add-btn { width: 100%; }
 
+  /* Reports — new rows stack to single column on mobile */
+  .rpt-new-row { grid-template-columns: 1fr !important; }
+  #rpt-avg-type-row { grid-template-columns: 1fr !important; }
+  #tab-reports .crm-btn { width: 100%; text-align: center; }
+
   /* Quote modal */
   #quoteModal { padding: 14px 10px; }
   #quoteModal > div > div:first-child { flex-direction: column; gap: 8px; }
@@ -4350,6 +4355,269 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         </div>
       </div>`;
     }).join('') : '<div style="color:var(--muted);font-size:13px;font-weight:600;">No completed jobs yet for this year.</div>';
+
+    // ── Avg Job Value by Type stat cards ──
+    const typeRevMap = { Residential:{sum:0,count:0}, Commercial:{sum:0,count:0}, Storefront:{sum:0,count:0} };
+    completed.forEach(q => {
+      const t = q.type || 'Residential';
+      if (typeRevMap[t]) { typeRevMap[t].sum += q.grand; typeRevMap[t].count++; }
+    });
+    const avgTypeRow = document.getElementById('rpt-avg-type-row');
+    if (avgTypeRow) {
+      avgTypeRow.innerHTML = Object.entries(typeRevMap).map(([type, {sum, count}]) => {
+        const avg = count ? sum / count : null;
+        return `<div class="stat-card" style="text-align:center; border-top:4px solid ${typeColors[type]};">
+          <div class="stat-label">${type}</div>
+          <div class="stat-val" style="color:${typeColors[type]};">${avg !== null ? '$' + avg.toFixed(0) : 'N/A'}</div>
+          <div class="stat-sub">avg value · ${count} job${count !== 1 ? 's' : ''}</div>
+        </div>`;
+      }).join('');
+    }
+
+    // ── Call new chart helpers ──
+    renderReportRevenueByType(completed, typeColors);
+    renderReportWinLossTrend(yearQuotes, selYear, currentYear);
+    renderReportLeadRevenue(completed, leadColors, unreportedColor);
+  }
+
+  // ─── renderReportRevenueByType ───────────────────────────────
+  // Depends on: REPORTS (completed receipted quotes, typeColors)
+  // Called by: renderReports()
+  function renderReportRevenueByType(completed, typeColors) {
+    const typeRev = { Residential:0, Commercial:0, Storefront:0 };
+    completed.forEach(q => { const t = q.type||'Residential'; if (t in typeRev) typeRev[t] += q.grand; });
+    const canvas = document.getElementById('rpt-type-revenue-bar');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.parentElement.offsetWidth || 300;
+    const cW = canvas.width, cH = 120;
+    canvas.height = cH;
+    ctx.clearRect(0, 0, cW, cH);
+    const types = Object.keys(typeRev);
+    const maxRev = Math.max(...Object.values(typeRev), 1);
+    const barH = 24, gap = (cH - 16) / types.length, padL = 92, padR = 68, padT = 8;
+    types.forEach((type, i) => {
+      const rev = typeRev[type];
+      const y = padT + i * gap;
+      const barW = Math.max(0, (rev / maxRev) * (cW - padL - padR));
+      // Label
+      ctx.fillStyle = '#64748b'; ctx.font = '700 11px Nunito,sans-serif'; ctx.textAlign = 'right';
+      ctx.fillText(type, padL - 8, y + barH / 2 + 4);
+      // Background track
+      ctx.fillStyle = '#f1f5f9'; ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(padL, y, cW - padL - padR, barH, 4) : ctx.rect(padL, y, cW - padL - padR, barH);
+      ctx.fill();
+      // Colour bar
+      if (barW > 0) {
+        ctx.fillStyle = typeColors[type] || '#94a3b8'; ctx.beginPath();
+        ctx.roundRect ? ctx.roundRect(padL, y, barW, barH, 4) : ctx.rect(padL, y, barW, barH);
+        ctx.fill();
+      }
+      // Value
+      ctx.fillStyle = '#1a3a4a'; ctx.font = '800 11px Nunito,sans-serif'; ctx.textAlign = 'left';
+      ctx.fillText('$' + rev.toFixed(0), padL + barW + 6, y + barH / 2 + 4);
+    });
+  }
+
+  // ─── renderReportWinLossTrend ─────────────────────────────────
+  // Depends on: REPORTS (yearQuotes, parseQuoteDate)
+  // Called by: renderReports()
+  function renderReportWinLossTrend(yearQuotes, selYear, currentYear) {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const wonByMonth = Array(12).fill(0), lostByMonth = Array(12).fill(0);
+    yearQuotes.forEach(q => {
+      const d = parseQuoteDate(q.date); if (!d) return;
+      const m = d.getMonth();
+      if (q.won === true || q.invoiced || q.receipted) wonByMonth[m]++;
+      else if (q.won === false) lostByMonth[m]++;
+    });
+    const canvas = document.getElementById('rpt-winloss-bar');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.parentElement.offsetWidth || 300;
+    const cW = canvas.width, cH = 120;
+    canvas.height = cH;
+    ctx.clearRect(0, 0, cW, cH);
+    const maxVal = Math.max(...wonByMonth, ...lostByMonth, 1);
+    const padL = 22, padB = 22, padT = 8, chartH = cH - padB - padT;
+    const slotW = (cW - padL) / 12;
+    const bW = Math.max(2, Math.floor(slotW / 2) - 2);
+    // Grid lines
+    ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1;
+    [0, 0.5, 1].forEach(f => {
+      const y = padT + chartH * (1 - f);
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(cW, y); ctx.stroke();
+      if (f > 0) {
+        ctx.fillStyle = '#94a3b8'; ctx.font = '600 8px Nunito,sans-serif'; ctx.textAlign = 'right';
+        ctx.fillText(Math.round(maxVal * f), padL - 2, y + 3);
+      }
+    });
+    months.forEach((mon, m) => {
+      const x = padL + m * slotW;
+      // Won bar
+      const wH = chartH * (wonByMonth[m] / maxVal);
+      if (wH > 0) {
+        ctx.fillStyle = '#10b981'; ctx.beginPath();
+        ctx.roundRect ? ctx.roundRect(x + 1, padT + chartH - wH, bW, wH, [2,2,0,0]) : ctx.rect(x + 1, padT + chartH - wH, bW, wH);
+        ctx.fill();
+      }
+      // Lost bar
+      const lH = chartH * (lostByMonth[m] / maxVal);
+      if (lH > 0) {
+        ctx.fillStyle = '#f87171'; ctx.beginPath();
+        ctx.roundRect ? ctx.roundRect(x + bW + 3, padT + chartH - lH, bW, lH, [2,2,0,0]) : ctx.rect(x + bW + 3, padT + chartH - lH, bW, lH);
+        ctx.fill();
+      }
+      // Month label
+      ctx.fillStyle = '#94a3b8'; ctx.font = '600 8px Nunito,sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(mon, x + slotW / 2, cH - 6);
+    });
+  }
+
+  // ─── renderReportLeadRevenue ──────────────────────────────────
+  // Depends on: REPORTS (completed), CUSTOMER TABLE (customers)
+  // Called by: renderReports()
+  function renderReportLeadRevenue(completed, leadColors, unreportedColor) {
+    const sourceRev = {};
+    completed.forEach(q => {
+      const cust = customers[q.customerId];
+      const src = cust?.leadSource || 'Unreported';
+      sourceRev[src] = (sourceRev[src] || 0) + q.grand;
+    });
+    const sorted = Object.entries(sourceRev).sort((a, b) => b[1] - a[1]);
+    const canvas = document.getElementById('rpt-lead-revenue-bar');
+    const emptyEl = document.getElementById('rpt-lead-revenue-empty');
+    if (!canvas) return;
+    if (!sorted.length) {
+      canvas.style.display = 'none';
+      if (emptyEl) emptyEl.style.display = 'block';
+      return;
+    }
+    canvas.style.display = 'block';
+    if (emptyEl) emptyEl.style.display = 'none';
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.parentElement.offsetWidth || 280;
+    const cW = canvas.width, barH = 22, gap = 10, padL = 92, padR = 68, padT = 6;
+    const cH = padT + sorted.length * (barH + gap);
+    canvas.height = cH;
+    ctx.clearRect(0, 0, cW, cH);
+    const maxRev = sorted[0][1] || 1;
+    sorted.forEach(([src, rev], i) => {
+      const y = padT + i * (barH + gap);
+      const barW = Math.max(0, (rev / maxRev) * (cW - padL - padR));
+      const color = src === 'Unreported' ? unreportedColor : leadColors[i % leadColors.length];
+      // Label
+      ctx.fillStyle = '#64748b'; ctx.font = '700 10px Nunito,sans-serif'; ctx.textAlign = 'right';
+      const label = src.length > 13 ? src.slice(0, 12) + '…' : src;
+      ctx.fillText(label, padL - 6, y + barH / 2 + 4);
+      // Background
+      ctx.fillStyle = '#f1f5f9'; ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(padL, y, cW - padL - padR, barH, 4) : ctx.rect(padL, y, cW - padL - padR, barH);
+      ctx.fill();
+      // Bar
+      if (barW > 0) {
+        ctx.fillStyle = color; ctx.beginPath();
+        ctx.roundRect ? ctx.roundRect(padL, y, barW, barH, 4) : ctx.rect(padL, y, barW, barH);
+        ctx.fill();
+      }
+      // Value
+      ctx.fillStyle = '#1a3a4a'; ctx.font = '800 10px Nunito,sans-serif'; ctx.textAlign = 'left';
+      ctx.fillText('$' + rev.toFixed(0), padL + barW + 6, y + barH / 2 + 4);
+    });
+  }
+
+  // ─── exportReportsCSV ─────────────────────────────────────────
+  // Depends on: REPORTS (savedQuotes, parseQuoteDate), CUSTOMER TABLE (customers)
+  // Called by: Export CSV button in Reports header
+  function exportReportsCSV() {
+    const yearSel = document.getElementById('rpt-year');
+    const selYear = parseInt(yearSel.value) || new Date().getFullYear();
+    const completed = savedQuotes.filter(q => {
+      const d = parseQuoteDate(q.date); return d && d.getFullYear() === selYear && q.receipted;
+    });
+    if (!completed.length) { alert('No completed jobs for ' + selYear + ' to export.'); return; }
+    const esc = v => '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"';
+    const headers = ['Date','Quote #','Customer','Type','Address','Subtotal','Total','Payment Method','Lead Source'];
+    const rows = completed.map(q => {
+      const cust = customers[q.customerId];
+      return [
+        q.date || '', q.quoteNum || '', q.name || '', q.type || '', q.address || '',
+        (q.subtotal || 0).toFixed(2), (q.grand || 0).toFixed(2),
+        q.paymentMethod || '', cust?.leadSource || ''
+      ].map(esc).join(',');
+    });
+    const csv = [headers.map(esc).join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `CrewHub-Report-${selYear}.csv`; a.click();
+  }
+
+  // ─── exportReportsPDF ─────────────────────────────────────────
+  // Depends on: REPORTS (savedQuotes, parseQuoteDate), CUSTOMER TABLE (customers)
+  // Called by: Export PDF button in Reports header
+  function exportReportsPDF() {
+    const yearSel = document.getElementById('rpt-year');
+    const selYear = parseInt(yearSel.value) || new Date().getFullYear();
+    const yearQuotes = savedQuotes.filter(q => { const d = parseQuoteDate(q.date); return d && d.getFullYear() === selYear; });
+    const completed = yearQuotes.filter(q => q.receipted);
+    const won = yearQuotes.filter(q => q.won === true || q.invoiced || q.receipted);
+    const quoted = yearQuotes.filter(q => q.won !== false);
+    const yearRevenue = completed.reduce((s, q) => s + q.grand, 0);
+    const winRate = quoted.length ? Math.round(won.length / quoted.length * 100) : 0;
+    const avgJob = completed.length ? yearRevenue / completed.length : 0;
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const monthlyRev = Array(12).fill(0);
+    completed.forEach(q => { const d = parseQuoteDate(q.date); if (d) monthlyRev[d.getMonth()] += q.grand; });
+    const custRev = {};
+    completed.forEach(q => {
+      const k = q.customerId || (q.name || 'Unknown').trim().toUpperCase();
+      custRev[k] = (custRev[k] || 0) + q.grand;
+    });
+    const top5 = Object.entries(custRev).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const w = window.open('', '_blank');
+    if (!w) { alert('Please allow pop-ups to export PDF.'); return; }
+    w.document.write(`<!DOCTYPE html><html><head>
+      <meta charset="utf-8"><title>Crew Hub Report ${selYear}</title>
+      <style>
+        body{font-family:Arial,sans-serif;color:#1a3a4a;max-width:800px;margin:0 auto;padding:40px 20px;}
+        h1{color:#1e7d93;} h2{color:#1e7d93;border-bottom:2px solid #e2e8f0;padding-bottom:8px;margin-top:32px;}
+        .kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:20px 0;}
+        .kpi{background:#f4fbfc;border-radius:12px;padding:16px;text-align:center;}
+        .kpi-val{font-size:28px;font-weight:900;color:#1e7d93;} .kpi-label{font-size:12px;color:#6b9aaa;font-weight:600;margin-top:4px;}
+        table{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px;}
+        th{background:#1e7d93;color:white;padding:8px 12px;text-align:left;}
+        td{padding:8px 12px;border-bottom:1px solid #e2e8f0;}
+        tr:nth-child(even) td{background:#f4fbfc;}
+        @media print{body{padding:0;}}
+      </style>
+    </head><body>
+      <h1>📊 Crew Hub Business Report — ${selYear}</h1>
+      <p style="color:#6b9aaa;font-size:13px;">Generated ${new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'})}</p>
+      <div class="kpi-grid">
+        <div class="kpi"><div class="kpi-val">$${yearRevenue.toFixed(2)}</div><div class="kpi-label">Total Revenue</div></div>
+        <div class="kpi"><div class="kpi-val">${completed.length}</div><div class="kpi-label">Jobs Complete</div></div>
+        <div class="kpi"><div class="kpi-val">${winRate}%</div><div class="kpi-label">Win Rate</div></div>
+        <div class="kpi"><div class="kpi-val">$${avgJob.toFixed(2)}</div><div class="kpi-label">Avg Job Value</div></div>
+        <div class="kpi"><div class="kpi-val">${won.length}</div><div class="kpi-label">Jobs Won</div></div>
+        <div class="kpi"><div class="kpi-val">${quoted.length}</div><div class="kpi-label">Total Quoted</div></div>
+      </div>
+      <h2>Monthly Revenue</h2>
+      <table><tr><th>Month</th><th>Revenue</th></tr>
+        ${months.map((m, i) => `<tr><td>${m}</td><td>$${monthlyRev[i].toFixed(2)}</td></tr>`).join('')}
+      </table>
+      <h2>Top Customers</h2>
+      <table><tr><th>Customer</th><th>Revenue</th></tr>
+        ${top5.map(([k, rev]) => {
+          const cust = customers[k];
+          const name = cust
+            ? (cust.company ? `${cust.company} · ${cust.name}` : cust.name)
+            : (savedQuotes.find(q => (q.customerId || (q.name||'').trim().toUpperCase()) === k)?.name || k);
+          return `<tr><td>${name}</td><td>$${rev.toFixed(2)}</td></tr>`;
+        }).join('')}
+      </table>
+      <script>window.onload = () => window.print();<\/script>
+    </body></html>`);
+    w.document.close();
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -6331,7 +6599,11 @@ ${bizEmail}`
         <div style="font-size:22px; font-weight:900; color:var(--teal-dark);">📊 Business Reports</div>
         <div style="font-size:13px; font-weight:600; color:var(--muted); margin-top:2px;">Based on all saved quotes &amp; jobs</div>
       </div>
-      <select id="rpt-year" onchange="renderReports()" style="padding:8px 14px; border:2px solid var(--gray); border-radius:20px; font-family:'Nunito',sans-serif; font-weight:700; font-size:14px; color:var(--teal-dark); background:white; cursor:pointer;"></select>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <select id="rpt-year" onchange="renderReports()" style="padding:8px 14px; border:2px solid var(--gray); border-radius:20px; font-family:'Nunito',sans-serif; font-weight:700; font-size:14px; color:var(--teal-dark); background:white; cursor:pointer;"></select>
+        <button class="crm-btn crm-btn-teal" onclick="exportReportsCSV()" style="font-size:13px;">📥 Export CSV</button>
+        <button class="crm-btn" onclick="exportReportsPDF()" style="font-size:13px; background:white; border:2px solid var(--teal); color:var(--teal-dark);">📄 Export PDF</button>
+      </div>
     </div>
 
     <!-- KPI row -->
@@ -6385,12 +6657,38 @@ ${bizEmail}`
       </div>
     </div>
 
-    <!-- Lead source pie chart -->
-    <div class="stat-card" style="display:flex; flex-direction:column; align-items:center;">
-      <div style="font-size:13px; font-weight:800; color:var(--teal-dark); margin-bottom:14px; align-self:flex-start;">How Customers Found Us</div>
-      <div id="rpt-lead-empty" style="display:none; color:var(--muted); font-size:13px; font-weight:600; padding:20px 0;">No lead source data recorded yet.</div>
-      <canvas id="rpt-lead-pie" width="180" height="180"></canvas>
-      <div id="rpt-lead-legend" style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:14px;"></div>
+    <!-- NEW: Revenue by Type + Win/Loss Trend charts row -->
+    <div class="rpt-new-row" style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
+      <div class="stat-card">
+        <div style="font-size:13px; font-weight:800; color:var(--teal-dark); margin-bottom:14px;">Revenue by Property Type</div>
+        <canvas id="rpt-type-revenue-bar" height="120"></canvas>
+      </div>
+      <div class="stat-card">
+        <div style="font-size:13px; font-weight:800; color:var(--teal-dark); margin-bottom:6px;">Win / Loss by Month</div>
+        <div style="display:flex; gap:14px; margin-bottom:10px;">
+          <span style="font-size:11px; font-weight:700; color:#10b981;">■ Won</span>
+          <span style="font-size:11px; font-weight:700; color:#f87171;">■ Lost</span>
+        </div>
+        <canvas id="rpt-winloss-bar" height="120"></canvas>
+      </div>
+    </div>
+
+    <!-- NEW: Avg Job Value by Type stat cards -->
+    <div id="rpt-avg-type-row" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:20px;"></div>
+
+    <!-- Lead source: pie + revenue bar side by side -->
+    <div class="rpt-new-row" style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
+      <div class="stat-card" style="display:flex; flex-direction:column; align-items:center;">
+        <div style="font-size:13px; font-weight:800; color:var(--teal-dark); margin-bottom:14px; align-self:flex-start;">How Customers Found Us</div>
+        <div id="rpt-lead-empty" style="display:none; color:var(--muted); font-size:13px; font-weight:600; padding:20px 0;">No lead source data recorded yet.</div>
+        <canvas id="rpt-lead-pie" width="180" height="180"></canvas>
+        <div id="rpt-lead-legend" style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:14px;"></div>
+      </div>
+      <div class="stat-card">
+        <div style="font-size:13px; font-weight:800; color:var(--teal-dark); margin-bottom:14px;">Revenue by Lead Source</div>
+        <div id="rpt-lead-revenue-empty" style="display:none; color:var(--muted); font-size:13px; font-weight:600; padding:20px 0;">No revenue data yet.</div>
+        <canvas id="rpt-lead-revenue-bar"></canvas>
+      </div>
     </div>
 
     <!-- Top customers -->
