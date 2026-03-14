@@ -5461,7 +5461,12 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     if (error) { console.error('[CrewHub] Load error:', error); return; }
     if (!data || !data.length) return; // new account — nothing to load yet
     data.forEach(row => {
-      try { localStorage.setItem(row.key, JSON.stringify(row.value)); } catch(e) {}
+      try {
+        // String-type values (twc_leads_lastrun, twc_logo_fileid) must be stored
+        // as raw strings — JSON.stringify would double-encode them on every sync cycle
+        const toStore = typeof row.value === 'string' ? row.value : JSON.stringify(row.value);
+        localStorage.setItem(row.key, toStore);
+      } catch(e) {}
     });
     // Re-hydrate in-memory variables
     savedQuotes        = safeGet('twc_quotes', []);
@@ -6188,8 +6193,9 @@ ${bizEmail}`
     document.getElementById('ls-contacted').textContent = leads.filter(l => l.status === 'contacted').length;
     document.getElementById('ls-won').textContent = leads.filter(l => l.status === 'won').length;
     let lastRun = localStorage.getItem('twc_leads_lastrun') || '';
-    // Unwrap double-JSON-encoded string written by Supabase loadFromSupabase
-    try { const p = JSON.parse(lastRun); if (typeof p === 'string') lastRun = p; } catch(e) {}
+    // Aggressively unwrap any layers of JSON encoding accumulated from prior sync cycles
+    let prev;
+    do { prev = lastRun; try { const p = JSON.parse(lastRun); if (typeof p === 'string') lastRun = p; else break; } catch(e) { break; } } while (lastRun !== prev);
     let lastRunDisplay = '—';
     if (lastRun) {
       const d = new Date(lastRun);
