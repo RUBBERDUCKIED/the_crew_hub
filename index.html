@@ -1014,6 +1014,13 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   #quoteModal { padding: 14px 10px; }
   #quoteModal > div > div:first-child { flex-direction: column; gap: 8px; }
   #quoteModal > div > div:first-child button { width: 100%; }
+
+  /* Team tab */
+  #tab-team .customer-card > div { flex-direction: column; align-items: stretch; gap: 10px; }
+  #tab-team .customer-card > div > .cust-avatar { align-self: flex-start; }
+  #tab-team select { width: 100%; }
+  #biz-edit-name, #biz-edit-email, #biz-edit-phone, #biz-edit-address { width: 100%; box-sizing: border-box; }
+  #tab-team .stat-card { min-width: unset; }
 }
 
 
@@ -1119,6 +1126,10 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   /* ── Lead Pipeline ── */
   .leads-wrap { padding: 12px 10px 60px; }
   .lead-card { margin-bottom: 10px; }
+
+  /* ── Team tab ── */
+  #tab-team > div { padding: 12px 10px 60px; }
+  #tab-team > div > div:first-child { flex-direction: column; }
 }
 
 /* ─── LEAD FINDER STYLES ─── */
@@ -1510,6 +1521,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   <button class="tab-btn" onclick="switchTab('pipeline', this)">⚡ Job Pipeline</button>
   <button class="tab-btn" onclick="switchTab('crm', this)">👥 CRM</button>
   <button class="tab-btn" onclick="switchTab('reports', this)">📊 Reports</button>
+  <button class="tab-btn" id="teamTabBtn" onclick="switchTab('team', this)">🏢 Team</button>
   <div id="syncStatus" style="margin-left:auto; display:flex; align-items:center; gap:8px; padding-bottom:4px;">
     <div id="syncIndicator" style="width:8px;height:8px;border-radius:50%;background:#aac4cc;flex-shrink:0;"></div>
     <span id="syncLabel" style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.6);">Not signed in</span>
@@ -1530,6 +1542,55 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
     <button id="authSignInBtn" onclick="sbSignIn()" style="width:100%;padding:14px;background:linear-gradient(135deg,#2a9db5,#1a6ea8);color:#fff;border:none;border-radius:12px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:10px;">Sign In</button>
     <button id="authSignUpBtn" onclick="sbSignUp()" style="width:100%;padding:12px;background:#f4fbfc;color:#2a9db5;border:2px solid #2a9db5;border-radius:12px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;cursor:pointer;">Create Account</button>
     <p style="font-size:11px;color:#aac4cc;margin-top:16px;font-weight:600;">Your data is private and syncs across all your devices.</p>
+  </div>
+</div>
+
+<!-- ═══ NO BUSINESS MODAL ═══ -->
+<div id="noBizModal" style="display:none;position:fixed;inset:0;background:rgba(10,30,40,0.82);z-index:9998;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+  <div style="background:#fff;border-radius:20px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.35);text-align:center;">
+    <div style="font-size:36px;margin-bottom:8px;">🔒</div>
+    <h2 style="font-family:'Montserrat',sans-serif;font-size:20px;font-weight:900;color:#1a3a4a;margin-bottom:8px;">No Team Found</h2>
+    <p style="font-size:13px;color:#6b9aaa;font-weight:600;margin-bottom:24px;line-height:1.6;">Your account isn't linked to a business yet. Ask your team owner to add your email address in their Team tab, then sign in again.</p>
+    <div id="noBizError" style="display:none;background:#fef2f2;color:#dc2626;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;margin-bottom:16px;text-align:left;"></div>
+    <button onclick="sbSignOut()" style="width:100%;padding:14px;background:linear-gradient(135deg,#2a9db5,#1a6ea8);color:#fff;border:none;border-radius:12px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;cursor:pointer;">Sign Out &amp; Try Different Account</button>
+    <p style="font-size:11px;color:#aac4cc;margin-top:16px;font-weight:600;">If you're the business owner, contact support to set up your account.</p>
+  </div>
+</div>
+
+<!-- ═══ ADD TEAM MEMBER MODAL ═══ -->
+<div id="addMemberModal" style="display:none; position:fixed; inset:0; background:rgba(10,30,45,0.75); z-index:1100; overflow-y:auto; padding:30px 16px;">
+  <div style="max-width:440px; margin:0 auto; background:white; border-radius:16px; overflow:hidden; box-shadow:0 12px 48px rgba(26,110,168,0.25);">
+    <div style="background:var(--teal-dark); padding:20px 24px; display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <div style="color:white; font-weight:800; font-size:15px;">➕ Add Team Member</div>
+        <div style="color:rgba(255,255,255,0.7); font-size:12px; font-weight:600; margin-top:2px;">They'll sign up with this email to join your team</div>
+      </div>
+      <button onclick="closeAddMemberModal()" style="background:none;border:none;color:white;font-size:24px;cursor:pointer;line-height:1;">×</button>
+    </div>
+    <div style="padding:24px; display:flex; flex-direction:column; gap:16px;">
+      <div>
+        <label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;">Full Name</label>
+        <input id="tm-name" type="text" placeholder="Marcus Silva" style="width:100%;padding:10px 14px;border:2px solid var(--gray);border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;color:var(--text);outline:none;box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;">Email Address</label>
+        <input id="tm-email" type="email" placeholder="marcus@email.com" style="width:100%;padding:10px 14px;border:2px solid var(--gray);border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;color:var(--text);outline:none;box-sizing:border-box;">
+        <div style="font-size:11px;color:var(--muted);font-weight:600;margin-top:4px;">They must sign up with this exact email to join your team.</div>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;">Role</label>
+        <select id="tm-role" style="width:100%;padding:10px 14px;border:2px solid var(--gray);border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;color:var(--text);background:white;outline:none;cursor:pointer;box-sizing:border-box;">
+          <option value="crew">🔧 Crew — Can see their assigned jobs only</option>
+          <option value="dispatcher">📋 Dispatcher — Can manage all jobs and team schedule</option>
+          <option value="owner">👑 Owner — Full access to everything</option>
+        </select>
+      </div>
+      <div id="tm-error" style="display:none;background:#fef2f2;color:#dc2626;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;"></div>
+      <div style="display:flex;gap:10px;margin-top:4px;">
+        <button id="tm-save-btn" onclick="saveNewTeamMember()" style="flex:1;background:var(--teal);color:white;border:none;border-radius:30px;padding:12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;cursor:pointer;">➕ Add Member</button>
+        <button onclick="closeAddMemberModal()" style="flex:1;background:#f1f5f9;color:var(--text);border:none;border-radius:30px;padding:12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;cursor:pointer;">Cancel</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -4186,6 +4247,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     if (tab === 'today') { renderToday(); }
     if (tab === 'reports') renderReports();
     if (tab === 'leads') renderLeads();
+    if (tab === 'team') renderTeam();
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -5664,16 +5726,32 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
   async function afterSignIn() {
     setSyncUI('syncing', 'Loading your data...');
-    const identity = await dbLoadIdentity();
+
+    // Step 1: Try to find existing team membership
+    let identity = await dbLoadIdentity();
+
+    // Step 2: If not found, check for a pending invite by email
+    if (!identity && sbUser?.email) {
+      identity = await dbClaimInvite(sbUser.email);
+      if (identity) {
+        console.info('[CrewHub] Claimed pending invite for', sbUser.email);
+      }
+    }
+
+    // Step 3: If still not found — this user has no business
     if (!identity) {
-      // New user — no business record yet. Phase 2 will add Create Business flow.
-      setSyncUI('idle', 'No business found — contact your admin');
+      setSyncUI('idle', 'No business found');
+      showNoBizModal();
       return;
     }
+
+    // Step 4: Load data and apply role permissions
     await dbLoadAll();
+    applyRolePermissions();
     renderSaved(); renderRecurring(); renderToday(); renderLeads();
-    if (document.getElementById('tab-crm').classList.contains('active')) renderCRM();
-    if (document.getElementById('tab-reports').classList.contains('active')) renderReports();
+    if (document.getElementById('tab-crm')?.classList.contains('active')) renderCRM();
+    if (document.getElementById('tab-reports')?.classList.contains('active')) renderReports();
+    if (document.getElementById('tab-team')?.classList.contains('active')) renderTeam();
     const now = new Date().toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' });
     setSyncUI('idle', `Synced ${now} · ${savedQuotes.length} jobs`);
   }
@@ -5707,9 +5785,11 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     try {
       if (!currentBusinessId) await dbLoadIdentity();
       await dbLoadAll();
+      applyRolePermissions();
       renderSaved(); renderRecurring(); renderToday(); renderLeads();
-      if (document.getElementById('tab-crm').classList.contains('active')) renderCRM();
-      if (document.getElementById('tab-reports').classList.contains('active')) renderReports();
+      if (document.getElementById('tab-crm')?.classList.contains('active')) renderCRM();
+      if (document.getElementById('tab-reports')?.classList.contains('active')) renderReports();
+      if (document.getElementById('tab-team')?.classList.contains('active')) renderTeam();
       const now = new Date().toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' });
       setSyncUI('idle', `Synced ${now} · ${savedQuotes.length} jobs`);
     } catch(err) {
@@ -6236,10 +6316,373 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     localStorage.setItem('twc_neighborhoods', JSON.stringify(neighborhoods));
   }
 
+  // ── TEAM MEMBERS ──
+  async function dbLoadTeamMembers() {
+    const { data, error } = await _sb
+      .from('team_members')
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (error) { console.error('[CrewHub] dbLoadTeamMembers error:', error); return []; }
+    return (data || []).map(row => ({
+      id:         row.id,
+      name:       row.name,
+      email:      row.email,
+      role:       row.role,
+      active:     row.active,
+      createdAt:  row.created_at,
+      authUserId: row.auth_user_id,
+    }));
+  }
+
+  async function dbAddTeamMember(name, email, role) {
+    const { data, error } = await _sb
+      .from('team_members')
+      .insert({
+        business_id:  currentBusinessId,
+        auth_user_id: null,
+        name,
+        email: email.toLowerCase().trim(),
+        role,
+        active: true,
+      })
+      .select().single();
+    if (error) { console.error('[CrewHub] dbAddTeamMember error:', error); throw error; }
+    return data;
+  }
+
+  async function dbUpdateTeamMember(memberId, updates) {
+    const { data, error } = await _sb
+      .from('team_members')
+      .update(updates)
+      .eq('id', memberId)
+      .select().single();
+    if (error) { console.error('[CrewHub] dbUpdateTeamMember error:', error); throw error; }
+    return data;
+  }
+
+  async function dbRemoveTeamMember(memberId) {
+    const { error } = await _sb
+      .from('team_members')
+      .delete()
+      .eq('id', memberId);
+    if (error) { console.error('[CrewHub] dbRemoveTeamMember error:', error); throw error; }
+  }
+
+  async function dbClaimInvite(email) {
+    // Check for a pending invite with this email and no linked auth user
+    const { data, error } = await _sb
+      .from('team_members')
+      .select('*')
+      .eq('email', email.toLowerCase().trim())
+      .is('auth_user_id', null)
+      .limit(1)
+      .single();
+    if (error || !data) return null;
+    // Link the current auth user to this member record
+    const { data: updated, error: updateErr } = await _sb
+      .from('team_members')
+      .update({ auth_user_id: sbUser.id })
+      .eq('id', data.id)
+      .select().single();
+    if (updateErr) { console.error('[CrewHub] dbClaimInvite link error:', updateErr); return null; }
+    currentBusinessId = updated.business_id;
+    currentMemberId   = updated.id;
+    currentUserRole   = updated.role || 'crew';
+    return { businessId: updated.business_id, memberId: updated.id, role: updated.role };
+  }
+
+  async function dbLoadBusinessInfo() {
+    if (!currentBusinessId) return null;
+    const { data, error } = await _sb
+      .from('businesses')
+      .select('*')
+      .eq('id', currentBusinessId)
+      .single();
+    if (error) { console.error('[CrewHub] dbLoadBusinessInfo error:', error); return null; }
+    return data;
+  }
+
+  async function dbUpdateBusiness(updates) {
+    if (!currentBusinessId) return null;
+    const { data, error } = await _sb
+      .from('businesses')
+      .update(updates)
+      .eq('id', currentBusinessId)
+      .select().single();
+    if (error) { console.error('[CrewHub] dbUpdateBusiness error:', error); throw error; }
+    return data;
+  }
+
   // ── TIME ENTRIES (Phase 2.5 — stubs) ──
   async function dbClockIn(memberId)           { console.warn('[CrewHub] dbClockIn not yet implemented'); }
   async function dbClockOut(entryId)           { console.warn('[CrewHub] dbClockOut not yet implemented'); }
   async function dbGetActiveClockIn(memberId)  { console.warn('[CrewHub] dbGetActiveClockIn not yet implemented'); return null; }
+
+  // ═══════════════════════════════════════════════════════════════
+  // ═══ TEAM MANAGEMENT ═══
+  // Depends on: DATA ACCESS LAYER (dbLoadTeamMembers, dbAddTeamMember,
+  //               dbUpdateTeamMember, dbRemoveTeamMember, dbLoadBusinessInfo,
+  //               dbUpdateBusiness, canAccess, currentUserRole)
+  // Called by:  TAB SWITCHING (on team tab click),
+  //             afterSignIn (applyRolePermissions)
+  // ═══════════════════════════════════════════════════════════════
+
+  function applyRolePermissions() {
+    const tabMap = {
+      today:    'today',
+      leads:    'leads',
+      quotes:   'quotes',
+      pipeline: 'pipeline',
+      crm:      'crm',
+      reports:  'reports',
+      team:     'team',
+    };
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      const onclick = btn.getAttribute('onclick') || '';
+      const match = onclick.match(/switchTab\('(\w+)'/);
+      if (!match) return;
+      const tabKey = match[1];
+      const feature = tabMap[tabKey];
+      if (!feature) return;
+      btn.style.display = canAccess(feature) ? '' : 'none';
+    });
+
+    // If the currently active tab is now hidden, fall back to Today
+    const activeTab = document.querySelector('.tab-panel.active');
+    if (activeTab) {
+      const tabId = activeTab.id.replace('tab-', '');
+      const feature = tabMap[tabId];
+      if (feature && !canAccess(feature)) {
+        const todayBtn = document.getElementById('todayTabBtn');
+        if (todayBtn) switchTab('today', todayBtn);
+      }
+    }
+  }
+
+  function showNoBizModal() { document.getElementById('noBizModal').style.display = 'flex'; }
+  function hideNoBizModal() { document.getElementById('noBizModal').style.display = 'none'; }
+
+  function showAddMemberModal() {
+    document.getElementById('tm-name').value = '';
+    document.getElementById('tm-email').value = '';
+    document.getElementById('tm-role').value = 'crew';
+    document.getElementById('tm-error').style.display = 'none';
+    document.getElementById('addMemberModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeAddMemberModal() {
+    document.getElementById('addMemberModal').style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  async function saveNewTeamMember() {
+    const name  = document.getElementById('tm-name').value.trim();
+    const email = document.getElementById('tm-email').value.trim();
+    const role  = document.getElementById('tm-role').value;
+    const errEl = document.getElementById('tm-error');
+
+    if (!name || !email) {
+      errEl.textContent = 'Please enter both name and email.';
+      errEl.style.display = 'block';
+      return;
+    }
+    if (!email.includes('@') || !email.includes('.')) {
+      errEl.textContent = 'Please enter a valid email address.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    const btn = document.getElementById('tm-save-btn');
+    btn.textContent = 'Adding...';
+    btn.disabled = true;
+    errEl.style.display = 'none';
+
+    try {
+      await dbAddTeamMember(name, email, role);
+      closeAddMemberModal();
+      renderTeam();
+    } catch(err) {
+      const msg = err?.message || 'Failed to add team member.';
+      if (msg.includes('unique') || msg.includes('duplicate')) {
+        errEl.textContent = 'A team member with this email already exists.';
+      } else {
+        errEl.textContent = msg;
+      }
+      errEl.style.display = 'block';
+    }
+    btn.textContent = '➕ Add Member';
+    btn.disabled = false;
+  }
+
+  async function toggleMemberActive(memberId, active) {
+    try {
+      await dbUpdateTeamMember(memberId, { active });
+      renderTeam();
+    } catch(e) {
+      alert('Failed to update member: ' + (e.message || e));
+    }
+  }
+
+  async function changeMemberRole(memberId, newRole) {
+    if (memberId === currentMemberId) {
+      alert("You can't change your own role.");
+      return;
+    }
+    try {
+      await dbUpdateTeamMember(memberId, { role: newRole });
+      renderTeam();
+    } catch(e) {
+      alert('Failed to change role: ' + (e.message || e));
+    }
+  }
+
+  async function removeMember(memberId, memberName) {
+    if (memberId === currentMemberId) {
+      alert("You can't remove yourself from the team.");
+      return;
+    }
+    if (!confirm(`Remove "${memberName}" from your team?\n\nThey will lose access to all business data. This cannot be undone.`)) return;
+    try {
+      await dbRemoveTeamMember(memberId);
+      renderTeam();
+    } catch(e) {
+      alert('Failed to remove member: ' + (e.message || e));
+    }
+  }
+
+  async function renderTeam() {
+    const members = await dbLoadTeamMembers();
+    const bizInfo = await dbLoadBusinessInfo();
+    const isOwner = currentUserRole === 'owner';
+
+    // Business name header
+    const bizNameEl = document.getElementById('team-biz-name');
+    if (bizNameEl) bizNameEl.textContent = bizInfo ? bizInfo.name : '';
+
+    // Stats
+    const active  = members.filter(m => m.active);
+    const pending = members.filter(m => !m.authUserId && m.active);
+    const totalEl = document.getElementById('team-stat-total');
+    const actEl   = document.getElementById('team-stat-active');
+    const penEl   = document.getElementById('team-stat-pending');
+    if (totalEl) totalEl.textContent = members.length;
+    if (actEl)   actEl.textContent   = active.length;
+    if (penEl)   penEl.textContent   = pending.length;
+
+    // Role helpers
+    const roleLabel = r => ({ owner: '👑 Owner', dispatcher: '📋 Dispatcher', crew: '🔧 Crew' }[r] || r);
+    const roleBg    = r => ({ owner: '#fef3c7', dispatcher: '#e0f2fe', crew: '#f0fdf4' }[r] || '#f1f5f9');
+    const roleColor = r => ({ owner: '#92400e', dispatcher: '#0369a1', crew: '#065f46' }[r] || 'var(--text)');
+
+    // Member list
+    const el = document.getElementById('teamList');
+    if (!el) return;
+    if (!members.length) {
+      el.innerHTML = '<div class="empty-msg" style="background:white;border-radius:14px;padding:32px;">No team members yet.</div>';
+    } else {
+      el.innerHTML = members.map(m => {
+        const isYou      = m.id === currentMemberId;
+        const isPending  = !m.authUserId && m.active;
+        const isInactive = !m.active;
+        const initials   = m.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+
+        const statusBadge = isPending
+          ? '<span style="font-size:10px;font-weight:700;background:#fef3c7;color:#92400e;border-radius:20px;padding:2px 9px;">⏳ Pending Invite</span>'
+          : isInactive
+            ? '<span style="font-size:10px;font-weight:700;background:#fee2e2;color:#991b1b;border-radius:20px;padding:2px 9px;">Deactivated</span>'
+            : '<span style="font-size:10px;font-weight:700;background:#d1fae5;color:#065f46;border-radius:20px;padding:2px 9px;">✓ Active</span>';
+
+        const safeId = m.id.replace(/[^a-z0-9]/gi, '');
+        const roleDropdown = isOwner && !isYou
+          ? `<select onchange="changeMemberRole('${m.id}', this.value)" style="padding:5px 10px;border:2px solid var(--gray);border-radius:8px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;color:var(--text);background:white;cursor:pointer;">
+               <option value="crew" ${m.role==='crew'?'selected':''}>🔧 Crew</option>
+               <option value="dispatcher" ${m.role==='dispatcher'?'selected':''}>📋 Dispatcher</option>
+               <option value="owner" ${m.role==='owner'?'selected':''}>👑 Owner</option>
+             </select>`
+          : `<span style="font-size:12px;font-weight:700;background:${roleBg(m.role)};color:${roleColor(m.role)};border-radius:20px;padding:4px 12px;">${roleLabel(m.role)}</span>`;
+
+        const safeName = esc(m.name).replace(/'/g, '');
+        const actions = isOwner && !isYou ? `
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            ${m.active
+              ? `<button onclick="toggleMemberActive('${m.id}', false)" style="background:#f1f5f9;color:#6b9aaa;border:2px solid var(--gray);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;">Deactivate</button>`
+              : `<button onclick="toggleMemberActive('${m.id}', true)" style="background:#d1fae5;color:#065f46;border:2px solid #86efac;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;">Reactivate</button>`
+            }
+            <button onclick="removeMember('${m.id}', '${safeName}')" style="background:#fee2e2;color:#dc2626;border:2px solid #fca5a5;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;">Remove</button>
+          </div>` : '';
+
+        const cardBorder = isInactive ? 'border-color:#fca5a5;opacity:0.7;' : isPending ? 'border-color:#fde047;' : '';
+
+        return `
+        <div class="customer-card" style="${cardBorder}margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:14px;padding:16px 20px;flex-wrap:wrap;">
+            <div class="cust-avatar" style="${isInactive ? 'background:linear-gradient(135deg,#aac4cc,#6b9aaa);' : ''}">${initials}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:800;font-size:15px;color:var(--text);">
+                ${esc(m.name)}${isYou ? ' <span style="font-size:10px;font-weight:700;color:var(--teal);background:#e6f6fa;border-radius:20px;padding:2px 8px;margin-left:6px;">You</span>' : ''}
+              </div>
+              <div style="font-size:12px;font-weight:600;color:var(--muted);margin-top:2px;">${esc(m.email)}</div>
+              <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap;">
+                ${statusBadge}
+                ${roleDropdown}
+              </div>
+            </div>
+            ${actions}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // Business info section
+    const bizEl = document.getElementById('team-biz-info');
+    if (bizInfo && bizEl) {
+      if (isOwner) {
+        bizEl.innerHTML = `
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div>
+              <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;display:block;margin-bottom:4px;">Business Name</label>
+              <input id="biz-edit-name" type="text" value="${esc(bizInfo.name || '')}" style="width:100%;padding:8px 12px;border:2px solid var(--gray);border-radius:8px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;color:var(--text);outline:none;box-sizing:border-box;">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;display:block;margin-bottom:4px;">Email</label>
+              <input id="biz-edit-email" type="email" value="${esc(bizInfo.email || '')}" style="width:100%;padding:8px 12px;border:2px solid var(--gray);border-radius:8px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;color:var(--text);outline:none;box-sizing:border-box;">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;display:block;margin-bottom:4px;">Phone</label>
+              <input id="biz-edit-phone" type="tel" value="${esc(bizInfo.phone || '')}" style="width:100%;padding:8px 12px;border:2px solid var(--gray);border-radius:8px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;color:var(--text);outline:none;box-sizing:border-box;">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;display:block;margin-bottom:4px;">Address</label>
+              <input id="biz-edit-address" type="text" value="${esc(bizInfo.address || '')}" style="width:100%;padding:8px 12px;border:2px solid var(--gray);border-radius:8px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;color:var(--text);outline:none;box-sizing:border-box;">
+            </div>
+          </div>
+          <button onclick="saveBusinessInfo()" style="margin-top:14px;background:var(--teal);color:white;border:none;border-radius:30px;padding:10px 24px;font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;cursor:pointer;">💾 Save Business Info</button>`;
+      } else {
+        bizEl.innerHTML = `
+          <div style="font-size:14px;font-weight:700;color:var(--text);">${esc(bizInfo.name || 'Unnamed Business')}</div>
+          ${bizInfo.email   ? `<div style="font-size:13px;font-weight:600;color:var(--muted);margin-top:4px;">${esc(bizInfo.email)}</div>`   : ''}
+          ${bizInfo.phone   ? `<div style="font-size:13px;font-weight:600;color:var(--muted);margin-top:2px;">${esc(bizInfo.phone)}</div>`   : ''}
+          ${bizInfo.address ? `<div style="font-size:13px;font-weight:600;color:var(--muted);margin-top:2px;">${esc(bizInfo.address)}</div>` : ''}`;
+      }
+    }
+  }
+
+  async function saveBusinessInfo() {
+    const name    = document.getElementById('biz-edit-name').value.trim();
+    const email   = document.getElementById('biz-edit-email').value.trim();
+    const phone   = document.getElementById('biz-edit-phone').value.trim();
+    const address = document.getElementById('biz-edit-address').value.trim();
+    if (!name) { alert('Business name cannot be empty.'); return; }
+    try {
+      await dbUpdateBusiness({ name, email, phone, address });
+      alert('✅ Business info saved!');
+      renderTeam();
+    } catch(e) {
+      alert('Failed to save: ' + (e.message || e));
+    }
+  }
 
   // ═══════════════════════════════════════════════════════════════
   // ═══ PHOTO STORAGE (GOOGLE DRIVE) ═══
@@ -7341,6 +7784,47 @@ ${bizEmail}`
     <div class="stat-card">
       <div style="font-size:13px; font-weight:800; color:var(--teal-dark); margin-bottom:14px;">Top Customers (by revenue)</div>
       <div id="rpt-top-customers"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ TEAM TAB ═══ -->
+<div id="tab-team" class="tab-panel">
+  <div style="max-width:900px; margin:0 auto; padding:24px 16px 60px;">
+
+    <!-- Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
+      <div>
+        <div style="font-size:22px; font-weight:900; color:var(--teal-dark);">🏢 Team Management</div>
+        <div style="font-size:13px; font-weight:600; color:var(--muted); margin-top:2px;" id="team-biz-name"></div>
+      </div>
+      <button class="crm-btn crm-btn-teal" onclick="showAddMemberModal()">➕ Add Team Member</button>
+    </div>
+
+    <!-- Stats row -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-bottom:24px;">
+      <div class="stat-card" style="text-align:center;">
+        <div class="stat-label">Total Members</div>
+        <div class="stat-val" id="team-stat-total">0</div>
+      </div>
+      <div class="stat-card" style="text-align:center;">
+        <div class="stat-label">Active</div>
+        <div class="stat-val" id="team-stat-active" style="color:#10b981;">0</div>
+      </div>
+      <div class="stat-card" style="text-align:center;">
+        <div class="stat-label">Pending Invite</div>
+        <div class="stat-val" id="team-stat-pending" style="color:#f59e0b;">0</div>
+      </div>
+    </div>
+
+    <!-- Member list -->
+    <div id="teamList"></div>
+
+    <!-- Business Info Section -->
+    <div class="stat-card" style="margin-top:24px;">
+      <div style="font-size:13px; font-weight:800; color:var(--teal-dark); margin-bottom:14px;">🏢 Business Information</div>
+      <div id="team-biz-info"></div>
     </div>
 
   </div>
