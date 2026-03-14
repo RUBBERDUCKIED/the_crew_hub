@@ -2722,7 +2722,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   //             PIPELINE (generateQuoteFromSaved, generateInvoiceFromSaved)
   // ═══════════════════════════════════════════════════════════════
 
-  function _buildReceipt(i, paymentMethod) {
+  async function _buildReceipt(i, paymentMethod) {
     const q = savedQuotes[i];
     if (!q.lines) { alert('This job was saved before receipt generation was added. Please rebuild it.'); return; }
 
@@ -2836,15 +2836,9 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
 
     savedQuotes[i].receipted = true;
     savedQuotes[i].paymentMethod = paymentMethod;
-    localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+    if (!savedQuotes[i].reviewRequestSent) savedQuotes[i].reviewPending = true;
+    if (savedQuotes[i].id) await dbSaveJob(savedQuotes[i]).catch(e => console.error('[CrewHub] receipt save error:', e));
     renderSaved();
-    autoSync();
-
-    // Mark as pending review request if not already sent
-    if (!savedQuotes[i].reviewRequestSent) {
-      savedQuotes[i].reviewPending = true;
-      localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
-    }
 
     } finally {
       currentLines = prevLines; currentGrand = prevGrand; currentSubtotal = prevSub;
@@ -3086,7 +3080,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   //             SUPABASE (sync payload reads customers object)
   // ═══════════════════════════════════════════════════════════════
 
-  function findOrCreateCustomer(name, address, phone, email, company, leadSource) {
+  async function findOrCreateCustomer(name, address, phone, email, company, leadSource) {
     const normName = (name || '').trim().toUpperCase();
     if (!normName) return null;
     const contact = (phone + (phone && email ? ' · ' : '') + email).trim();
@@ -3099,12 +3093,12 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       if (email)      existing.email      = email;
       if (contact)    existing.contact    = contact;
       if (company)    existing.company    = company;
-      if (leadSource && !existing.leadSource) existing.leadSource = leadSource; // only set if not already known
-      localStorage.setItem('twc_customers', JSON.stringify(customers));
+      if (leadSource && !existing.leadSource) existing.leadSource = leadSource;
+      await dbSaveCustomer(existing);
       return existing.customerId;
     }
     const customerId = 'cust_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-    customers[customerId] = {
+    const newCustomer = {
       customerId,
       name: name.trim(),
       address: address || '',
@@ -3113,10 +3107,11 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       contact: contact || '',
       company: company || '',
       leadSource: leadSource || '',
+      tags: [],
       archived: false,
       createdAt: new Date().toISOString()
     };
-    localStorage.setItem('twc_customers', JSON.stringify(customers));
+    await dbSaveCustomer(newCustomer);
     return customerId;
   }
 
@@ -3226,7 +3221,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   //             LEAD PIPELINE (quoteFromLead pre-fills form)
   // ═══════════════════════════════════════════════════════════════
 
-  function saveQuote() {
+  async function saveQuote() {
     if (!window._cur || (window._cur.std + window._cur.large) === 0) {
       alert('Please enter at least one window before saving.');
       return;
@@ -3235,30 +3230,25 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     if (!name?.trim()) return;
 
     // Use already-selected customer, or find/create from typed name
-    const customerId = currentCustomerId || findOrCreateCustomer(
+    const customerId = currentCustomerId || await findOrCreateCustomer(
       name.trim(),
       window._cur.address,
       window._cur.phone || '',
       window._cur.email || '',
-      window._cur.company
-    ,
+      window._cur.company,
       (document.getElementById('custLeadSource')?.value || '')
     );
 
-    // Push any internal notes into CRM — keyed by customerId
+    // Push any internal notes into CRM via Supabase
     const noteText = window._cur.notes ? window._cur.notes.trim() : '';
     if (noteText && customerId) {
-      if (!crmNotes[customerId]) crmNotes[customerId] = [];
-      crmNotes[customerId].push({
-        text: `[Quote ${new Date().toLocaleDateString('en-CA', { day:'numeric', month:'short', year:'numeric' })}] ${noteText}`,
-        date: new Date().toLocaleDateString('en-CA', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
-      });
-      localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
+      const noteLabel = `[Quote ${new Date().toLocaleDateString('en-CA', { day:'numeric', month:'short', year:'numeric' })}] ${noteText}`;
+      await dbSaveNote(customerId, noteLabel).catch(e => console.error('[CrewHub] quote note save error:', e));
     }
 
-    savedQuotes.unshift({
-      customerId,                          // link to customer record
-      name: name.trim(),                   // snapshot for historical accuracy
+    const quoteObject = {
+      customerId,
+      name: name.trim(),
       address: window._cur.address,
       phone:   window._cur.phone || '',
       email:   window._cur.email || '',
@@ -3277,8 +3267,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       plan: servicePlan,
       quoteNum: 'TWC-' + Date.now().toString().slice(-6),
       date: new Date().toLocaleDateString('en-CA', { day:'2-digit', month:'short', year:'2-digit' })
-    });
-    localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+    };
+    await dbSaveJob(quoteObject);
     renderSaved();
     renderRecurring();
     resetForm();
@@ -3287,26 +3277,29 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     document.getElementById('tab-pipeline').classList.add('active');
     document.querySelector('[onclick*="pipeline"]').classList.add('active');
     generateQuoteFromSaved(0);
-    autoSync();
   }
 
-  function deleteQuote(i, e) {
+  async function deleteQuote(i, e) {
     e.stopPropagation();
     if (!confirm('Delete this quote?')) return;
-    savedQuotes.splice(i, 1);
-    localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+    const job = savedQuotes[i];
+    if (job && job.id) {
+      await dbDeleteJob(job.id);
+    } else {
+      savedQuotes.splice(i, 1);
+      localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+    }
     renderSaved();
     renderRecurring();
-    pushSync();
   }
 
-  function toggleWon(i, val) {
+  async function toggleWon(i, val) {
     savedQuotes[i].won = val;
-    localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+    if (savedQuotes[i].id) await dbSaveJob(savedQuotes[i]);
+    else localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
     if (val === true && savedQuotes[i].customerId) stampLastContact(savedQuotes[i].customerId);
     renderSaved();
     renderRecurring();
-    autoSync();
   }
 
   function openScheduleModal(i) {
@@ -3465,13 +3458,13 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         savedQuotes[i].scheduledISO     = startISO;
         savedQuotes[i].scheduledEndISO  = endISO;
         savedQuotes[i].scheduledMins    = durationMins;
-        localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+        if (savedQuotes[i].id) await dbSaveJob(savedQuotes[i]);
+        else localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
         closeScheduleModal();
         alert('📅 Job scheduled! Event added to your Google Calendar.');
         const schedQ = savedQuotes[i];
         if (schedQ && schedQ.customerId) stampLastContact(schedQ.customerId);
         renderSaved();
-        autoSync();
       } else {
         console.error('Calendar API error:', data);
         alert('Google Calendar returned an error: ' + (data.error?.message || 'Unknown error'));
@@ -3573,7 +3566,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     }
   }
 
-  function generateInvoiceFromSaved(i) {
+  async function generateInvoiceFromSaved(i) {
     const q = savedQuotes[i];
     if (!q.lines) { alert('This quote was saved before invoice generation was added. Please rebuild it.'); return; }
 
@@ -3693,9 +3686,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     if (!savedQuotes[i].invoicedDate) {
       savedQuotes[i].invoicedDate = new Date().toISOString().slice(0,10);
     }
-    localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+    if (savedQuotes[i].id) await dbSaveJob(savedQuotes[i]).catch(e => console.error('[CrewHub] invoice save error:', e));
     renderSaved();
-    autoSync();
 
     } finally {
       currentLines = prevLines; currentGrand = prevGrand; currentSubtotal = prevSub;
@@ -3993,20 +3985,23 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     quickNoteIdx = null;
   }
 
-  function saveQuickNote() {
+  async function saveQuickNote() {
     const text = document.getElementById('qnm-input').value.trim();
     if (!text) { document.getElementById('qnm-input').focus(); return; }
     const q = savedQuotes[quickNoteIdx];
-    // Use customerId if available, fall back to legacy name key
-    const noteKey = q.customerId || (q.name || '').trim().toUpperCase();
-    if (!crmNotes[noteKey]) crmNotes[noteKey] = [];
-    crmNotes[noteKey].push({
-      text,
-      date: new Date().toLocaleDateString('en-CA', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
-    });
-    localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
-    if (q.customerId) stampLastContact(q.customerId);
-    autoSync();
+    if (q.customerId) {
+      await dbSaveNote(q.customerId, text).catch(e => console.error('[CrewHub] saveQuickNote error:', e));
+      stampLastContact(q.customerId);
+    } else {
+      // Legacy: no customer ID — write to localStorage cache only
+      const noteKey = (q.name || '').trim().toUpperCase();
+      if (!crmNotes[noteKey]) crmNotes[noteKey] = [];
+      crmNotes[noteKey].push({
+        text,
+        date: new Date().toLocaleDateString('en-CA', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
+      });
+      localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
+    }
     closeQuickNote();
   }
 
@@ -4755,46 +4750,40 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     renderCRM();
   }
 
-  function archiveCustomer(customerId) {
+  async function archiveCustomer(customerId) {
     if (customers[customerId]) {
       customers[customerId].archived = true;
-      saveCustomers();
+      await dbSaveCustomer(customers[customerId]).catch(e => console.error('[CrewHub] archive error:', e));
     }
     renderCRM();
   }
 
-  function unarchiveCustomer(customerId) {
+  async function unarchiveCustomer(customerId) {
     if (customers[customerId]) {
       customers[customerId].archived = false;
-      saveCustomers();
+      await dbSaveCustomer(customers[customerId]).catch(e => console.error('[CrewHub] unarchive error:', e));
     }
     renderCRM();
   }
 
-  function hardDeleteCustomer(customerId) {
+  async function hardDeleteCustomer(customerId) {
     const c = customers[customerId];
     if (!c) return;
     if (!confirm(`⚠️ PERMANENTLY DELETE "${c.name}"?\n\nThis will remove ALL their quotes from your pipeline and cannot be undone.`)) return;
-    // Remove all quotes linked to this customer
+    // Delete all jobs linked to this customer from Supabase
+    const linkedJobs = savedQuotes.filter(q => q.customerId === customerId ||
+      (q.name || '').trim().toUpperCase() === (c.name || '').trim().toUpperCase());
+    for (const job of linkedJobs) {
+      if (job.id) await dbDeleteJob(job.id).catch(e => console.error('[CrewHub] hardDelete job error:', e));
+    }
     savedQuotes = savedQuotes.filter(q => q.customerId !== customerId &&
       (q.name || '').trim().toUpperCase() !== (c.name || '').trim().toUpperCase());
     localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
-    // Delete customer record
-    delete customers[customerId];
-    saveCustomers();
-    // Log deletion so other devices can sync it
-    if (!deletedCustomerIds.includes(customerId)) {
-      deletedCustomerIds.push(customerId);
-      localStorage.setItem('twc_deleted_customers', JSON.stringify(deletedCustomerIds));
-    }
-    // Clean up notes and photos
-    delete crmNotes[customerId];
-    delete crmNotes[(c.name || '').trim().toUpperCase()];
-    localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
+    // Delete customer record (cascades notes in Supabase via dbDeleteCustomer)
+    await dbDeleteCustomer(customerId).catch(e => console.error('[CrewHub] hardDelete customer error:', e));
     renderSaved();
     renderRecurring();
     renderCRM();
-    pushSync();
   }
 
 
@@ -5299,7 +5288,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     document.body.style.overflow = '';
   }
 
-  function saveCrmEdit() {
+  async function saveCrmEdit() {
     const customerId = document.getElementById('crmEdit-key').value;
     const name    = document.getElementById('crmEdit-name').value.trim();
     const address = document.getElementById('crmEdit-address').value.trim();
@@ -5314,34 +5303,27 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     customers[customerId].contact    = (phone + (phone && email ? ' · ' : '') + email).trim();
     customers[customerId].leadSource = leadSource;
     customers[customerId].tags       = [..._editTags];
-    saveCustomers();
+    await dbSaveCustomer(customers[customerId]).catch(e => console.error('[CrewHub] saveCrmEdit error:', e));
     stampLastContact(customerId);
     closeCrmEdit();
     renderCRM();
-    autoSync();
   }
 
-  function addNote(customerId, safeId) {
+  async function addNote(customerId, safeId) {
     const input = document.getElementById('ni-' + safeId);
     const text = input.value.trim();
     if (!text) return;
-    if (!crmNotes[customerId]) crmNotes[customerId] = [];
-    crmNotes[customerId].unshift({
-      text,
-      date: new Date().toLocaleDateString('en-CA', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
-    });
-    localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
+    await dbSaveNote(customerId, text).catch(e => console.error('[CrewHub] addNote error:', e));
     stampLastContact(customerId);
     input.value = '';
     renderCRM();
-    autoSync();
     setTimeout(() => {
       const card = document.getElementById('cc-' + safeId);
       if (card) card.classList.add('open');
     }, 10);
   }
 
-  function deleteNote(customerId, idx) {
+  async function deleteNote(customerId, idx) {
     if (!confirm('Delete this note?')) return;
     // Check both customerId key and legacy name key
     const notesById = crmNotes[customerId] || [];
@@ -5361,9 +5343,12 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     if (nameIdx !== -1) notesByName.splice(nameIdx, 1);
     if (crmNotes[customerId]) crmNotes[customerId] = notesById;
     if (legacyKey && crmNotes[legacyKey]) crmNotes[legacyKey] = notesByName;
-    localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
+    if (toDelete.id) {
+      await dbDeleteNote(toDelete.id, customerId).catch(e => console.error('[CrewHub] deleteNote error:', e));
+    } else {
+      localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
+    }
     renderCRM();
-    pushSync();
   }
 
   // ── stampLastContact — call after any real customer interaction ──
@@ -5371,7 +5356,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   function stampLastContact(customerId) {
     if (!customerId || !customers[customerId]) return;
     customers[customerId].lastContactDate = new Date().toISOString();
-    saveCustomers();
+    dbSaveCustomer(customers[customerId]).catch(e => console.error('[CrewHub] stampLastContact error:', e));
   }
 
   // ── formatLastContact — returns { text, color } for display ──
@@ -5482,28 +5467,35 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = ev => {
+    reader.onload = async ev => {
       try {
         const data = JSON.parse(ev.target.result);
         if (!data.savedQuotes) { alert('Invalid backup file.'); return; }
         if (!confirm(`This will merge ${data.savedQuotes.length} quotes from the backup with your current data. Continue?`)) return;
         // Merge customers (v2.0+)
         if (data.customers) {
+          const newCustomers = [];
           Object.keys(data.customers).forEach(cid => {
-            if (!customers[cid]) customers[cid] = data.customers[cid];
+            if (!customers[cid]) {
+              customers[cid] = data.customers[cid];
+              newCustomers.push(data.customers[cid]);
+            }
           });
-          localStorage.setItem('twc_customers', JSON.stringify(customers));
+          for (const c of newCustomers) {
+            await dbSaveCustomer(c).catch(err => console.error('[CrewHub] importJSON customer error:', err));
+          }
         }
         // Merge quotes
         const existingNums = new Set(savedQuotes.map(q => q.quoteNum));
         const newQuotes = data.savedQuotes.filter(q => !existingNums.has(q.quoteNum));
         savedQuotes = [...newQuotes, ...savedQuotes];
-        localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
-        // Merge notes
+        for (const q of newQuotes) {
+          await dbSaveJob(q).catch(err => console.error('[CrewHub] importJSON job error:', err));
+        }
+        // Merge notes (no batch API — cache locally, will sync via customer records)
         if (data.crmNotes) {
           Object.keys(data.crmNotes).forEach(k => {
             if (!crmNotes[k]) crmNotes[k] = [];
-            // Add notes not already present
             const existingTexts = new Set(crmNotes[k].map(n => n.text + n.date));
             data.crmNotes[k].forEach(n => {
               if (!existingTexts.has(n.text + n.date)) crmNotes[k].push(n);
@@ -5516,11 +5508,11 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           const existingLeadIds = new Set(leads.map(l => l.id));
           const newLeads = data.leads.filter(l => !existingLeadIds.has(l.id));
           leads = [...leads, ...newLeads];
-          saveLeads();
+          await dbSaveLeadsBatch(leads).catch(err => console.error('[CrewHub] importJSON leads error:', err));
         }
         if (data.neighborhoods && data.neighborhoods.length) {
           neighborhoods = data.neighborhoods;
-          saveNeighborhoods();
+          await dbSaveNeighborhoodsBatch(neighborhoods).catch(err => console.error('[CrewHub] importJSON nbhd error:', err));
         }
         if (data.leadsLastRun) localStorage.setItem('twc_leads_lastrun', data.leadsLastRun);
         renderSaved();
@@ -5672,33 +5664,25 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
   async function afterSignIn() {
     setSyncUI('syncing', 'Loading your data...');
-    await loadFromSupabase();
+    const identity = await dbLoadIdentity();
+    if (!identity) {
+      // New user — no business record yet. Phase 2 will add Create Business flow.
+      setSyncUI('idle', 'No business found — contact your admin');
+      return;
+    }
+    await dbLoadAll();
     renderSaved(); renderRecurring(); renderToday(); renderLeads();
     if (document.getElementById('tab-crm').classList.contains('active')) renderCRM();
+    if (document.getElementById('tab-reports').classList.contains('active')) renderReports();
     const now = new Date().toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' });
     setSyncUI('idle', `Synced ${now} · ${savedQuotes.length} jobs`);
   }
 
   async function loadFromSupabase() {
+    // Delegate to DATA ACCESS LAYER — legacy callers won't break
     if (!sbUser) return;
-    const { data, error } = await _sb.from('user_data').select('key, value').eq('user_id', sbUser.id);
-    if (error) { console.error('[CrewHub] Load error:', error); return; }
-    if (!data || !data.length) return; // new account — nothing to load yet
-    data.forEach(row => {
-      try {
-        // String-type values (twc_leads_lastrun, twc_logo_fileid) must be stored
-        // as raw strings — JSON.stringify would double-encode them on every sync cycle
-        const toStore = typeof row.value === 'string' ? row.value : JSON.stringify(row.value);
-        localStorage.setItem(row.key, toStore);
-      } catch(e) {}
-    });
-    // Re-hydrate in-memory variables
-    savedQuotes        = safeGet('twc_quotes', []);
-    crmNotes           = safeGet('twc_crm_notes', {});
-    customers          = safeGet('twc_customers', {});
-    deletedCustomerIds = safeGet('twc_deleted_customers', []);
-    leads              = safeGet('twc_leads', []);
-    neighborhoods      = safeGet('twc_neighborhoods', []);
+    if (!currentBusinessId) await dbLoadIdentity();
+    await dbLoadAll();
   }
 
   // signIn() kept for Google Drive (photos + calendar) — triggered from photo panel
@@ -5721,25 +5705,16 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     isSyncing = true;
     setSyncUI('syncing', 'Syncing...');
     try {
-      const leadsLastRun = localStorage.getItem('twc_leads_lastrun') || null;
-      const logoFileId   = localStorage.getItem('twc_logo_fileid')   || null;
-      const rows = [
-        { user_id: sbUser.id, key: 'twc_quotes',            value: savedQuotes,        updated_at: new Date().toISOString() },
-        { user_id: sbUser.id, key: 'twc_crm_notes',         value: crmNotes,           updated_at: new Date().toISOString() },
-        { user_id: sbUser.id, key: 'twc_customers',         value: customers,          updated_at: new Date().toISOString() },
-        { user_id: sbUser.id, key: 'twc_deleted_customers', value: deletedCustomerIds, updated_at: new Date().toISOString() },
-        { user_id: sbUser.id, key: 'twc_leads',             value: leads,              updated_at: new Date().toISOString() },
-        { user_id: sbUser.id, key: 'twc_neighborhoods',     value: neighborhoods,      updated_at: new Date().toISOString() },
-      ];
-      if (leadsLastRun) rows.push({ user_id: sbUser.id, key: 'twc_leads_lastrun', value: leadsLastRun, updated_at: new Date().toISOString() });
-      if (logoFileId)   rows.push({ user_id: sbUser.id, key: 'twc_logo_fileid',   value: logoFileId,   updated_at: new Date().toISOString() });
-      const { error } = await _sb.from('user_data').upsert(rows, { onConflict: 'user_id,key' });
-      if (error) throw error;
+      if (!currentBusinessId) await dbLoadIdentity();
+      await dbLoadAll();
+      renderSaved(); renderRecurring(); renderToday(); renderLeads();
+      if (document.getElementById('tab-crm').classList.contains('active')) renderCRM();
+      if (document.getElementById('tab-reports').classList.contains('active')) renderReports();
       const now = new Date().toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' });
       setSyncUI('idle', `Synced ${now} · ${savedQuotes.length} jobs`);
     } catch(err) {
       console.error('[CrewHub] Sync error:', err);
-      setSyncUI('error', 'Sync error — check console');
+      setSyncUI('error', 'Sync failed — check console');
     }
     isSyncing = false;
   }
@@ -6633,9 +6608,8 @@ ${bizEmail}`;
       });
       savedQuotes[i].reviewRequestSent = true;
       savedQuotes[i].reviewPending = false;
-      localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+      if (savedQuotes[i].id) await dbSaveJob(savedQuotes[i]).catch(e => console.error('[CrewHub] review save error:', e));
       if (savedQuotes[i].customerId) stampLastContact(savedQuotes[i].customerId);
-      autoSync();
       renderSaved();
     } catch(err) {
       console.error('Review request error:', err);
@@ -6711,15 +6685,13 @@ ${bizEmail}`
 
   let _autoSyncTimer = null;
   function autoSync() {
-    if (!sbUser) return;
-    clearTimeout(_autoSyncTimer);
-    _autoSyncTimer = setTimeout(() => {
-      if (sbUser && !isSyncing) syncNow();
-    }, 2000); // batch rapid saves — only sync 2s after the last change
+    // No-op: data writes now go directly to Supabase via db* functions.
+    // Kept so existing callers don't crash during transition.
   }
 
-  // pushSync now just calls syncNow (Supabase handles everything)
-  async function pushSync() { await syncNow(); }
+  async function pushSync() {
+    // No-op: replaced by direct Supabase writes via db* functions.
+  }
 
   // ── Restore Supabase session on page load ──
   _sb.auth.getSession().then(async ({ data: { session } }) => {
@@ -6784,7 +6756,7 @@ ${bizEmail}`
     const file = event.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = async function(e) {
       try {
         const data = JSON.parse(e.target.result);
         const newLeads = data.commercial_leads || [];
@@ -6806,11 +6778,11 @@ ${bizEmail}`
         });
 
         leads = newLeads;
-        saveLeads();
+        await dbSaveLeadsBatch(leads).catch(e => console.error('[CrewHub] importLeadFile leads error:', e));
 
         if (newNbhds.length) {
           neighborhoods = newNbhds;
-          saveNeighborhoods();
+          await dbSaveNeighborhoodsBatch(neighborhoods).catch(e => console.error('[CrewHub] importLeadFile nbhd error:', e));
         }
 
         if (generated) localStorage.setItem('twc_leads_lastrun', generated);
@@ -6987,15 +6959,15 @@ ${bizEmail}`
   }
 
   // ── Lead actions ──
-  function updateLeadStatus(id, status) {
+  async function updateLeadStatus(id, status) {
     const lead = leads.find(l => l.id === id);
     if (!lead) return;
     lead.status = status;
     lead.lastContact = status === 'contacted' ? new Date().toISOString().slice(0,10) : lead.lastContact;
-    saveLeads();
+    await dbSaveLead(lead).catch(e => console.error('[CrewHub] updateLeadStatus error:', e));
   }
 
-  function addLeadNote(id) {
+  async function addLeadNote(id) {
     const input = document.getElementById('ln-' + id);
     if (!input) return;
     const text = input.value.trim();
@@ -7005,16 +6977,15 @@ ${bizEmail}`
     if (!lead.notes) lead.notes = [];
     lead.notes.push({ text, date: new Date().toLocaleDateString('en-CA') });
     input.value = '';
-    saveLeads();
+    await dbSaveLead(lead).catch(e => console.error('[CrewHub] addLeadNote error:', e));
     renderLeads();
   }
 
-  function deleteLeadNote(id, index) {
+  async function deleteLeadNote(id, index) {
     const lead = leads.find(l => l.id === id);
     if (!lead || !lead.notes) return;
     lead.notes.splice(index, 1);
-    saveLeads();
-    autoSync();
+    await dbSaveLead(lead).catch(e => console.error('[CrewHub] deleteLeadNote error:', e));
     renderLeads();
   }
 
@@ -7054,20 +7025,18 @@ ${bizEmail}`
     document.getElementById('tab-quotes').scrollTop = 0;
   }
 
-  function deleteLead(id) {
+  async function deleteLead(id) {
     if (!confirm('Delete this lead?')) return;
-    leads = leads.filter(l => l.id !== id);
-    saveLeads();
+    await dbDeleteLead(id).catch(e => console.error('[CrewHub] deleteLead error:', e));
     renderLeads();
   }
 
-  function sendLeadToCRM(id) {
+  async function sendLeadToCRM(id) {
     const lead = leads.find(l => l.id === id);
     if (!lead) return;
 
     // Check if a customer from this lead already exists
-    const existingKey = 'cust_from_lead_' + id;
-    const alreadyExists = customers[existingKey] || Object.values(customers).some(c => c._leadId === id);
+    const alreadyExists = Object.values(customers).some(c => c._leadId === id);
     if (alreadyExists) {
       alert(`"${lead.name}" is already in your CRM.`);
       return;
@@ -7075,21 +7044,23 @@ ${bizEmail}`
 
     // Create customer using the same format as the rest of the app
     const custId = 'cust_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-    customers[custId] = {
-      customerId: custId,   // must match the key — this is what renderCRM expects
-      _leadId: id,          // keeps the lead → customer link for duplicate detection
+    const newCustomer = {
+      customerId: custId,
+      _leadId: id,
       name: lead.name,
       company: lead.name,
       address: lead.address,
       phone: lead.phone || '',
       email: lead.email || '',
-      source: 'lead_pipeline',
-      createdAt: new Date().toISOString().slice(0,10),
+      leadSource: 'lead_pipeline',
+      tags: [],
+      archived: false,
+      createdAt: new Date().toISOString(),
     };
-    saveCustomers();
+    customers[custId] = newCustomer;
+    await dbSaveCustomer(newCustomer).catch(e => console.error('[CrewHub] sendLeadToCRM customer error:', e));
     lead.status = 'contacted';
-    saveLeads();
-    autoSync();
+    await dbSaveLead(lead).catch(e => console.error('[CrewHub] sendLeadToCRM lead error:', e));
     renderLeads();
     alert(`✅ "${lead.name}" added to CRM! Switch to the CRM tab to see them.`);
   }
@@ -7099,7 +7070,7 @@ ${bizEmail}`
     document.getElementById('manualLeadModal').style.display = 'flex';
   }
 
-  function saveManualLead() {
+  async function saveManualLead() {
     const name = document.getElementById('ml-name').value.trim();
     if (!name) { alert('Please enter a name.'); return; }
     const segVal = document.getElementById('ml-type').value;
@@ -7131,7 +7102,7 @@ ${bizEmail}`
     if (noteText) lead.notes.push({ text: noteText, date: new Date().toLocaleDateString('en-CA') });
 
     leads.unshift(lead);
-    saveLeads();
+    await dbSaveLead(lead).catch(e => console.error('[CrewHub] saveManualLead error:', e));
     document.getElementById('manualLeadModal').style.display = 'none';
     ['ml-name','ml-address','ml-phone','ml-email','ml-notes'].forEach(id => {
       document.getElementById(id).value = '';
