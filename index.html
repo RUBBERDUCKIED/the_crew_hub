@@ -4160,7 +4160,10 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     updateMeta(); calc();
   }
 
-  updateMeta(); calc(); renderSaved(); renderRecurring(); renderToday();
+  updateMeta(); calc(); renderSaved(); renderRecurring();
+  // renderToday() deferred — todayMap (let) is declared later in the script and would
+  // cause a TDZ error here. afterSignIn() calls renderToday() once all lets are live.
+  try { renderToday(); } catch(e) { /* expected TDZ on cold boot — afterSignIn handles it */ }
   // Attach Places autocomplete to quote address field (may fire before Google loads — handled by initGooglePlaces callback too)
   setTimeout(() => attachPlacesAutocomplete('custAddress'), 1500);
 
