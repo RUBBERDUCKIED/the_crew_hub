@@ -5809,7 +5809,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         <input type="email" id="authEmail" placeholder="you@email.com" style="${I}">
         <label style="${LB}">Password</label>
         <input type="password" id="authPassword" placeholder="6+ characters" style="${I}margin-bottom:18px;">
-        <button id="authSignInBtn" onclick="handleNewBusinessSignup()" style="${BP}">🚀 Create My Business</button>
+        <button id="authCreateBizBtn" onclick="handleNewBusinessSignup()" style="${BP}">🚀 Create My Business</button>
         <p style="font-size:11px;color:#aac4cc;margin-top:6px;font-weight:600;">Already have an account? <button onclick="showAuthStep('main')" style="${BG}">Sign In</button></p>
       </div>`;
 
@@ -5883,33 +5883,39 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const ownerName = document.getElementById('authOwnerName')?.value.trim();
     const email     = document.getElementById('authEmail')?.value.trim();
     const password  = document.getElementById('authPassword')?.value;
-    if (!bizName)                { showAuthError('Please enter your business name.'); return; }
-    if (!ownerName)              { showAuthError('Please enter your name.'); return; }
-    if (!email || !password)     { showAuthError('Please enter your email and password.'); return; }
-    if (password.length < 6)     { showAuthError('Password must be at least 6 characters.'); return; }
-    const btn = document.getElementById('authSignInBtn');
+    if (!bizName)   { showAuthError('Please enter your business name.'); return; }
+    if (!ownerName) { showAuthError('Please enter your name.'); return; }
+    if (!email)     { showAuthError('Please enter your email address.'); return; }
+    if (!password || password.length < 6) { showAuthError('Password must be at least 6 characters.'); return; }
+    const btn = document.getElementById('authCreateBizBtn');
     if (btn) { btn.textContent = '⏳ Creating...'; btn.disabled = true; }
-    const { data, error } = await _sb.auth.signUp({ email, password });
-    if (error) {
-      showAuthError(error.message);
-      if (btn) { btn.textContent = '🚀 Create My Business'; btn.disabled = false; }
-      return;
-    }
-    sbUser = data.user;
-    if (!sbUser) {
-      showAuthError('✓ Check your email to confirm your account, then sign in.', 'success');
-      if (btn) { btn.textContent = '🚀 Create My Business'; btn.disabled = false; }
-      return;
-    }
     try {
+      // If already signed in, skip auth — just create the business
+      if (!sbUser) {
+        // Try sign-up first
+        const { data: signUpData, error: signUpErr } = await _sb.auth.signUp({ email, password });
+        if (signUpErr) {
+          // If "already registered", try sign-in instead
+          if (signUpErr.message?.toLowerCase().includes('already') || signUpErr.status === 422) {
+            const { data: signInData, error: signInErr } = await _sb.auth.signInWithPassword({ email, password });
+            if (signInErr) throw signInErr;
+            sbUser = signInData.user;
+          } else {
+            throw signUpErr;
+          }
+        } else {
+          sbUser = signUpData.user;
+        }
+      }
+      // Now create the business
       await dbBootstrapBusiness(bizName, ownerName, email);
-    } catch(err) {
-      showAuthError(err.message || 'Failed to create business. Please try again.');
-      if (btn) { btn.textContent = '🚀 Create My Business'; btn.disabled = false; }
-      return;
+      hideAuthModal();
+      hideNoBizModal();
+      await afterSignIn();
+    } catch(e) {
+      showAuthError(e.message || 'Failed to create account.');
+      if (btn) { btn.textContent = '🚀 Create Business & Account'; btn.disabled = false; }
     }
-    hideAuthModal();
-    await afterSignIn();
   }
 
   async function handleJoinTeamSignup() {
@@ -6818,6 +6824,31 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   // noBizModal is superseded by auth flow steps — redirect any remaining callers
   function showNoBizModal() { showAuthStep('choose'); }
   function hideNoBizModal() { /* no-op — auth modal handles this now */ }
+
+  // handleCreateBusiness — called by the legacy noBizModal "Create My Business" button.
+  // User is already signed in at this point, so skip auth and go straight to bootstrap.
+  async function handleCreateBusiness() {
+    const bizName   = document.getElementById('noBiz-bizName')?.value.trim();
+    const ownerName = document.getElementById('noBiz-ownerName')?.value.trim();
+    const errEl     = document.getElementById('noBizError');
+    const btn       = document.getElementById('noBiz-createBtn');
+    function noBizErr(msg) {
+      if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+    }
+    if (!bizName)   { noBizErr('Please enter your business name.'); return; }
+    if (!ownerName) { noBizErr('Please enter your name.'); return; }
+    if (btn) { btn.textContent = '⏳ Creating...'; btn.disabled = true; }
+    try {
+      // User is already authenticated — skip signUp, just create the business
+      if (!sbUser) throw new Error('Not signed in. Please sign out and sign back in.');
+      await dbBootstrapBusiness(bizName, ownerName, sbUser.email);
+      document.getElementById('noBizModal').style.display = 'none';
+      await afterSignIn();
+    } catch(e) {
+      noBizErr(e.message || 'Failed to create business. Please try again.');
+      if (btn) { btn.textContent = '🚀 Create My Business'; btn.disabled = false; }
+    }
+  }
 
   function showAddMemberModal() {
     document.getElementById('tm-name').value = '';
