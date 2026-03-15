@@ -1021,6 +1021,11 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   #tab-team select { width: 100%; }
   #biz-edit-name, #biz-edit-email, #biz-edit-phone, #biz-edit-address { width: 100%; box-sizing: border-box; }
   #tab-team .stat-card { min-width: unset; }
+
+  /* Clock widget */
+  #today-clock-widget > div { flex-direction: column; text-align: center; gap: 10px; }
+  #today-clock-widget button { width: 100%; }
+  #today-my-hours .stat-card { padding: 12px; }
 }
 
 
@@ -1130,6 +1135,10 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   /* ── Team tab ── */
   #tab-team > div { padding: 12px 10px 60px; }
   #tab-team > div > div:first-child { flex-direction: column; }
+
+  /* ── Clock widget ── */
+  #today-clock-widget > div { padding: 14px 16px; }
+  #clock-timer { font-size: 22px !important; }
 }
 
 /* ─── LEAD FINDER STYLES ─── */
@@ -1977,6 +1986,9 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
 <div id="tab-today" class="tab-panel active">
   <div style="max-width:960px;margin:0 auto;padding:20px 16px 60px;">
 
+    <!-- Clock In/Out Widget -->
+    <div id="today-clock-widget" style="margin-bottom:18px;"></div>
+
     <!-- Header row -->
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px;">
       <div>
@@ -2000,6 +2012,9 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
 
     <!-- Job cards -->
     <div id="today-cards" style="display:flex;flex-direction:column;gap:12px;"></div>
+
+    <!-- My Hours Weekly Summary -->
+    <div id="today-my-hours" style="margin-top:24px;"></div>
 
   </div>
 </div>
@@ -2199,6 +2214,8 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   let currentBusinessId   = null;  // UUID — set on sign-in by dbLoadIdentity()
   let currentMemberId     = null;  // UUID — this user's team_members.id
   let currentUserRole     = 'owner'; // 'owner' | 'dispatcher' | 'crew' — set on sign-in
+  let _clockEntry         = null;    // Active time_entry row (null = not clocked in)
+  let _clockTimerInterval = null;    // setInterval ID for the live clock timer
 
   // ── One-time migration: purge ghost customers (no customerId) left by old bug ──
   (function purgeGhostCustomers() {
@@ -4238,6 +4255,9 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   // Called by:  Tab button onclick="switchTab(...)" in HTML
   // ═══════════════════════════════════════════════════════════════
   function switchTab(tab, btn) {
+    // Stop clock timer when leaving Today tab
+    if (tab !== 'today') stopClockTimer();
+
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('tab-' + tab).classList.add('active');
@@ -4889,6 +4909,10 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
     // Map
     initTodayMap(todayJobs);
+
+    // Clock widget + weekly hours (async, non-blocking)
+    renderClockWidget();
+    renderMyHours();
   }
 
   async function fetchTodayWeather() {
@@ -6369,26 +6393,14 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   async function dbClaimInvite(email) {
-    // Check for a pending invite with this email and no linked auth user
-    const { data, error } = await _sb
-      .from('team_members')
-      .select('*')
-      .eq('email', email.toLowerCase().trim())
-      .is('auth_user_id', null)
-      .limit(1)
-      .single();
-    if (error || !data) return null;
-    // Link the current auth user to this member record
-    const { data: updated, error: updateErr } = await _sb
-      .from('team_members')
-      .update({ auth_user_id: sbUser.id })
-      .eq('id', data.id)
-      .select().single();
-    if (updateErr) { console.error('[CrewHub] dbClaimInvite link error:', updateErr); return null; }
-    currentBusinessId = updated.business_id;
-    currentMemberId   = updated.id;
-    currentUserRole   = updated.role || 'crew';
-    return { businessId: updated.business_id, memberId: updated.id, role: updated.role };
+    // Call the server-side function that bypasses RLS to claim a pending invite
+    const { data, error } = await _sb.rpc('claim_team_invite');
+    if (error) { console.error('[CrewHub] dbClaimInvite error:', error); return null; }
+    if (!data) return null;
+    currentBusinessId = data.businessId;
+    currentMemberId   = data.memberId;
+    currentUserRole   = data.role || 'crew';
+    return data;
   }
 
   async function dbLoadBusinessInfo() {
@@ -6413,10 +6425,74 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     return data;
   }
 
-  // ── TIME ENTRIES (Phase 2.5 — stubs) ──
-  async function dbClockIn(memberId)           { console.warn('[CrewHub] dbClockIn not yet implemented'); }
-  async function dbClockOut(entryId)           { console.warn('[CrewHub] dbClockOut not yet implemented'); }
-  async function dbGetActiveClockIn(memberId)  { console.warn('[CrewHub] dbGetActiveClockIn not yet implemented'); return null; }
+  // ── TIME ENTRIES ──
+  async function dbClockIn(memberId) {
+    // Guard: check if already clocked in
+    const existing = await dbGetActiveClockIn(memberId);
+    if (existing) {
+      console.warn('[CrewHub] Already clocked in, entry:', existing.id);
+      return existing;
+    }
+    const { data, error } = await _sb
+      .from('time_entries')
+      .insert({
+        business_id: currentBusinessId,
+        member_id:   memberId,
+        clock_in:    new Date().toISOString(),
+        entry_type:  'shift',
+      })
+      .select().single();
+    if (error) { console.error('[CrewHub] dbClockIn error:', error); throw error; }
+    return data;
+  }
+
+  async function dbClockOut(entryId) {
+    const { data, error } = await _sb
+      .from('time_entries')
+      .update({ clock_out: new Date().toISOString() })
+      .eq('id', entryId)
+      .select().single();
+    if (error) { console.error('[CrewHub] dbClockOut error:', error); throw error; }
+    return data;
+  }
+
+  async function dbGetActiveClockIn(memberId) {
+    const { data, error } = await _sb
+      .from('time_entries')
+      .select('*')
+      .eq('member_id', memberId)
+      .is('clock_out', null)
+      .eq('entry_type', 'shift')
+      .order('clock_in', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) { console.error('[CrewHub] dbGetActiveClockIn error:', error); return null; }
+    return data || null;
+  }
+
+  async function dbGetTimeEntries(memberId, startDate, endDate) {
+    // startDate and endDate are ISO date strings like '2026-03-09'
+    const { data, error } = await _sb
+      .from('time_entries')
+      .select('*')
+      .eq('member_id', memberId)
+      .gte('clock_in', startDate + 'T00:00:00')
+      .lte('clock_in', endDate + 'T23:59:59')
+      .eq('entry_type', 'shift')
+      .order('clock_in', { ascending: true });
+    if (error) { console.error('[CrewHub] dbGetTimeEntries error:', error); return []; }
+    return data || [];
+  }
+
+  async function dbUpdateBreakMins(entryId, breakMins) {
+    const { data, error } = await _sb
+      .from('time_entries')
+      .update({ break_mins: breakMins, edited_by: currentMemberId })
+      .eq('id', entryId)
+      .select().single();
+    if (error) { console.error('[CrewHub] dbUpdateBreakMins error:', error); throw error; }
+    return data;
+  }
 
   // ═══════════════════════════════════════════════════════════════
   // ═══ TEAM MANAGEMENT ═══
@@ -6682,6 +6758,240 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     } catch(e) {
       alert('Failed to save: ' + (e.message || e));
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // ═══ TIMESHEETS ═══
+  // Depends on: DATA ACCESS LAYER (dbClockIn, dbClockOut, dbGetActiveClockIn,
+  //               dbGetTimeEntries, dbUpdateBreakMins, currentMemberId)
+  //             TEAM MANAGEMENT (dbLoadTeamMembers — for dispatcher view)
+  // Called by:  TODAY'S JOBS DASHBOARD (renderToday calls renderClockWidget),
+  //             Clock widget button clicks
+  // ═══════════════════════════════════════════════════════════════
+
+  async function renderClockWidget() {
+    const el = document.getElementById('today-clock-widget');
+    if (!el || !currentMemberId) { if (el) el.innerHTML = ''; return; }
+
+    // Fetch current clock status
+    _clockEntry = await dbGetActiveClockIn(currentMemberId);
+
+    if (_clockEntry) {
+      // ── CLOCKED IN STATE ──
+      const clockInTime = new Date(_clockEntry.clock_in);
+      const clockInStr  = clockInTime.toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+      el.innerHTML = `
+        <div style="background:linear-gradient(135deg,#059669,#047857);border-radius:14px;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;box-shadow:0 4px 16px rgba(5,150,105,0.25);">
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div style="width:12px;height:12px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px #4ade80;flex-shrink:0;"></div>
+            <div>
+              <div style="color:white;font-weight:900;font-size:15px;">Clocked In</div>
+              <div style="color:rgba(255,255,255,0.8);font-weight:600;font-size:13px;margin-top:2px;">Since ${clockInStr}</div>
+            </div>
+          </div>
+          <div style="text-align:center;">
+            <div id="clock-timer" style="font-family:'Montserrat',sans-serif;font-weight:900;font-size:28px;color:#f0d000;letter-spacing:0.02em;">0h 0m</div>
+            <div style="color:rgba(255,255,255,0.6);font-size:11px;font-weight:700;">worked today</div>
+          </div>
+          <button id="clock-out-btn" onclick="handleClockOut()" style="background:white;color:#dc2626;border:none;border-radius:30px;padding:12px 24px;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);transition:all 0.15s;">
+            🔴 Clock Out
+          </button>
+        </div>`;
+
+      startClockTimer(clockInTime);
+
+    } else {
+      // ── NOT CLOCKED IN STATE ──
+      el.innerHTML = `
+        <div style="background:white;border-radius:14px;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;border:2px solid var(--gray);box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div style="width:12px;height:12px;border-radius:50%;background:#d1d5db;flex-shrink:0;"></div>
+            <div>
+              <div style="color:var(--text);font-weight:900;font-size:15px;">Not Clocked In</div>
+              <div style="color:var(--muted);font-weight:600;font-size:13px;margin-top:2px;">Tap to start your shift</div>
+            </div>
+          </div>
+          <button id="clock-in-btn" onclick="handleClockIn()" style="background:linear-gradient(135deg,#10b981,#059669);color:white;border:none;border-radius:30px;padding:12px 24px;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 4px 12px rgba(16,185,129,0.35);transition:all 0.15s;">
+            🟢 Clock In
+          </button>
+        </div>`;
+
+      stopClockTimer();
+    }
+  }
+
+  function startClockTimer(clockInTime) {
+    stopClockTimer(); // clear any existing interval
+    const update = () => {
+      const elapsed  = Date.now() - clockInTime.getTime();
+      const totalMins = Math.floor(elapsed / 60000);
+      const hrs  = Math.floor(totalMins / 60);
+      const mins = totalMins % 60;
+      const timerEl = document.getElementById('clock-timer');
+      if (timerEl) timerEl.textContent = `${hrs}h ${mins}m`;
+    };
+    update(); // run immediately so first display is instant
+    _clockTimerInterval = setInterval(update, 30000); // refresh every 30 s
+  }
+
+  function stopClockTimer() {
+    if (_clockTimerInterval) {
+      clearInterval(_clockTimerInterval);
+      _clockTimerInterval = null;
+    }
+  }
+
+  async function handleClockIn() {
+    const btn = document.getElementById('clock-in-btn');
+    if (btn) { btn.textContent = '⏳ Clocking in...'; btn.disabled = true; }
+    try {
+      _clockEntry = await dbClockIn(currentMemberId);
+      await renderClockWidget();
+    } catch(e) {
+      alert('Failed to clock in: ' + (e.message || e));
+      if (btn) { btn.textContent = '🟢 Clock In'; btn.disabled = false; }
+    }
+  }
+
+  async function handleClockOut() {
+    if (!_clockEntry) return;
+    if (!confirm('Clock out and end your shift?')) return;
+    const btn = document.getElementById('clock-out-btn');
+    if (btn) { btn.textContent = '⏳ Clocking out...'; btn.disabled = true; }
+    try {
+      await dbClockOut(_clockEntry.id);
+      _clockEntry = null;
+      stopClockTimer();
+      await renderClockWidget();
+      await renderMyHours(); // refresh weekly summary
+    } catch(e) {
+      alert('Failed to clock out: ' + (e.message || e));
+      if (btn) { btn.textContent = '🔴 Clock Out'; btn.disabled = false; }
+    }
+  }
+
+  // ── MY HOURS — Weekly Summary ──
+
+  async function renderMyHours() {
+    const el = document.getElementById('today-my-hours');
+    if (!el || !currentMemberId) { if (el) el.innerHTML = ''; return; }
+
+    // Calculate current week (Monday → Sunday)
+    const now        = new Date();
+    const dayOfWeek  = now.getDay(); // 0=Sun, 1=Mon …
+    const mondayOff  = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday     = new Date(now);
+    monday.setDate(now.getDate() + mondayOff);
+    monday.setHours(0, 0, 0, 0);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+
+    const startStr = monday.toISOString().slice(0, 10);
+    const endStr   = sunday.toISOString().slice(0, 10);
+
+    const entries = await dbGetTimeEntries(currentMemberId, startStr, endStr);
+
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const todayStr = now.toISOString().slice(0, 10);
+    const days     = [];
+    let weekTotalMins = 0;
+
+    for (let d = 0; d < 7; d++) {
+      const date    = new Date(monday);
+      date.setDate(monday.getDate() + d);
+      const dateStr = date.toISOString().slice(0, 10);
+      const isToday  = dateStr === todayStr;
+      const isFuture = date > now && !isToday;
+
+      const dayEntries = entries.filter(e => e.clock_in.slice(0, 10) === dateStr);
+
+      let dayMins = 0, clockInStr = '', clockOutStr = '', breakMins = 0, isActive = false;
+
+      dayEntries.forEach(e => {
+        const inTime = new Date(e.clock_in);
+        clockInStr   = inTime.toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit', hour12: true });
+        breakMins   += e.break_mins || 0;
+        if (e.clock_out) {
+          const outTime = new Date(e.clock_out);
+          clockOutStr   = outTime.toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit', hour12: true });
+          dayMins      += Math.max(0, (outTime - inTime) / 60000 - (e.break_mins || 0));
+        } else {
+          isActive    = true;
+          clockOutStr = '⏱ now';
+          dayMins    += Math.max(0, (Date.now() - inTime.getTime()) / 60000 - (e.break_mins || 0));
+        }
+      });
+
+      weekTotalMins += dayMins;
+
+      days.push({
+        name:       dayNames[d],
+        dateLabel:  date.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }),
+        dayMins:    Math.round(dayMins),
+        clockInStr,
+        clockOutStr,
+        breakMins,
+        isToday,
+        isFuture,
+        isActive,
+        hasEntry:   dayEntries.length > 0,
+      });
+    }
+
+    const weekHrs  = Math.floor(weekTotalMins / 60);
+    const weekMins = Math.round(weekTotalMins % 60);
+
+    const formatHM = mins => {
+      const h = Math.floor(mins / 60);
+      const m = Math.round(mins % 60);
+      return h > 0 ? `${h}h ${m}m` : `${m}m`;
+    };
+
+    el.innerHTML = `
+      <div style="background:white;border-radius:14px;border:2px solid var(--gray);overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+        <div style="background:var(--offwhite,#f4fbfc);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--gray);">
+          <div>
+            <div style="font-weight:900;font-size:14px;color:var(--text);">⏱ My Hours This Week</div>
+            <div style="font-size:12px;font-weight:600;color:var(--muted);margin-top:2px;">${monday.toLocaleDateString('en-CA', { month:'short', day:'numeric' })} – ${sunday.toLocaleDateString('en-CA', { month:'short', day:'numeric', year:'numeric' })}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-family:'Montserrat',sans-serif;font-weight:900;font-size:22px;color:var(--teal-dark);">${weekHrs}h ${weekMins}m</div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);">week total</div>
+          </div>
+        </div>
+        <div style="padding:6px 12px;">
+          ${days.map(d => {
+            if (d.isFuture && !d.hasEntry) {
+              return `<div style="display:flex;align-items:center;padding:8px 8px;border-bottom:1px solid #f1f5f9;opacity:0.4;">
+                <div style="width:36px;font-size:12px;font-weight:800;color:var(--muted);">${d.name}</div>
+                <div style="flex:1;font-size:12px;font-weight:600;color:var(--muted);margin-left:8px;">${d.dateLabel}</div>
+                <div style="font-size:12px;font-weight:600;color:var(--muted);">—</div>
+              </div>`;
+            }
+            if (!d.hasEntry) {
+              return `<div style="display:flex;align-items:center;padding:8px 8px;border-bottom:1px solid #f1f5f9;">
+                <div style="width:36px;font-size:12px;font-weight:800;color:${d.isToday ? 'var(--teal-dark)' : 'var(--muted)'};">${d.name}</div>
+                <div style="flex:1;font-size:12px;font-weight:600;color:var(--muted);margin-left:8px;">${d.dateLabel}</div>
+                <div style="font-size:12px;font-weight:600;color:var(--muted);">${d.isToday ? 'not clocked in' : '— not worked —'}</div>
+              </div>`;
+            }
+            const barWidth = d.dayMins > 0 ? Math.min(100, Math.round(d.dayMins / 600 * 100)) : 0;
+            return `<div style="display:flex;align-items:center;padding:8px 8px;border-bottom:1px solid #f1f5f9;${d.isToday ? 'background:#f0fdf4;border-radius:8px;' : ''}">
+              <div style="width:36px;font-size:12px;font-weight:800;color:${d.isToday ? 'var(--teal-dark)' : 'var(--text)'};">${d.name}</div>
+              <div style="flex:1;margin-left:8px;min-width:0;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+                  <span style="font-size:11px;font-weight:600;color:var(--muted);">${d.clockInStr} – ${d.clockOutStr}${d.breakMins > 0 ? ` <span style="color:#f59e0b;">(${d.breakMins}m break)</span>` : ''}</span>
+                  <span style="font-size:12px;font-weight:800;color:${d.isActive ? '#059669' : 'var(--text)'};">${formatHM(d.dayMins)}${d.isActive ? ' ⏱' : ''}</span>
+                </div>
+                <div style="background:#e2e8f0;border-radius:20px;height:6px;overflow:hidden;">
+                  <div style="background:${d.isActive ? '#10b981' : 'var(--teal)'};width:${barWidth}%;height:100%;border-radius:20px;transition:width 0.4s;"></div>
+                </div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
   }
 
   // ═══════════════════════════════════════════════════════════════
