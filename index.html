@@ -1555,14 +1555,35 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
 </div>
 
 <!-- ═══ NO BUSINESS MODAL ═══ -->
+<!-- ═══ NO BUSINESS MODAL ═══ -->
 <div id="noBizModal" style="display:none;position:fixed;inset:0;background:rgba(10,30,40,0.82);z-index:9998;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
-  <div style="background:#fff;border-radius:20px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.35);text-align:center;">
-    <div style="font-size:36px;margin-bottom:8px;">🔒</div>
-    <h2 style="font-family:'Montserrat',sans-serif;font-size:20px;font-weight:900;color:#1a3a4a;margin-bottom:8px;">No Team Found</h2>
-    <p style="font-size:13px;color:#6b9aaa;font-weight:600;margin-bottom:24px;line-height:1.6;">Your account isn't linked to a business yet. Ask your team owner to add your email address in their Team tab, then sign in again.</p>
+  <div style="background:#fff;border-radius:20px;padding:40px 36px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.35);text-align:center;">
+    <div style="font-size:36px;margin-bottom:8px;">🪟</div>
+    <h2 style="font-family:'Montserrat',sans-serif;font-size:20px;font-weight:900;color:#1a3a4a;margin-bottom:8px;">Welcome to Crew Hub</h2>
+    <p style="font-size:13px;color:#6b9aaa;font-weight:600;margin-bottom:24px;line-height:1.6;">Your account isn't linked to a business yet. Were you invited to join an existing team, or are you starting fresh?</p>
+
     <div id="noBizError" style="display:none;background:#fef2f2;color:#dc2626;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;margin-bottom:16px;text-align:left;"></div>
-    <button onclick="sbSignOut()" style="width:100%;padding:14px;background:linear-gradient(135deg,#2a9db5,#1a6ea8);color:#fff;border:none;border-radius:12px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;cursor:pointer;">Sign Out &amp; Try Different Account</button>
-    <p style="font-size:11px;color:#aac4cc;margin-top:16px;font-weight:600;">If you're the business owner, contact support to set up your account.</p>
+
+    <!-- Option 1: Create new business -->
+    <div id="noBiz-create-section" style="background:#f0fdf4;border:2px solid #86efac;border-radius:14px;padding:20px;margin-bottom:16px;text-align:left;">
+      <div style="font-weight:800;font-size:14px;color:#065f46;margin-bottom:12px;">🏢 I'm starting a new business</div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:11px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:4px;">Business Name</label>
+        <input id="noBiz-bizName" type="text" placeholder="e.g. The Window Crew" style="width:100%;padding:10px 14px;border:2px solid #e8f4f7;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;color:#1a3a4a;outline:none;box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:11px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:4px;">Your Name</label>
+        <input id="noBiz-ownerName" type="text" placeholder="e.g. Amadeus" style="width:100%;padding:10px 14px;border:2px solid #e8f4f7;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;color:#1a3a4a;outline:none;box-sizing:border-box;">
+      </div>
+      <button id="noBiz-createBtn" onclick="handleCreateBusiness()" style="width:100%;padding:12px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;border-radius:12px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;cursor:pointer;">🚀 Create My Business</button>
+    </div>
+
+    <!-- Option 2: Was invited -->
+    <div style="background:#f8fafc;border:2px solid #e2e8f0;border-radius:14px;padding:16px;text-align:left;">
+      <div style="font-weight:800;font-size:14px;color:#64748b;margin-bottom:6px;">👥 I was invited to a team</div>
+      <p style="font-size:12px;color:#94a3b8;font-weight:600;line-height:1.5;margin-bottom:10px;">Ask your team owner to add your email address in their Team tab. Make sure it matches the email you signed up with exactly.</p>
+      <button onclick="sbSignOut()" style="width:100%;padding:10px;background:#f1f5f9;color:#64748b;border:2px solid #e2e8f0;border-radius:10px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Sign Out &amp; Try Again</button>
+    </div>
   </div>
 </div>
 
@@ -6121,31 +6142,18 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
   // ── BOOTSTRAP ──
   async function dbBootstrapBusiness(businessName, ownerName, ownerEmail) {
-    const { data: biz, error: bizErr } = await _sb
-      .from('businesses')
-      .insert({ name: businessName })
-      .select()
-      .single();
-    if (bizErr) { console.error('[CrewHub] dbBootstrapBusiness business error:', bizErr); throw bizErr; }
-
-    const { data: member, error: memErr } = await _sb
-      .from('team_members')
-      .insert({
-        business_id:  biz.id,
-        auth_user_id: sbUser.id,
-        name:         ownerName,
-        email:        ownerEmail,
-        role:         'owner',
-        active:       true,
-      })
-      .select()
-      .single();
-    if (memErr) { console.error('[CrewHub] dbBootstrapBusiness member error:', memErr); throw memErr; }
-
-    currentBusinessId = biz.id;
-    currentMemberId   = member.id;
+    // Use server-side RPC to bypass RLS (same pattern as claim_team_invite)
+    const { data, error } = await _sb.rpc('bootstrap_business', {
+      biz_name:   businessName,
+      owner_name: ownerName,
+      owner_email: ownerEmail,
+    });
+    if (error) { console.error('[CrewHub] dbBootstrapBusiness error:', error); throw error; }
+    if (!data) throw new Error('Bootstrap returned no data');
+    currentBusinessId = data.businessId;
+    currentMemberId   = data.memberId;
     currentUserRole   = 'owner';
-    return { businessId: biz.id, memberId: member.id };
+    return data;
   }
 
   async function dbLoadIdentity() {
@@ -6538,6 +6546,39 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
   function showNoBizModal() { document.getElementById('noBizModal').style.display = 'flex'; }
   function hideNoBizModal() { document.getElementById('noBizModal').style.display = 'none'; }
+
+  async function handleCreateBusiness() {
+    const bizName   = document.getElementById('noBiz-bizName').value.trim();
+    const ownerName = document.getElementById('noBiz-ownerName').value.trim();
+    const errEl     = document.getElementById('noBizError');
+
+    if (!bizName) {
+      errEl.textContent = 'Please enter your business name.';
+      errEl.style.display = 'block';
+      return;
+    }
+    if (!ownerName) {
+      errEl.textContent = 'Please enter your name.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    const btn = document.getElementById('noBiz-createBtn');
+    btn.textContent = '⏳ Creating...';
+    btn.disabled = true;
+    errEl.style.display = 'none';
+
+    try {
+      await dbBootstrapBusiness(bizName, ownerName, sbUser.email);
+      hideNoBizModal();
+      await afterSignIn();
+    } catch(e) {
+      errEl.textContent = 'Failed to create business: ' + (e.message || e);
+      errEl.style.display = 'block';
+      btn.textContent = '🚀 Create My Business';
+      btn.disabled = false;
+    }
+  }
 
   function showAddMemberModal() {
     document.getElementById('tm-name').value = '';
