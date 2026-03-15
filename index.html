@@ -1513,6 +1513,18 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   cursor: pointer;
   outline: none;
 }
+
+/* ── Auth modal — mobile ── */
+@media (max-width: 480px) {
+  #authModalContent {
+    padding: 28px 20px !important;
+    border-radius: 16px !important;
+    max-height: 96vh !important;
+  }
+  #authModalContent h2 { font-size: 19px !important; }
+  #authModalContent input { font-size: 16px !important; } /* prevent iOS zoom */
+  #authModalContent button[id="authSignInBtn"] { font-size: 14px !important; padding: 13px !important; }
+}
 </style>
 </head>
 <body>
@@ -1540,18 +1552,8 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
 </div>
 
 <!-- ═══ AUTH MODAL ═══ -->
-<div id="authModal" style="display:none;position:fixed;inset:0;background:rgba(10,30,40,0.82);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
-  <div style="background:#fff;border-radius:20px;padding:40px 36px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.35);text-align:center;">
-    <div style="font-size:36px;margin-bottom:8px;">🪟</div>
-    <h2 style="font-family:'Montserrat',sans-serif;font-size:22px;font-weight:900;color:#1a3a4a;margin-bottom:4px;">Crew Hub</h2>
-    <p style="font-size:13px;color:#6b9aaa;margin-bottom:24px;font-weight:600;">By The Window Crew</p>
-    <div id="authError" style="display:none;background:#fef2f2;color:#dc2626;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;margin-bottom:16px;text-align:left;"></div>
-    <input type="email" id="authEmail" placeholder="Email address" style="width:100%;padding:12px 16px;border:2px solid #e8f4f7;border-radius:12px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;color:#1a3a4a;margin-bottom:10px;outline:none;box-sizing:border-box;" onkeydown="if(event.key==='Enter')sbSignIn()">
-    <input type="password" id="authPassword" placeholder="Password" style="width:100%;padding:12px 16px;border:2px solid #e8f4f7;border-radius:12px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;color:#1a3a4a;margin-bottom:18px;outline:none;box-sizing:border-box;" onkeydown="if(event.key==='Enter')sbSignIn()">
-    <button id="authSignInBtn" onclick="sbSignIn()" style="width:100%;padding:14px;background:linear-gradient(135deg,#2a9db5,#1a6ea8);color:#fff;border:none;border-radius:12px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:10px;">Sign In</button>
-    <button id="authSignUpBtn" onclick="sbSignUp()" style="width:100%;padding:12px;background:#f4fbfc;color:#2a9db5;border:2px solid #2a9db5;border-radius:12px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;cursor:pointer;">Create Account</button>
-    <p style="font-size:11px;color:#aac4cc;margin-top:16px;font-weight:600;">Your data is private and syncs across all your devices.</p>
-  </div>
+<div id="authModal" style="display:none;position:fixed;inset:0;background:rgba(10,30,40,0.82);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(4px);padding:16px;box-sizing:border-box;">
+  <div id="authModalContent" style="background:#fff;border-radius:20px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.35);text-align:center;max-height:90vh;overflow-y:auto;position:relative;box-sizing:border-box;"></div>
 </div>
 
 <!-- ═══ NO BUSINESS MODAL ═══ -->
@@ -2237,6 +2239,11 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   let currentUserRole     = 'owner'; // 'owner' | 'dispatcher' | 'crew' — set on sign-in
   let _clockEntry         = null;    // Active time_entry row (null = not clocked in)
   let _clockTimerInterval = null;    // setInterval ID for the live clock timer
+
+  // ── Auth flow state ──
+  let _authInviteId    = null;  // UUID from ?invite= URL param
+  let _authInviteInfo  = null;  // { business_name, role, email } from get_invite_info RPC
+  let _authMemberships = [];    // All active team_members rows when user has multiple businesses
 
   // ── One-time migration: purge ghost customers (no customerId) left by old bug ──
   (function purgeGhostCustomers() {
@@ -5724,42 +5731,269 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     if (sbUser) { syncNow(); } else { showAuthModal(); }
   }
 
-  function showAuthModal() { document.getElementById('authModal').style.display = 'flex'; }
+  // ── Auth modal helpers ──
+  function showAuthModal() {
+    if (_authInviteInfo) { showAuthStep('invite'); }
+    else                 { showAuthStep('main');   }
+  }
   function hideAuthModal() { document.getElementById('authModal').style.display = 'none'; }
 
-  function showAuthMsg(msg, type) {
+  function showAuthError(msg, type) {
     const el = document.getElementById('authError');
-    el.textContent = msg;
+    if (!el) return;
+    if (!msg) { el.style.display = 'none'; return; }
+    el.textContent      = msg;
     el.style.color      = type === 'success' ? '#16a34a' : '#dc2626';
     el.style.background = type === 'success' ? '#f0fdf4' : '#fef2f2';
-    el.style.display    = msg ? 'block' : 'none';
+    el.style.display    = 'block';
   }
 
-  async function sbSignIn() {
-    const email    = document.getElementById('authEmail').value.trim();
-    const password = document.getElementById('authPassword').value;
-    if (!email || !password) { showAuthMsg('Please enter your email and password.'); return; }
+  // ── Shared inline style snippets ──
+  const _AS = {
+    inp: 'width:100%;padding:12px 16px;border:2px solid #e8f4f7;border-radius:12px;font-family:\'Nunito\',sans-serif;font-size:14px;font-weight:600;color:#1a3a4a;margin-bottom:10px;outline:none;box-sizing:border-box;',
+    bp:  'width:100%;padding:14px;background:linear-gradient(135deg,#2a9db5,#1a6ea8);color:#fff;border:none;border-radius:12px;font-family:\'Nunito\',sans-serif;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:10px;',
+    bs:  'width:100%;padding:12px;background:#f4fbfc;color:#2a9db5;border:2px solid #2a9db5;border-radius:12px;font-family:\'Nunito\',sans-serif;font-size:14px;font-weight:800;cursor:pointer;margin-bottom:8px;',
+    bg:  'background:none;border:none;color:#6b9aaa;font-family:\'Nunito\',sans-serif;font-size:13px;font-weight:700;cursor:pointer;padding:0;',
+    lbl: 'display:block;font-size:11px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;text-align:left;margin-top:8px;',
+  };
+
+  function _authHeader(backStep) {
+    const back = backStep
+      ? `<button onclick="showAuthStep('${backStep}')" style="position:absolute;top:0;left:0;background:none;border:none;font-size:24px;cursor:pointer;color:#6b9aaa;line-height:1;padding:0;" title="Back">←</button>`
+      : '';
+    return `<div style="position:relative;padding-top:${backStep ? '4' : '0'}px;">
+      ${back}
+      <div style="font-size:36px;margin-bottom:8px;">🪟</div>
+      <h2 style="font-family:'Montserrat',sans-serif;font-size:22px;font-weight:900;color:#1a3a4a;margin-bottom:4px;">Crew Hub</h2>
+      <p style="font-size:13px;color:#6b9aaa;margin-bottom:18px;font-weight:600;">By The Window Crew</p>
+      <div id="authError" style="display:none;background:#fef2f2;color:#dc2626;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;margin-bottom:14px;text-align:left;"></div>`;
+  }
+
+  function showAuthStep(step) {
+    const content = document.getElementById('authModalContent');
+    document.getElementById('authModal').style.display = 'flex';
+    const I = _AS.inp, BP = _AS.bp, BS = _AS.bs, BG = _AS.bg, LB = _AS.lbl;
+
+    if (step === 'main') {
+      content.innerHTML = `${_authHeader(null)}
+        <input type="email" id="authEmail" placeholder="Email address" style="${I}" onkeydown="if(event.key==='Enter')handleSignIn()">
+        <input type="password" id="authPassword" placeholder="Password" style="${I}margin-bottom:18px;" onkeydown="if(event.key==='Enter')handleSignIn()">
+        <button id="authSignInBtn" onclick="handleSignIn()" style="${BP}">Sign In</button>
+        <button onclick="showAuthStep('choose')" style="${BS}">Create Account</button>
+        <p style="font-size:11px;color:#aac4cc;margin-top:8px;font-weight:600;">Your data is private and syncs across all your devices.</p>
+      </div>`;
+
+    } else if (step === 'choose') {
+      content.innerHTML = `${_authHeader('main')}
+        <p style="font-size:14px;font-weight:700;color:#1a3a4a;margin-bottom:18px;">How are you joining?</p>
+        <button onclick="showAuthStep('new-business')" style="width:100%;padding:18px 16px;background:#f0fdf4;border:2px solid #86efac;border-radius:14px;text-align:left;cursor:pointer;margin-bottom:12px;display:block;">
+          <div style="font-size:22px;margin-bottom:4px;">🏢</div>
+          <div style="font-weight:800;font-size:14px;color:#065f46;">Starting a new business</div>
+          <div style="font-size:12px;color:#6b9aaa;font-weight:600;margin-top:2px;">Create your Crew Hub account and business profile</div>
+        </button>
+        <button onclick="showAuthStep('join-team')" style="width:100%;padding:18px 16px;background:#f0f9ff;border:2px solid #7dd3fc;border-radius:14px;text-align:left;cursor:pointer;display:block;">
+          <div style="font-size:22px;margin-bottom:4px;">👥</div>
+          <div style="font-weight:800;font-size:14px;color:#0c4a6e;">Joining an existing team</div>
+          <div style="font-size:12px;color:#6b9aaa;font-weight:600;margin-top:2px;">Your owner added your email — create your account here</div>
+        </button>
+      </div>`;
+
+    } else if (step === 'new-business') {
+      content.innerHTML = `${_authHeader('choose')}
+        <p style="font-size:14px;font-weight:700;color:#1a3a4a;margin-bottom:14px;">Create your business</p>
+        <label style="${LB}">Business Name</label>
+        <input type="text" id="authBizName" placeholder="e.g. The Window Crew" style="${I}">
+        <label style="${LB}">Your Name</label>
+        <input type="text" id="authOwnerName" placeholder="e.g. Amadeus" style="${I}">
+        <label style="${LB}">Email</label>
+        <input type="email" id="authEmail" placeholder="you@email.com" style="${I}">
+        <label style="${LB}">Password</label>
+        <input type="password" id="authPassword" placeholder="6+ characters" style="${I}margin-bottom:18px;">
+        <button id="authSignInBtn" onclick="handleNewBusinessSignup()" style="${BP}">🚀 Create My Business</button>
+        <p style="font-size:11px;color:#aac4cc;margin-top:6px;font-weight:600;">Already have an account? <button onclick="showAuthStep('main')" style="${BG}">Sign In</button></p>
+      </div>`;
+
+    } else if (step === 'join-team') {
+      content.innerHTML = `${_authHeader('choose')}
+        <p style="font-size:14px;font-weight:700;color:#1a3a4a;margin-bottom:6px;">Join your team</p>
+        <p style="font-size:12px;color:#6b9aaa;font-weight:600;margin-bottom:14px;line-height:1.5;">Use the same email your team owner added for you.</p>
+        <label style="${LB}">Your Name</label>
+        <input type="text" id="authOwnerName" placeholder="e.g. Marcus" style="${I}">
+        <label style="${LB}">Email</label>
+        <input type="email" id="authEmail" placeholder="same email your owner added" style="${I}">
+        <label style="${LB}">Password</label>
+        <input type="password" id="authPassword" placeholder="6+ characters" style="${I}margin-bottom:18px;">
+        <button id="authSignInBtn" onclick="handleJoinTeamSignup()" style="${BP}">Join Team</button>
+        <p style="font-size:11px;color:#aac4cc;margin-top:6px;font-weight:600;">Already have an account? <button onclick="showAuthStep('main')" style="${BG}">Sign In</button></p>
+      </div>`;
+
+    } else if (step === 'invite') {
+      const biz      = _authInviteInfo?.business_name || 'a team';
+      const roleMap  = { owner: '👑 Owner', dispatcher: '📋 Dispatcher', crew: '🔧 Crew' };
+      const roleLabel = roleMap[_authInviteInfo?.role] || (_authInviteInfo?.role || 'Crew');
+      const preEmail = _authInviteInfo?.email || '';
+      content.innerHTML = `${_authHeader('main')}
+        <div style="background:#f0f9ff;border:2px solid #7dd3fc;border-radius:14px;padding:14px 16px;margin-bottom:16px;text-align:left;">
+          <div style="font-weight:800;font-size:14px;color:#0c4a6e;margin-bottom:2px;">You've been invited! 🎉</div>
+          <div style="font-size:13px;color:#0369a1;font-weight:600;">Join <strong>${biz}</strong> as ${roleLabel}</div>
+        </div>
+        <label style="${LB}">Your Name</label>
+        <input type="text" id="authOwnerName" placeholder="Your name" style="${I}">
+        <label style="${LB}">Email</label>
+        <input type="email" id="authEmail" placeholder="your email" value="${preEmail}" style="${I}">
+        <label style="${LB}">Password</label>
+        <input type="password" id="authPassword" placeholder="6+ characters" style="${I}margin-bottom:18px;">
+        <button id="authSignInBtn" onclick="handleInviteSignup()" style="${BP}">✓ Accept Invite &amp; Join</button>
+        <p style="font-size:11px;color:#aac4cc;margin-top:6px;font-weight:600;">Already have an account? <button onclick="showAuthStep('main')" style="${BG}">Sign In</button></p>
+      </div>`;
+
+    } else if (step === 'pick-business') {
+      const roleMap = { owner: '👑 Owner', dispatcher: '📋 Dispatcher', crew: '🔧 Crew' };
+      const cards = _authMemberships.map(m => `
+        <button onclick="selectBusiness('${m.id}','${m.business_id}','${m.role}')"
+          style="width:100%;padding:16px;background:#f8fafc;border:2px solid #e2e8f0;border-radius:14px;text-align:left;cursor:pointer;margin-bottom:10px;display:block;">
+          <div style="font-weight:800;font-size:14px;color:#1a3a4a;">${m.business_name}</div>
+          <div style="font-size:12px;color:#6b9aaa;font-weight:600;margin-top:2px;">${roleMap[m.role] || m.role}</div>
+        </button>`).join('');
+      content.innerHTML = `${_authHeader(null)}
+        <p style="font-size:14px;font-weight:700;color:#1a3a4a;margin-bottom:16px;">Select a business</p>
+        ${cards}
+        <button onclick="sbSignOut()" style="${BG}margin-top:4px;">Sign Out</button>
+      </div>`;
+    }
+  }
+
+  // ── Auth handler functions ──
+  async function handleSignIn() {
+    const email    = document.getElementById('authEmail')?.value.trim();
+    const password = document.getElementById('authPassword')?.value;
+    if (!email || !password) { showAuthError('Please enter your email and password.'); return; }
     const btn = document.getElementById('authSignInBtn');
-    btn.textContent = 'Signing in...'; btn.disabled = true;
+    if (btn) { btn.textContent = 'Signing in...'; btn.disabled = true; }
     const { data, error } = await _sb.auth.signInWithPassword({ email, password });
-    btn.textContent = 'Sign In'; btn.disabled = false;
-    if (error) { showAuthMsg(error.message); return; }
+    if (btn) { btn.textContent = 'Sign In'; btn.disabled = false; }
+    if (error) { showAuthError(error.message); return; }
     sbUser = data.user;
     hideAuthModal();
     await afterSignIn();
   }
 
-  async function sbSignUp() {
-    const email    = document.getElementById('authEmail').value.trim();
-    const password = document.getElementById('authPassword').value;
-    if (!email || !password) { showAuthMsg('Please enter your email and password.'); return; }
-    if (password.length < 6) { showAuthMsg('Password must be at least 6 characters.'); return; }
-    const btn = document.getElementById('authSignUpBtn');
-    btn.textContent = 'Creating...'; btn.disabled = true;
+  async function handleNewBusinessSignup() {
+    const bizName   = document.getElementById('authBizName')?.value.trim();
+    const ownerName = document.getElementById('authOwnerName')?.value.trim();
+    const email     = document.getElementById('authEmail')?.value.trim();
+    const password  = document.getElementById('authPassword')?.value;
+    if (!bizName)                { showAuthError('Please enter your business name.'); return; }
+    if (!ownerName)              { showAuthError('Please enter your name.'); return; }
+    if (!email || !password)     { showAuthError('Please enter your email and password.'); return; }
+    if (password.length < 6)     { showAuthError('Password must be at least 6 characters.'); return; }
+    const btn = document.getElementById('authSignInBtn');
+    if (btn) { btn.textContent = '⏳ Creating...'; btn.disabled = true; }
     const { data, error } = await _sb.auth.signUp({ email, password });
-    btn.textContent = 'Create Account'; btn.disabled = false;
-    if (error) { showAuthMsg(error.message); return; }
-    showAuthMsg('✓ Check your email to confirm your account, then sign in.', 'success');
+    if (error) {
+      showAuthError(error.message);
+      if (btn) { btn.textContent = '🚀 Create My Business'; btn.disabled = false; }
+      return;
+    }
+    sbUser = data.user;
+    if (!sbUser) {
+      showAuthError('✓ Check your email to confirm your account, then sign in.', 'success');
+      if (btn) { btn.textContent = '🚀 Create My Business'; btn.disabled = false; }
+      return;
+    }
+    try {
+      await dbBootstrapBusiness(bizName, ownerName, email);
+    } catch(err) {
+      showAuthError(err.message || 'Failed to create business. Please try again.');
+      if (btn) { btn.textContent = '🚀 Create My Business'; btn.disabled = false; }
+      return;
+    }
+    hideAuthModal();
+    await afterSignIn();
+  }
+
+  async function handleJoinTeamSignup() {
+    const ownerName = document.getElementById('authOwnerName')?.value.trim();
+    const email     = document.getElementById('authEmail')?.value.trim();
+    const password  = document.getElementById('authPassword')?.value;
+    if (!ownerName)          { showAuthError('Please enter your name.'); return; }
+    if (!email || !password) { showAuthError('Please enter your email and password.'); return; }
+    if (password.length < 6) { showAuthError('Password must be at least 6 characters.'); return; }
+    const btn = document.getElementById('authSignInBtn');
+    if (btn) { btn.textContent = '⏳ Joining...'; btn.disabled = true; }
+    const { data, error } = await _sb.auth.signUp({ email, password });
+    if (error) {
+      showAuthError(error.message);
+      if (btn) { btn.textContent = 'Join Team'; btn.disabled = false; }
+      return;
+    }
+    sbUser = data.user;
+    if (!sbUser) {
+      showAuthError('✓ Check your email to confirm it, then sign in.', 'success');
+      if (btn) { btn.textContent = 'Join Team'; btn.disabled = false; }
+      return;
+    }
+    const identity = await dbClaimInvite(email);
+    if (!identity) {
+      showAuthError("We couldn't find a pending invite for " + email + ". Ask your team owner to add you first.");
+      await _sb.auth.signOut(); sbUser = null;
+      if (btn) { btn.textContent = 'Join Team'; btn.disabled = false; }
+      return;
+    }
+    await dbUpdateTeamMember(currentMemberId, { name: ownerName }).catch(() => {});
+    hideAuthModal();
+    await afterSignIn();
+  }
+
+  async function handleInviteSignup() {
+    const ownerName = document.getElementById('authOwnerName')?.value.trim();
+    const email     = document.getElementById('authEmail')?.value.trim();
+    const password  = document.getElementById('authPassword')?.value;
+    if (!ownerName)          { showAuthError('Please enter your name.'); return; }
+    if (!email || !password) { showAuthError('Please enter your email and password.'); return; }
+    if (password.length < 6) { showAuthError('Password must be at least 6 characters.'); return; }
+    const btn = document.getElementById('authSignInBtn');
+    if (btn) { btn.textContent = '⏳ Joining...'; btn.disabled = true; }
+    const { data, error } = await _sb.auth.signUp({ email, password });
+    if (error) {
+      showAuthError(error.message);
+      if (btn) { btn.textContent = '✓ Accept Invite & Join'; btn.disabled = false; }
+      return;
+    }
+    sbUser = data.user;
+    if (!sbUser) {
+      showAuthError('✓ Check your email to confirm it, then sign in.', 'success');
+      if (btn) { btn.textContent = '✓ Accept Invite & Join'; btn.disabled = false; }
+      return;
+    }
+    const identity = await dbClaimInvite(email);
+    if (!identity) {
+      showAuthError('Could not claim the invite. Try signing in if you already have an account.');
+      await _sb.auth.signOut(); sbUser = null;
+      if (btn) { btn.textContent = '✓ Accept Invite & Join'; btn.disabled = false; }
+      return;
+    }
+    await dbUpdateTeamMember(currentMemberId, { name: ownerName }).catch(() => {});
+    _authInviteId   = null;
+    _authInviteInfo = null;
+    hideAuthModal();
+    await afterSignIn();
+  }
+
+  async function selectBusiness(memberId, businessId, role) {
+    currentMemberId   = memberId;
+    currentBusinessId = businessId;
+    currentUserRole   = role;
+    localStorage.setItem('twc_last_business', businessId);
+    hideAuthModal();
+    await dbLoadAll();
+    applyRolePermissions();
+    renderSaved(); renderRecurring(); renderToday(); renderLeads();
+    if (document.getElementById('tab-crm')?.classList.contains('active')) renderCRM();
+    if (document.getElementById('tab-reports')?.classList.contains('active')) renderReports();
+    if (document.getElementById('tab-team')?.classList.contains('active')) renderTeam();
+    const now = new Date().toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' });
+    setSyncUI('idle', `Synced ${now} · ${savedQuotes.length} jobs`);
   }
 
   async function sbSignOut() {
@@ -5772,25 +6006,62 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   async function afterSignIn() {
     setSyncUI('syncing', 'Loading your data...');
 
-    // Step 1: Try to find existing team membership
-    let identity = await dbLoadIdentity();
+    // Step 1: Query all active memberships for this user (across all businesses)
+    const { data: memberships } = await _sb
+      .from('team_members')
+      .select('id, business_id, role, name, active, businesses(name)')
+      .eq('auth_user_id', sbUser.id)
+      .eq('active', true);
 
-    // Step 2: If not found, check for a pending invite by email
-    if (!identity && sbUser?.email) {
-      identity = await dbClaimInvite(sbUser.email);
+    let activeMemberships = (memberships || []).map(m => ({
+      id:            m.id,
+      business_id:   m.business_id,
+      role:          m.role,
+      name:          m.name,
+      business_name: m.businesses?.name || 'Unnamed Business',
+    }));
+
+    // Step 2: If no memberships, try claiming a pending invite by email
+    if (activeMemberships.length === 0 && sbUser?.email) {
+      const identity = await dbClaimInvite(sbUser.email);
       if (identity) {
         console.info('[CrewHub] Claimed pending invite for', sbUser.email);
+        activeMemberships = [{
+          id:            currentMemberId,
+          business_id:   currentBusinessId,
+          role:          currentUserRole,
+          name:          sbUser.email,
+          business_name: 'Your Team',
+        }];
       }
     }
 
-    // Step 3: If still not found — this user has no business
-    if (!identity) {
-      setSyncUI('idle', 'No business found');
-      showNoBizModal();
+    // Step 3: Still nothing — ask user to create biz or wait for invite
+    if (activeMemberships.length === 0) {
+      setSyncUI('idle', 'No business linked');
+      showAuthStep('choose');
       return;
     }
 
-    // Step 4: Load data and apply role permissions
+    // Step 4: Multiple businesses — show picker (with last-used memory)
+    if (activeMemberships.length > 1) {
+      _authMemberships = activeMemberships;
+      const lastBiz    = localStorage.getItem('twc_last_business');
+      const remembered = activeMemberships.find(m => m.business_id === lastBiz);
+      if (remembered) {
+        await selectBusiness(remembered.id, remembered.business_id, remembered.role);
+        return;
+      }
+      setSyncUI('idle', 'Pick a business');
+      showAuthStep('pick-business');
+      return;
+    }
+
+    // Step 5: Single membership — use it directly
+    const m = activeMemberships[0];
+    currentMemberId   = m.id;
+    currentBusinessId = m.business_id;
+    currentUserRole   = m.role;
     await dbLoadAll();
     applyRolePermissions();
     renderSaved(); renderRecurring(); renderToday(); renderLeads();
@@ -6544,41 +6815,9 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     }
   }
 
-  function showNoBizModal() { document.getElementById('noBizModal').style.display = 'flex'; }
-  function hideNoBizModal() { document.getElementById('noBizModal').style.display = 'none'; }
-
-  async function handleCreateBusiness() {
-    const bizName   = document.getElementById('noBiz-bizName').value.trim();
-    const ownerName = document.getElementById('noBiz-ownerName').value.trim();
-    const errEl     = document.getElementById('noBizError');
-
-    if (!bizName) {
-      errEl.textContent = 'Please enter your business name.';
-      errEl.style.display = 'block';
-      return;
-    }
-    if (!ownerName) {
-      errEl.textContent = 'Please enter your name.';
-      errEl.style.display = 'block';
-      return;
-    }
-
-    const btn = document.getElementById('noBiz-createBtn');
-    btn.textContent = '⏳ Creating...';
-    btn.disabled = true;
-    errEl.style.display = 'none';
-
-    try {
-      await dbBootstrapBusiness(bizName, ownerName, sbUser.email);
-      hideNoBizModal();
-      await afterSignIn();
-    } catch(e) {
-      errEl.textContent = 'Failed to create business: ' + (e.message || e);
-      errEl.style.display = 'block';
-      btn.textContent = '🚀 Create My Business';
-      btn.disabled = false;
-    }
-  }
+  // noBizModal is superseded by auth flow steps — redirect any remaining callers
+  function showNoBizModal() { showAuthStep('choose'); }
+  function hideNoBizModal() { /* no-op — auth modal handles this now */ }
 
   function showAddMemberModal() {
     document.getElementById('tm-name').value = '';
@@ -6617,7 +6856,25 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     errEl.style.display = 'none';
 
     try {
-      await dbAddTeamMember(name, email, role);
+      const result   = await dbAddTeamMember(name, email, role);
+      const inviteUrl = `${window.location.origin}${window.location.pathname}?invite=${result.id}`;
+
+      // Send invite email (non-blocking — don't fail the whole operation if email fails)
+      try {
+        const bizInfo = await dbLoadBusinessInfo();
+        await emailjs.send('service_wseo91x', 'template_f6w8c79', {
+          to_email:   email,
+          to_name:    name,
+          from_name:  bizInfo?.name || 'Your Team',
+          subject:    `You've been invited to join ${bizInfo?.name || 'Crew Hub'}`,
+          message:    `Hi ${name},\n\nYou've been added to ${bizInfo?.name || 'Crew Hub'} as ${role}.\n\nClick this link to create your account and join your team:\n${inviteUrl}\n\nSee you on the crew! 👋`,
+          reply_to:   sbUser?.email || '',
+        });
+        console.info('[CrewHub] Invite email sent to', email);
+      } catch(emailErr) {
+        console.warn('[CrewHub] Invite email failed (non-critical):', emailErr);
+      }
+
       closeAddMemberModal();
       renderTeam();
     } catch(err) {
@@ -7487,15 +7744,28 @@ ${bizEmail}`
     // No-op: replaced by direct Supabase writes via db* functions.
   }
 
-  // ── Restore Supabase session on page load ──
-  _sb.auth.getSession().then(async ({ data: { session } }) => {
+  // ── Boot sequence: detect invite link, then restore session ──
+  (async function boot() {
+    // 1. Check for ?invite=UUID in URL
+    const params   = new URLSearchParams(window.location.search);
+    const inviteId = params.get('invite');
+    if (inviteId) {
+      window.history.replaceState({}, '', window.location.pathname); // clean URL
+      try {
+        const { data } = await _sb.rpc('get_invite_info', { invite_id: inviteId });
+        if (data) { _authInviteId = inviteId; _authInviteInfo = data; }
+      } catch(e) { console.warn('[CrewHub] Could not load invite info:', e); }
+    }
+
+    // 2. Restore existing Supabase session
+    const { data: { session } } = await _sb.auth.getSession();
     if (session) {
       sbUser = session.user;
       await afterSignIn();
     } else {
-      showAuthModal();
+      showAuthModal(); // will show 'invite' step if _authInviteInfo is set
     }
-  });
+  })();
 
   // Keep session alive across tab refreshes / token renewals
   _sb.auth.onAuthStateChange((event, session) => {
