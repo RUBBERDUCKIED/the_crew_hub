@@ -2125,90 +2125,56 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
 <script>
   // ╔══════════════════════════════════════════════════════════════╗
   // ║  THE CREW HUB — CODE MAP                                    ║
-  // ║  (Update line numbers when sections shift significantly)     ║
   // ╠══════════════════════════════════════════════════════════════╣
-  // ║  UTILITIES & STATE .................. ~Line 2065             ║
-  // ║  CUSTOMER TYPEAHEAD & QUOTING UI .... ~Line 2200             ║
-  // ║  QUOTE / RECEIPT TEMPLATES .......... ~Line 2655             ║
-  // ║  EMAIL & COMMUNICATIONS ............. ~Line 2885             ║
-  // ║  GOOGLE PLACES ...................... ~Line 2840             ║
-  // ║  CUSTOMER TABLE ..................... ~Line 3015             ║
-  // ║  QUOTING ENGINE ..................... ~Line 3150             ║
-  // ║  PIPELINE ........................... ~Line 3925             ║
-  // ║  TAB SWITCHING ...................... ~Line 4085             ║
-  // ║  REPORTS ............................ ~Line 4100             ║
-  // ║  CRM ................................ ~Line 4315             ║
-  // ║  TODAY'S JOBS DASHBOARD ............. ~Line 4420             ║
-  // ║  EXPORT / IMPORT .................... ~Line 4915             ║
-  // ║  SUPABASE AUTH & SYNC ............... ~Line 5035             ║
-  // ║  DATA ACCESS LAYER .................. ~Line 5830             ║
-  // ║  PHOTO STORAGE (GOOGLE DRIVE) ....... ~Line 6080             ║
-  // ║  PHOTO MODAL ........................ ~Line 5405             ║
-  // ║  REVIEW REQUESTS .................... ~Line 5515             ║
-  // ║  LEAD PIPELINE ...................... ~Line 5725             ║
-  // ╚══════════════════════════════════════════════════════════════╝
-
-  // ╔══════════════════════════════════════════════════════════════╗
-  // ║  GLOBAL STATE REFERENCE                                     ║
-  // ╠══════════════════════════════════════════════════════════════╣
-  // ║  ── CORE DATA ──                                            ║
-  // ║  savedQuotes          Array   All saved quotes/jobs         ║
-  // ║  customers            Object  Keyed by customerId           ║
-  // ║  deletedCustomerIds   Array   Tombstone log for sync        ║
-  // ║  crmNotes             Object  Notes keyed by customerId     ║
-  // ║  crmOverrides         Object  Legacy overrides keyed by ID  ║
-  // ║  leads                Array   Lead pipeline entries         ║
-  // ║  neighborhoods        Array   Saved neighborhoods           ║
-  // ║  customerPhotos       Object  Photo metadata keyed by cust  ║
-  // ║  ── UI / QUOTE FORM STATE ──                                ║
-  // ║  propType             String  'Residential'|'Commercial'    ║
-  // ║  currentLines         Array   Active line items in form     ║
-  // ║  currentGrand         Number  Live grand total              ║
-  // ║  currentSubtotal      Number  Live subtotal                 ║
-  // ║  currentCustomerId    String  Linked customer in form       ║
-  // ║  cleaningSide         String  'outside'|'inside'|'both'     ║
-  // ║  windowCondition      String  Condition tier key            ║
-  // ║  servicePlan          String  Plan tier key                 ║
-  // ║  showingArchived      Bool    CRM archive toggle            ║
-  // ║  pipeFilter           String  Pipeline filter key           ║
-  // ║  pipeTypeFilter       String  Pipeline type filter key      ║
-  // ║  quickNoteIdx         Number  Open quick-note index (null)  ║
-  // ║  currentLeadTab       String  Active lead sub-tab           ║
-  // ║  photoModalKey        String  Customer key for photo modal  ║
-  // ║  _pendingReceiptIdx   Number  Awaiting payment method pick  ║
-  // ║  _emailDocMeta        Object  {toEmail, subject, docType}   ║
-  // ║  ── AUTH / SYNC / IDENTITY ──                               ║
-  // ║  sbUser               Object  Supabase session user (null)  ║
-  // ║  currentBusinessId    String  UUID of this user's business  ║
-  // ║  currentMemberId      String  UUID of team_members row      ║
-  // ║  currentUserRole      String  'owner'|'dispatcher'|'crew'   ║
-  // ║  isSyncing            Bool    Sync in-flight flag           ║
-  // ║  gAccessToken         String  Google Drive OAuth token      ║
-  // ║  gTokenExpiry         Number  Token expiry timestamp (ms)   ║
-  // ║  _autoSyncTimer       TimerID Debounce handle for autoSync  ║
-  // ║  ── CONFIG CONSTANTS ──                                     ║
-  // ║  SUPABASE_URL         String  Supabase project URL          ║
-  // ║  SUPABASE_ANON        String  Supabase anon/public key      ║
-  // ║  _sb                  Client  Supabase JS client instance   ║
-  // ║  GOOG_CLIENT_ID       String  Google OAuth2 client ID       ║
-  // ║  GOOG_SCOPES          String  Google OAuth2 scopes          ║
-  // ║  PHOTO_FOLDER_NAME    String  Drive folder name for photos  ║
-  // ║  conditionMultipliers Object  Price multipliers by tier     ║
-  // ║  conditionNotes       Object  Display notes by tier         ║
-  // ║  planDiscounts        Object  Discount rates by plan        ║
-  // ║  planNotes            Object  Display notes by plan         ║
-  // ║  planIntervalDays     Object  Days between visits by plan   ║
-  // ║  planLabel            Object  Display labels by plan        ║
+  // ║                                                              ║
+  // ║  1. APP STATE ........................ ~Line 2126            ║
+  // ║     All global variables, constants, Supabase client        ║
+  // ║                                                              ║
+  // ║  2. UTILITIES ........................ ~Line 2310            ║
+  // ║     esc, escHtml, formatPhone, setSide, setCondition,       ║
+  // ║     setPlan, setType, calc helpers                          ║
+  // ║                                                              ║
+  // ║  3. DATABASE ACCESS .................. ~Line 6200            ║
+  // ║     All db* functions, row↔object mappers, canAccess        ║
+  // ║                                                              ║
+  // ║  4. AUTH + ONBOARDING ................ ~Line 5680            ║
+  // ║     Sign in/up, session restore, afterSignIn,               ║
+  // ║     invite claim, bootstrap, syncNow,                       ║
+  // ║     showAuthModal, showNoBizModal, handleCreateBusiness,    ║
+  // ║     applyRolePermissions                                    ║
+  // ║                                                              ║
+  // ║  5. BUSINESS LOGIC ................... ~Line 2870            ║
+  // ║     5a. Customer Table (CRUD, migration) ...... ~Line 3180   ║
+  // ║     5b. Quoting Engine (calc, save, schedule) . ~Line 3310   ║
+  // ║     5c. Quote/Receipt/Invoice Templates ....... ~Line 2650   ║
+  // ║     5d. Email & Communications ................ ~Line 2990   ║
+  // ║     5e. Pipeline Helpers (aging, recurring) ... ~Line 3790   ║
+  // ║     5f. Lead Pipeline (leads CRUD, render) .... ~Line 7800   ║
+  // ║     5g. Photo Storage (Google Drive) .......... ~Line 7320   ║
+  // ║                                                              ║
+  // ║  6. UI / TAB RENDERERS ............... ~Line 4100            ║
+  // ║     6a. Tab Switching ......................... ~Line 4278   ║
+  // ║     6b. Pipeline Tab (renderSaved, Recurring) . ~Line 3790   ║
+  // ║     6c. Today Tab (renderToday, clock, hours) . ~Line 4900   ║
+  // ║     6d. CRM Tab (renderCRM, edit, notes, tags). ~Line 4780   ║
+  // ║     6e. Reports Tab ........................... ~Line 5070   ║
+  // ║     6f. Team Tab (renderTeam, members) ........ ~Line 6800   ║
+  // ║     6g. Photo Modal ........................... ~Line 7460   ║
+  // ║     6h. Review Requests ....................... ~Line 7640   ║
+  // ║     6i. Export / Import ....................... ~Line 5540   ║
+  // ║                                                              ║
+  // ║  7. BOOT ............................ ~Line 7780             ║
+  // ║     Initial renders, migration, session restore,            ║
+  // ║     onAuthStateChange                                       ║
+  // ║                                                              ║
   // ╚══════════════════════════════════════════════════════════════╝
 
   // ═══════════════════════════════════════════════════════════════
-  // ═══ UTILITIES & STATE ═══
-  // Depends on: (nothing — this is the base layer)
-  // Called by:  ALL sections (safeGet used everywhere; global vars
-  //             are the single source of truth for all app data)
+  // ═══ 1. APP STATE ═══
+  // All global variables in one place. Nothing else declares globals.
   // ═══════════════════════════════════════════════════════════════
 
-  // ── Safe localStorage read — returns fallback if data is missing or corrupted ──
+  // ── safeGet — must be first so APP STATE initializers can call it ──
   function safeGet(key, fallback) {
     try {
       const raw = localStorage.getItem(key);
@@ -2220,30 +2186,64 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
     }
   }
 
-  let propType = 'Residential';
-  let savedQuotes = safeGet('twc_quotes', []);
-  let currentLines = [];
-  let currentGrand = 0;
-  let currentSubtotal = 0;
-  let crmArchived = safeGet('twc_crm_archived', []); // kept for migration
-  let showingArchived = false;
-  let customerPhotos = {};
-  let photoFolderId = null;
-  let photoBlobCache = {};
-  // ── Customer table (source of truth) ──
-  let customers = safeGet('twc_customers', {});
-  let deletedCustomerIds = safeGet('twc_deleted_customers', []);
-  let currentCustomerId   = null;  // set when a customer is selected/linked in the quote form
-  let currentBusinessId   = null;  // UUID — set on sign-in by dbLoadIdentity()
-  let currentMemberId     = null;  // UUID — this user's team_members.id
-  let currentUserRole     = 'owner'; // 'owner' | 'dispatcher' | 'crew' — set on sign-in
-  let _clockEntry         = null;    // Active time_entry row (null = not clocked in)
-  let _clockTimerInterval = null;    // setInterval ID for the live clock timer
+  // ── Config Constants ──
+  const SUPABASE_URL  = 'https://oiwbipwbksmiriukvdzh.supabase.co';
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pd2JpcHdia3NtaXJpdWt2ZHpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyOTgyMTYsImV4cCI6MjA4ODg3NDIxNn0.Bi0xr3xZpbO8Gqts5AA3-5OPuo49rs_UPiG3AqRvevQ';
+  const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+  const GOOG_CLIENT_ID    = '53011513162-q25io34jn9mj6hthg244g6lpv1hbgal7.apps.googleusercontent.com';
+  const GOOG_SCOPES       = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/calendar.events';
+  const PHOTO_FOLDER_NAME = 'CrewHub Photos';
+  const conditionMultipliers = { maintenance: 1.0, mild: 1.05, moderate: 1.10, heavy: 1.20 };
+  const conditionNotes = {
+    maintenance: 'No surcharge — standard rate',
+    mild:        'Mildly soiled — +5% surcharge',
+    moderate:    'Moderately soiled — +10% surcharge',
+    heavy:       'Heavily soiled — +20% surcharge'
+  };
+  const planDiscounts = { oneoff: 0, annual: 5, biannual: 7.5, quarterly: 10, weekly: 0, biweekly: 0, monthly: 0 };
+  const planNotes = {
+    oneoff:   'No discount — one-off clean',
+    annual:   'Annual plan — 5% discount applied',
+    biannual: 'Twice a year plan — 7.5% discount applied',
+    quarterly:'Quarterly plan — 10% discount applied',
+    weekly:   'Storefront — weekly service ($2 std / $3.50 large per side)',
+    biweekly: 'Storefront — bi-weekly service ($2 std / $3.50 large per side)',
+    monthly:  'Storefront — monthly service ($2 std / $3.50 large per side)',
+  };
+  const planIntervalDays = { annual: 365, biannual: 182, quarterly: 91, weekly: 7, biweekly: 14, monthly: 30 };
+  const planLabel        = { annual: 'Annual', biannual: 'Twice/Year', quarterly: 'Quarterly' };
+  const CRM_TAG_PRESETS  = [
+    'Annual Contract', 'Quarterly', 'Bi-Annual',
+    'Referral Source', 'VIP', 'Hard to Reach',
+    'Residential', 'Commercial', 'Storefront',
+    'New Customer', 'Needs Follow-Up', 'Cash Only'
+  ];
 
-  // ── Auth flow state ──
-  let _authInviteId    = null;  // UUID from ?invite= URL param
-  let _authInviteInfo  = null;  // { business_name, role, email } from get_invite_info RPC
-  let _authMemberships = [];    // All active team_members rows when user has multiple businesses
+  // ── Auth & Identity ──
+  let sbUser            = null;
+  let isSyncing         = false;
+  let gAccessToken      = null;
+  let gTokenExpiry      = 0;
+  let currentBusinessId = null;
+  let currentMemberId   = null;
+  let currentUserRole   = 'owner'; // 'owner' | 'dispatcher' | 'crew'
+  // Auth flow state (multi-step modal)
+  let _authInviteId    = null;   // UUID from ?invite= URL param
+  let _authInviteInfo  = null;   // { business_name, role, email } from get_invite_info RPC
+  let _authMemberships = [];     // All active team_members rows (multi-business picker)
+
+  // ── Core Data (populated from Supabase on sign-in; localStorage is read cache) ──
+  let savedQuotes        = safeGet('twc_quotes', []);
+  let customers          = safeGet('twc_customers', {});
+  let deletedCustomerIds = safeGet('twc_deleted_customers', []);
+  let crmArchived        = safeGet('twc_crm_archived', []); // kept for migration only
+  let crmNotes           = JSON.parse(localStorage.getItem('twc_crm_notes')     || '{}');
+  let crmOverrides       = JSON.parse(localStorage.getItem('twc_crm_overrides') || '{}');
+  let leads              = safeGet('twc_leads', []);
+  let neighborhoods      = safeGet('twc_neighborhoods', []);
+  let customerPhotos     = {};
+  let photoBlobCache     = {};
+  let cachedLogoB64      = localStorage.getItem('twc_logo_b64') || '';
 
   // ── One-time migration: purge ghost customers (no customerId) left by old bug ──
   (function purgeGhostCustomers() {
@@ -2258,27 +2258,36 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
     }
   })();
 
-  let cleaningSide = 'outside';
-  let windowCondition = 'maintenance';
-  let servicePlan = 'oneoff';
+  // ── UI State ──
+  let propType           = 'Residential';
+  let currentLines       = [];
+  let currentGrand       = 0;
+  let currentSubtotal    = 0;
+  let currentCustomerId  = null;
+  let cleaningSide       = 'outside';
+  let windowCondition    = 'maintenance';
+  let servicePlan        = 'oneoff';
+  let showingArchived    = false;
+  let pipeFilter         = 'all';
+  let pipeTypeFilter     = 'all';
+  let quickNoteIdx       = null;
+  let crmSortBy          = 'name';   // 'name' | 'lastcontact' | 'revenue'
+  let crmFilterTag       = '';       // empty = show all
+  let _editTags          = [];       // working copy while CRM Edit Modal is open
+  let currentLeadTab     = 'commercial';
+  let photoFolderId      = null;
+  let photoModalKey      = null;
+  let placesReady        = false;
+  let _pendingReceiptIdx = null;
+  let _emailDocMeta      = { toEmail: '', subject: '', docType: '' };
+  let _clockEntry        = null;     // Active time_entry row (null = not clocked in)
+  let _clockTimerInterval = null;    // setInterval ID for the live clock timer
+  let _autoSyncTimer     = null;
 
-  const conditionMultipliers = { maintenance: 1.0, mild: 1.05, moderate: 1.10, heavy: 1.20 };
-  const conditionNotes = {
-    maintenance: 'No surcharge — standard rate',
-    mild: 'Mildly soiled — +5% surcharge',
-    moderate: 'Moderately soiled — +10% surcharge',
-    heavy: 'Heavily soiled — +20% surcharge'
-  };
-  const planDiscounts = { oneoff: 0, annual: 5, biannual: 7.5, quarterly: 10, weekly: 0, biweekly: 0, monthly: 0 };
-  const planNotes = {
-    oneoff:   'No discount — one-off clean',
-    annual:   'Annual plan — 5% discount applied',
-    biannual: 'Twice a year plan — 7.5% discount applied',
-    quarterly:'Quarterly plan — 10% discount applied',
-    weekly:   'Storefront — weekly service ($2 std / $3.50 large per side)',
-    biweekly: 'Storefront — bi-weekly service ($2 std / $3.50 large per side)',
-    monthly:  'Storefront — monthly service ($2 std / $3.50 large per side)',
-  };
+  // ── Today Dashboard ──
+  let todayMap          = null;
+  let todayMarkers      = [];
+  let todayJobDoneState = JSON.parse(localStorage.getItem('twc_today_done') || '{}');
 
   function setCondition(val) {
     windowCondition = val;
@@ -2352,7 +2361,7 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
   function s(id) { return document.getElementById(id).value.trim(); }
 
   // ═══════════════════════════════════════════════════════════════
-  // ═══ CUSTOMER TYPEAHEAD & QUOTING UI ═══
+  // ═══ 2. Utilities — Customer Typeahead & Quoting UI ═══
   // Depends on: CUSTOMER TABLE (customers, currentCustomerId,
   //               findOrCreateCustomer, getPhotosForCustomer)
   //             GOOGLE PLACES (attachPlacesAutocomplete)
@@ -2811,15 +2820,13 @@ input[type="number"]:focus, input[type="text"]:focus, input[type="tel"]:focus, i
     document.getElementById('paymentMethodModal').style.display = 'flex';
   }
 
-  let _pendingReceiptIdx = null;
-
   function selectPaymentMethod(method) {
     document.getElementById('paymentMethodModal').style.display = 'none';
     _buildReceipt(_pendingReceiptIdx, method);
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // ═══ QUOTE / RECEIPT TEMPLATES ═══
+  // ═══ 5c. Quote / Receipt / Invoice Templates ═══
   // Depends on: CUSTOMER TABLE (customers for name/address lookup)
   //             QUOTING ENGINE (savedQuotes, quoteNum generation)
   //             EMAIL & COMMUNICATIONS (setEmailMeta to wire send btn)
@@ -2989,11 +2996,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     URL.revokeObjectURL(a.href);
   }
 
-  // Tracks current doc for email sending
-  let _emailDocMeta = { toEmail: '', subject: '', docType: '' };
-
   // ═══════════════════════════════════════════════════════════════
-  // ═══ EMAIL & COMMUNICATIONS ═══
+  // ═══ 5d. Email & Communications ═══
   // Depends on: CUSTOMER TABLE (customers — resolves latest email)
   //             QUOTE/RECEIPT TEMPLATES (quoteDocument innerHTML)
   //             EmailJS SDK (window.emailjs — loaded in <head>)
@@ -3002,13 +3006,12 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   // ═══════════════════════════════════════════════════════════════
 
   // ═══════════════════════════════════════════════════════════════
-  // ═══ GOOGLE PLACES ═══
+  // ═══ 2. Utilities — Google Places Autocomplete ═══
   // Depends on: Google Maps JS API (loaded async in <head>)
   //             Leaflet.js (for Today's map — loaded in <head>)
   // Called by:  CUSTOMER TYPEAHEAD (attachPlacesAutocomplete on
   //               address field), page load setTimeout fallback
   // ═══════════════════════════════════════════════════════════════
-  let placesReady = false;
 
   window.initGooglePlaces = function() {
     placesReady = true;
@@ -3178,7 +3181,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   });
 
   // ═══════════════════════════════════════════════════════════════
-  // ═══ CUSTOMER TABLE ═══
+  // ═══ 5a. Customer Table ═══
   // Depends on: UTILITIES (safeGet, customers, deletedCustomerIds)
   // Called by:  QUOTING ENGINE (findOrCreateCustomer, saveCustomers),
   //             CRM (getCustomers, archiveCustomer),
@@ -3316,7 +3319,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // ═══ QUOTING ENGINE ═══
+  // ═══ 5b. Quoting Engine ═══
   // Depends on: CUSTOMER TABLE (findOrCreateCustomer, saveCustomers,
   //               customers object for ID lookups)
   //             QUOTE/RECEIPT TEMPLATES (generateReceiptFromSaved,
@@ -3328,6 +3331,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   // ═══════════════════════════════════════════════════════════════
 
   async function saveQuote() {
+    // ── Validate ──
     if (!window._cur || (window._cur.std + window._cur.large) === 0) {
       alert('Please enter at least one window before saving.');
       return;
@@ -3335,7 +3339,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const name = window._cur.name || prompt('Enter a name for this quote:');
     if (!name?.trim()) return;
 
-    // Use already-selected customer, or find/create from typed name
+    // ── Resolve customer ──
     const customerId = currentCustomerId || await findOrCreateCustomer(
       name.trim(),
       window._cur.address,
@@ -3345,7 +3349,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       (document.getElementById('custLeadSource')?.value || '')
     );
 
-    // Push any internal notes into CRM via Supabase
+    // ── Save to database ──
     const noteText = window._cur.notes ? window._cur.notes.trim() : '';
     if (noteText && customerId) {
       const noteLabel = `[Quote ${new Date().toLocaleDateString('en-CA', { day:'numeric', month:'short', year:'numeric' })}] ${noteText}`;
@@ -3375,6 +3379,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       date: new Date().toLocaleDateString('en-CA', { day:'2-digit', month:'short', year:'2-digit' })
     };
     await dbSaveJob(quoteObject);
+
+    // ── Update UI ──
     renderSaved();
     renderRecurring();
     resetForm();
@@ -3386,8 +3392,11 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   async function deleteQuote(i, e) {
+    // ── Validate ──
     e.stopPropagation();
     if (!confirm('Delete this quote?')) return;
+
+    // ── Delete from database ──
     const job = savedQuotes[i];
     if (job && job.id) {
       await dbDeleteJob(job.id);
@@ -3395,15 +3404,20 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       savedQuotes.splice(i, 1);
       localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
     }
+
+    // ── Update UI ──
     renderSaved();
     renderRecurring();
   }
 
   async function toggleWon(i, val) {
+    // ── Save to database ──
     savedQuotes[i].won = val;
     if (savedQuotes[i].id) await dbSaveJob(savedQuotes[i]);
     else localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
     if (val === true && savedQuotes[i].customerId) stampLastContact(savedQuotes[i].customerId);
+
+    // ── Update UI ──
     renderSaved();
     renderRecurring();
   }
@@ -3505,83 +3519,66 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     document.body.style.overflow = '';
   }
 
-  async function confirmSchedule() {
-    const i     = parseInt(document.getElementById('schedModal-idx').value);
-    const date  = document.getElementById('schedModal-date').value;
-    const time  = document.getElementById('schedModal-time').value || '08:00';
-    if (!date) { alert('Please pick a date.'); return; }
+  // ── Helper: post a single event to Google Calendar ──
+  async function _createCalendarEvent(jobName, address, contact, quoteNum, grandTotal, startISO, endISO, tz) {
+    const event = {
+      summary:  `Window Cleaning — ${jobName}`,
+      location: address || '',
+      description: `Customer: ${jobName}\nAddress: ${address || 'N/A'}\nContact: ${contact || 'N/A'}\nQuote #: ${quoteNum || 'N/A'}\nTotal: $${grandTotal ? grandTotal.toFixed(2) : 'N/A'}`,
+      start: { dateTime: startISO, timeZone: tz },
+      end:   { dateTime: endISO,   timeZone: tz },
+      reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 1440 }] }
+    };
+    const resp = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${gAccessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(event)
+    });
+    return resp.json();
+  }
 
-    // Ensure we have a Google token — prompt sign-in if needed
+  async function confirmSchedule() {
+    const i    = parseInt(document.getElementById('schedModal-idx').value);
+    const date = document.getElementById('schedModal-date').value;
+    const time = document.getElementById('schedModal-time').value || '08:00';
+    if (!date) { alert('Please pick a date.'); return; }
     if (!gAccessToken) {
-      if (confirm('Google Calendar access is needed to schedule jobs.\n\nClick OK to connect your Google account.')) {
-        signIn();
-      }
+      if (confirm('Google Calendar access is needed.\n\nClick OK to connect.')) signIn();
       return;
     }
 
     const btn = document.getElementById('schedModal-confirm');
-    btn.textContent = 'Saving...';
-    btn.disabled = true;
+    btn.textContent = 'Saving...'; btn.disabled = true;
 
     const q = savedQuotes[i];
     const [hh, mm] = time.split(':').map(Number);
     const durationMins = parseInt(document.getElementById('schedModal-duration').value) * 15;
     const endTotalMins = hh * 60 + mm + durationMins;
-    const endHH = String(Math.floor(endTotalMins / 60) % 24).padStart(2, '0');
-    const endMM = String(endTotalMins % 60).padStart(2, '0');
-
-    // Use America/Vancouver timezone (Penticton, BC)
-    const tz = 'America/Vancouver';
     const startISO = `${date}T${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:00`;
-    const endISO   = `${date}T${endHH}:${endMM}:00`;
-
-    const event = {
-      summary: `Window Cleaning — ${q.name}`,
-      location: q.address || '',
-      description: `Customer: ${q.name}\nAddress: ${q.address || 'N/A'}\nContact: ${q.contact || 'N/A'}\nQuote #: ${q.quoteNum || 'N/A'}\nTotal: $${q.grand ? q.grand.toFixed(2) : 'N/A'}`,
-      start: { dateTime: startISO, timeZone: tz },
-      end:   { dateTime: endISO,   timeZone: tz },
-      reminders: {
-        useDefault: false,
-        overrides: [
-          { method: 'popup', minutes: 1440 }
-        ]
-      }
-    };
+    const endISO   = `${date}T${String(Math.floor(endTotalMins/60)%24).padStart(2,'0')}:${String(endTotalMins%60).padStart(2,'0')}:00`;
 
     try {
-      const resp = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${gAccessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(event)
-      });
-      const data = await resp.json();
-      if (data.id) {
-        savedQuotes[i].scheduled        = true;
-        savedQuotes[i].scheduledISO     = startISO;
-        savedQuotes[i].scheduledEndISO  = endISO;
-        savedQuotes[i].scheduledMins    = durationMins;
-        if (savedQuotes[i].id) await dbSaveJob(savedQuotes[i]);
-        else localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
-        closeScheduleModal();
-        alert('📅 Job scheduled! Event added to your Google Calendar.');
-        const schedQ = savedQuotes[i];
-        if (schedQ && schedQ.customerId) stampLastContact(schedQ.customerId);
-        renderSaved();
-      } else {
-        console.error('Calendar API error:', data);
-        alert('Google Calendar returned an error: ' + (data.error?.message || 'Unknown error'));
-      }
+      const result = await _createCalendarEvent(q.name, q.address, q.contact, q.quoteNum, q.grand, startISO, endISO, 'America/Vancouver');
+      if (!result.id) throw new Error(result.error?.message || 'Calendar API error');
+
+      // ── Persist schedule ──
+      savedQuotes[i].scheduled       = true;
+      savedQuotes[i].scheduledISO    = startISO;
+      savedQuotes[i].scheduledEndISO = endISO;
+      savedQuotes[i].scheduledMins   = durationMins;
+      if (savedQuotes[i].id) await dbSaveJob(savedQuotes[i]);
+      else localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+
+      // ── Update UI ──
+      closeScheduleModal();
+      alert('📅 Job scheduled! Event added to your Google Calendar.');
+      if (q.customerId) stampLastContact(q.customerId);
+      renderSaved();
     } catch(e) {
       console.error(e);
-      alert('Could not connect to Google Calendar. Make sure you are signed in via the Sync button.');
+      alert('Could not connect to Google Calendar. ' + (e.message || ''));
     }
-
-    btn.textContent = 'Add to Calendar';
-    btn.disabled = false;
+    btn.textContent = 'Add to Calendar'; btn.disabled = false;
   }
 
   function generateQuoteFromSaved(i) {
@@ -3673,9 +3670,11 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   async function generateInvoiceFromSaved(i) {
+    // ── Validate ──
     const q = savedQuotes[i];
     if (!q.lines) { alert('This quote was saved before invoice generation was added. Please rebuild it.'); return; }
 
+    // ── Build template data ──
     const invoiceNum = q.quoteNum || 'TWC-' + Date.now().toString().slice(-6);
     const today = new Date();
     const dueDate = new Date(today); dueDate.setDate(dueDate.getDate() + 14);
@@ -3817,9 +3816,6 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     return '';
   }
 
-  const planIntervalDays = { annual: 365, biannual: 182, quarterly: 91, weekly: 7, biweekly: 14, monthly: 30 };
-  const planLabel = { annual: 'Annual', biannual: 'Twice/Year', quarterly: 'Quarterly' };
-
   // Parses "Mar 07, 26" or "07-Mar-25" or ISO "2025-03-07" — all formats used in saved quotes
   function parseQuoteDate(str) {
     if (!str) return null;
@@ -3903,7 +3899,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // ═══ PIPELINE ═══
+  // ═══ 5e. Pipeline Helpers + 6b. Pipeline Tab Renderers ═══
   // Depends on: QUOTING ENGINE (savedQuotes, deleteQuote, toggleWon,
   //               openScheduleModal, preFillFromQuote)
   //             CUSTOMER TABLE (customers for name/archive lookups)
@@ -4027,9 +4023,6 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       </div>`;
   }
 
-  let pipeFilter = 'all';
-  let pipeTypeFilter = 'all';
-
   function setPipeTypeTab(val, btn) {
     pipeTypeFilter = val;
     document.querySelectorAll('.pipe-type-tab').forEach(b => b.classList.remove('active-type-tab'));
@@ -4052,8 +4045,6 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     if (q.won === false) return 'lost';
     return 'quoted';
   }
-
-  let quickNoteIdx = null;
 
   function openQuickNote(i) {
     const q = savedQuotes[i];
@@ -4110,14 +4101,6 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     }
     closeQuickNote();
   }
-
-  // Close quick note modal on backdrop click — deferred so modal exists in DOM
-  window.addEventListener('load', function() {
-    const qnModal = document.getElementById('quickNoteModal');
-    if (qnModal) qnModal.addEventListener('click', function(e) {
-      if (e.target === this) closeQuickNote();
-    });
-  });
 
   function renderSaved() {
     const el = document.getElementById('savedList');
@@ -4268,15 +4251,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     updateMeta(); calc();
   }
 
-  updateMeta(); calc(); renderSaved(); renderRecurring();
-  // renderToday() deferred — todayMap (let) is declared later in the script and would
-  // cause a TDZ error here. afterSignIn() calls renderToday() once all lets are live.
-  try { renderToday(); } catch(e) { /* expected TDZ on cold boot — afterSignIn handles it */ }
-  // Attach Places autocomplete to quote address field (may fire before Google loads — handled by initGooglePlaces callback too)
-  setTimeout(() => attachPlacesAutocomplete('custAddress'), 1500);
-
   // ═══════════════════════════════════════════════════════════════
-  // ═══ TAB SWITCHING ═══
+  // ═══ 6a. Tab Switching ═══
   // Depends on: CRM (renderCRM), PIPELINE (renderSaved, renderRecurring),
   //             TODAY'S JOBS (renderToday), REPORTS (renderReports),
   //             LEAD PIPELINE (renderLeads)
@@ -4299,7 +4275,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // ═══ REPORTS ═══
+  // ═══ 6e. Reports Tab ═══
   // Depends on: QUOTING ENGINE (savedQuotes — full data source),
   //             UTILITIES (parseQuoteDate, getAgingBadge),
   //             REVIEW REQUESTS (renderReviewRequests sub-panel)
@@ -4781,7 +4757,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // ═══ CRM ═══
+  // ═══ 6d. CRM Tab ═══
   // Depends on: CUSTOMER TABLE (customers, saveCustomers,
   //               findOrCreateCustomer, deletedCustomerIds)
   //             QUOTING ENGINE (savedQuotes — job history per customer)
@@ -4791,28 +4767,6 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   //             QUOTING ENGINE (saveQuote triggers renderCRM refresh),
   //             LEAD PIPELINE (sendLeadToCRM, then switchTab to crm)
   // ═══════════════════════════════════════════════════════════════
-  let crmNotes = JSON.parse(localStorage.getItem('twc_crm_notes') || '{}');
-  let crmOverrides = JSON.parse(localStorage.getItem('twc_crm_overrides') || '{}');
-
-  // ── CRM session state (not persisted — resets on reload) ──
-  let crmSortBy    = 'name';   // 'name' | 'lastcontact' | 'revenue'
-  let crmFilterTag = '';       // empty = show all
-
-  // ── Tag picker edit state ──
-  let _editTags = [];          // working copy while CRM Edit Modal is open
-
-  const CRM_TAG_PRESETS = [
-    'Annual Contract', 'Quarterly', 'Bi-Annual',
-    'Referral Source', 'VIP', 'Hard to Reach',
-    'Residential', 'Commercial', 'Storefront',
-    'New Customer', 'Needs Follow-Up', 'Cash Only'
-  ];
-
-  // ── Run migration: stamp customerId onto existing quotes & build customer records ──
-  window._crmOverridesForMigration = crmOverrides;
-  migrateToCustomerTable();
-  window._crmOverridesForMigration = null;
-
   function getCustomers() {
     // Customer table is source of truth. Each record collects its linked quotes.
     const result = Object.values(customers).map(c => {
@@ -4877,10 +4831,12 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   async function hardDeleteCustomer(customerId) {
+    // ── Validate ──
     const c = customers[customerId];
     if (!c) return;
     if (!confirm(`⚠️ PERMANENTLY DELETE "${c.name}"?\n\nThis will remove ALL their quotes from your pipeline and cannot be undone.`)) return;
-    // Delete all jobs linked to this customer from Supabase
+
+    // ── Delete from database ──
     const linkedJobs = savedQuotes.filter(q => q.customerId === customerId ||
       (q.name || '').trim().toUpperCase() === (c.name || '').trim().toUpperCase());
     for (const job of linkedJobs) {
@@ -4889,8 +4845,10 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     savedQuotes = savedQuotes.filter(q => q.customerId !== customerId &&
       (q.name || '').trim().toUpperCase() !== (c.name || '').trim().toUpperCase());
     localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
-    // Delete customer record (cascades notes in Supabase via dbDeleteCustomer)
+    // Cascades notes in Supabase via dbDeleteCustomer
     await dbDeleteCustomer(customerId).catch(e => console.error('[CrewHub] hardDelete customer error:', e));
+
+    // ── Update UI ──
     renderSaved();
     renderRecurring();
     renderCRM();
@@ -4898,17 +4856,12 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
 
   // ═══════════════════════════════════════════════════════════════
-  // ═══ TODAY'S JOBS DASHBOARD ═══
+  // ═══ 6c. Today's Jobs Dashboard ═══
   // Depends on: QUOTING ENGINE (savedQuotes — filters for today's date),
   //             CUSTOMER TABLE (customers for display names),
   //             Leaflet.js (todayMap — loaded in <head>),
-  //             SUPABASE (autoSync after marking jobs done)
-  // Called by:  TAB SWITCHING (on today tab click),
   //             SUPABASE (afterSignIn — default landing tab)
   // ═══════════════════════════════════════════════════════════════
-  let todayMap = null;
-  let todayMarkers = [];
-  let todayJobDoneState = JSON.parse(localStorage.getItem('twc_today_done') || '{}');
 
   function renderToday() {
     const today = new Date();
@@ -5403,12 +5356,15 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   async function saveCrmEdit() {
+    // ── Validate ──
     const customerId = document.getElementById('crmEdit-key').value;
     const name    = document.getElementById('crmEdit-name').value.trim();
     const address = document.getElementById('crmEdit-address').value.trim();
     const phone   = document.getElementById('crmEdit-phone').value.trim();
     const email   = document.getElementById('crmEdit-email').value.trim();
     if (!customerId || !customers[customerId]) return;
+
+    // ── Mutate in-memory record ──
     const leadSource = document.getElementById('crmEdit-leadSource').value;
     customers[customerId].name       = name;
     customers[customerId].address    = address;
@@ -5417,18 +5373,27 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     customers[customerId].contact    = (phone + (phone && email ? ' · ' : '') + email).trim();
     customers[customerId].leadSource = leadSource;
     customers[customerId].tags       = [..._editTags];
+
+    // ── Save to database ──
     await dbSaveCustomer(customers[customerId]).catch(e => console.error('[CrewHub] saveCrmEdit error:', e));
     stampLastContact(customerId);
+
+    // ── Update UI ──
     closeCrmEdit();
     renderCRM();
   }
 
   async function addNote(customerId, safeId) {
+    // ── Validate ──
     const input = document.getElementById('ni-' + safeId);
     const text = input.value.trim();
     if (!text) return;
+
+    // ── Save to database ──
     await dbSaveNote(customerId, text).catch(e => console.error('[CrewHub] addNote error:', e));
     stampLastContact(customerId);
+
+    // ── Update UI ──
     input.value = '';
     renderCRM();
     setTimeout(() => {
@@ -5552,7 +5517,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // ═══ EXPORT / IMPORT ═══
+  // ═══ 6i. Export / Import ═══
   // Depends on: QUOTING ENGINE (savedQuotes), CUSTOMER TABLE (customers),
   //             CRM (crmNotes), LEAD PIPELINE (leads, neighborhoods)
   //             UTILITIES (safeGet for re-hydrating on import)
@@ -5583,10 +5548,12 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const reader = new FileReader();
     reader.onload = async ev => {
       try {
+        // ── Validate ──
         const data = JSON.parse(ev.target.result);
         if (!data.savedQuotes) { alert('Invalid backup file.'); return; }
         if (!confirm(`This will merge ${data.savedQuotes.length} quotes from the backup with your current data. Continue?`)) return;
-        // Merge customers (v2.0+)
+
+        // ── Merge customers (v2.0+) ──
         if (data.customers) {
           const newCustomers = [];
           Object.keys(data.customers).forEach(cid => {
@@ -5599,14 +5566,14 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
             await dbSaveCustomer(c).catch(err => console.error('[CrewHub] importJSON customer error:', err));
           }
         }
-        // Merge quotes
+        // ── Merge quotes ──
         const existingNums = new Set(savedQuotes.map(q => q.quoteNum));
         const newQuotes = data.savedQuotes.filter(q => !existingNums.has(q.quoteNum));
         savedQuotes = [...newQuotes, ...savedQuotes];
         for (const q of newQuotes) {
           await dbSaveJob(q).catch(err => console.error('[CrewHub] importJSON job error:', err));
         }
-        // Merge notes (no batch API — cache locally, will sync via customer records)
+        // ── Merge notes (localStorage cache only — no batch API) ──
         if (data.crmNotes) {
           Object.keys(data.crmNotes).forEach(k => {
             if (!crmNotes[k]) crmNotes[k] = [];
@@ -5617,7 +5584,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           });
           localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
         }
-        // Merge leads
+        // ── Merge leads ──
         if (data.leads && data.leads.length) {
           const existingLeadIds = new Set(leads.map(l => l.id));
           const newLeads = data.leads.filter(l => !existingLeadIds.has(l.id));
@@ -5629,6 +5596,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           await dbSaveNeighborhoodsBatch(neighborhoods).catch(err => console.error('[CrewHub] importJSON nbhd error:', err));
         }
         if (data.leadsLastRun) localStorage.setItem('twc_leads_lastrun', data.leadsLastRun);
+
+        // ── Update UI ──
         renderSaved();
         renderCRM();
         alert(`✅ Import complete! ${newQuotes.length} new quotes added.`);
@@ -5683,26 +5652,12 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     URL.revokeObjectURL(a.href);
   }
   // ═══════════════════════════════════════════════════════════════
-  // ═══ SUPABASE AUTH & SYNC ═══
-  // Depends on: UTILITIES (safeGet — all data vars for sync payload)
-  //             ALL sections (autoSync called after any data mutation)
+  // ═══ 4. Auth + Onboarding ═══
+  // Depends on: APP STATE (_sb, sbUser, currentBusinessId, etc.)
   //             Google Identity Services (for Drive/Calendar OAuth)
-  // Called by:  Sync button (handleSyncBtn), page load session restore,
-  //             autoSync() debounce triggered throughout app,
-  //             Auth modal Sign In / Create Account buttons
+  // Called by:  Sync button (handleSyncBtn), page load (BOOT),
+  //             Auth modal steps (handleSignIn, handleNewBusinessSignup, etc.)
   // ═══════════════════════════════════════════════════════════════
-  const SUPABASE_URL  = 'https://oiwbipwbksmiriukvdzh.supabase.co';
-  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pd2JpcHdia3NtaXJpdWt2ZHpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyOTgyMTYsImV4cCI6MjA4ODg3NDIxNn0.Bi0xr3xZpbO8Gqts5AA3-5OPuo49rs_UPiG3AqRvevQ';
-  const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
-
-  // Google Drive token — still used for photos and calendar events
-  let gAccessToken = null;
-  let gTokenExpiry  = 0;
-  const GOOG_CLIENT_ID = '53011513162-q25io34jn9mj6hthg244g6lpv1hbgal7.apps.googleusercontent.com';
-  const GOOG_SCOPES    = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/calendar.events';
-
-  let sbUser    = null;
-  let isSyncing = false;
 
   function isTokenValid() { return !!sbUser; }
 
@@ -6204,7 +6159,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // ═══ DATA ACCESS LAYER ═══
+  // ═══ 3. Database Access Layer ═══
   // Depends on: SUPABASE AUTH & SYNC (_sb client, sbUser)
   //             UTILITIES & STATE (savedQuotes, customers, crmNotes,
   //               leads, neighborhoods, currentBusinessId, currentMemberId)
@@ -6780,7 +6735,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // ═══ TEAM MANAGEMENT ═══
+  // ═══ 6f. Team Tab ═══
   // Depends on: DATA ACCESS LAYER (dbLoadTeamMembers, dbAddTeamMember,
   //               dbUpdateTeamMember, dbRemoveTeamMember, dbLoadBusinessInfo,
   //               dbUpdateBusiness, canAccess, currentUserRole)
@@ -6864,61 +6819,61 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     document.body.style.overflow = '';
   }
 
+  // ── Helper: send a styled invite email via EmailJS ──
+  async function _sendInviteEmail(toEmail, memberName, memberRole, inviteId) {
+    const bizInfo   = await dbLoadBusinessInfo();
+    const bizName   = bizInfo?.name || 'Crew Hub';
+    const roleLabel = { owner: 'Owner', dispatcher: 'Dispatcher', crew: 'Crew Member' }[memberRole] || memberRole;
+    const inviteUrl = `${window.location.origin}${window.location.pathname}?invite=${inviteId}`;
+    const inviteHtml = `<!DOCTYPE html><html><head>
+      <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
+      <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+      <style>body{margin:0;padding:20px;background:#f0f4f8;font-family:'Nunito',sans-serif;} .wrap{max-width:520px;margin:0 auto;background:#fff;border-radius:16px;padding:36px;box-shadow:0 4px 24px rgba(0,0,0,0.08);}</style>
+    </head><body><div class="wrap">
+      <div style="font-size:32px;margin-bottom:8px;">🪟</div>
+      <h2 style="font-family:'Montserrat',sans-serif;font-size:20px;font-weight:900;color:#1a3a4a;margin:0 0 8px;">You're invited to join ${escHtml(bizName)}</h2>
+      <p style="color:#4a7a8a;font-size:14px;font-weight:600;line-height:1.6;margin-bottom:24px;">Hi ${escHtml(memberName)}, you've been added as <strong>${escHtml(roleLabel)}</strong>. Click the button below to create your account and join the team.</p>
+      <a href="${inviteUrl}" style="display:inline-block;background:linear-gradient(135deg,#2a9db5,#1a6ea8);color:#fff;text-decoration:none;padding:14px 28px;border-radius:12px;font-family:'Montserrat',sans-serif;font-weight:900;font-size:15px;">Accept Invite &amp; Join Team →</a>
+      <p style="margin-top:24px;font-size:12px;color:#9ab4bc;font-weight:600;">Or copy this link: <a href="${inviteUrl}" style="color:#2a9db5;">${inviteUrl}</a></p>
+      <p style="margin-top:8px;font-size:12px;color:#9ab4bc;font-weight:600;">This invite was sent by ${escHtml(bizName)} via Crew Hub.</p>
+    </div></body></html>`;
+    await emailjs.send('service_wseo91x', 'template_f6w8c79', {
+      to_email:     toEmail,
+      subject:      `You've been invited to join ${bizName}`,
+      html_content: inviteHtml,
+      name:         bizName,
+      email:        bizInfo?.email || '',
+    });
+  }
+
   async function saveNewTeamMember() {
     const name  = document.getElementById('tm-name').value.trim();
     const email = document.getElementById('tm-email').value.trim();
     const role  = document.getElementById('tm-role').value;
     const errEl = document.getElementById('tm-error');
 
-    if (!name || !email) {
-      errEl.textContent = 'Please enter both name and email.';
-      errEl.style.display = 'block';
-      return;
-    }
-    if (!email.includes('@') || !email.includes('.')) {
-      errEl.textContent = 'Please enter a valid email address.';
-      errEl.style.display = 'block';
-      return;
-    }
+    if (!name || !email) { errEl.textContent = 'Please enter both name and email.'; errEl.style.display = 'block'; return; }
+    if (!email.includes('@') || !email.includes('.')) { errEl.textContent = 'Please enter a valid email address.'; errEl.style.display = 'block'; return; }
 
     const btn = document.getElementById('tm-save-btn');
-    btn.textContent = 'Adding...';
-    btn.disabled = true;
+    btn.textContent = 'Adding...'; btn.disabled = true;
     errEl.style.display = 'none';
 
     try {
-      const result   = await dbAddTeamMember(name, email, role);
-      const inviteUrl = `${window.location.origin}${window.location.pathname}?invite=${result.id}`;
-
-      // Send invite email (non-blocking — don't fail the whole operation if email fails)
-      try {
-        const bizInfo = await dbLoadBusinessInfo();
-        await emailjs.send('service_wseo91x', 'template_f6w8c79', {
-          to_email:   email,
-          to_name:    name,
-          from_name:  bizInfo?.name || 'Your Team',
-          subject:    `You've been invited to join ${bizInfo?.name || 'Crew Hub'}`,
-          message:    `Hi ${name},\n\nYou've been added to ${bizInfo?.name || 'Crew Hub'} as ${role}.\n\nClick this link to create your account and join your team:\n${inviteUrl}\n\nSee you on the crew! 👋`,
-          reply_to:   sbUser?.email || '',
-        });
-        console.info('[CrewHub] Invite email sent to', email);
-      } catch(emailErr) {
-        console.warn('[CrewHub] Invite email failed (non-critical):', emailErr);
-      }
-
+      const result = await dbAddTeamMember(name, email, role);
+      // Send invite email — non-blocking, member is already added even if email fails
+      _sendInviteEmail(email, name, role, result.id)
+        .then(() => console.info('[CrewHub] Invite email sent to', email))
+        .catch(e => console.warn('[CrewHub] Invite email failed (non-critical):', e));
       closeAddMemberModal();
       renderTeam();
     } catch(err) {
       const msg = err?.message || 'Failed to add team member.';
-      if (msg.includes('unique') || msg.includes('duplicate')) {
-        errEl.textContent = 'A team member with this email already exists.';
-      } else {
-        errEl.textContent = msg;
-      }
+      errEl.textContent = (msg.includes('unique') || msg.includes('duplicate'))
+        ? 'A team member with this email already exists.' : msg;
       errEl.style.display = 'block';
     }
-    btn.textContent = '➕ Add Member';
-    btn.disabled = false;
+    btn.textContent = '➕ Add Member'; btn.disabled = false;
   }
 
   async function toggleMemberActive(memberId, active) {
@@ -7090,7 +7045,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // ═══ TIMESHEETS ═══
+  // ═══ 6g. Timesheets ═══
   // Depends on: DATA ACCESS LAYER (dbClockIn, dbClockOut, dbGetActiveClockIn,
   //               dbGetTimeEntries, dbUpdateBreakMins, currentMemberId)
   //             TEAM MANAGEMENT (dbLoadTeamMembers — for dispatcher view)
@@ -7172,10 +7127,13 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   async function handleClockIn() {
+    // ── UI loading state ──
     const btn = document.getElementById('clock-in-btn');
     if (btn) { btn.textContent = '⏳ Clocking in...'; btn.disabled = true; }
     try {
+      // ── Save to database ──
       _clockEntry = await dbClockIn(currentMemberId);
+      // ── Update UI ──
       await renderClockWidget();
     } catch(e) {
       alert('Failed to clock in: ' + (e.message || e));
@@ -7184,16 +7142,20 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   async function handleClockOut() {
+    // ── Validate ──
     if (!_clockEntry) return;
     if (!confirm('Clock out and end your shift?')) return;
+    // ── UI loading state ──
     const btn = document.getElementById('clock-out-btn');
     if (btn) { btn.textContent = '⏳ Clocking out...'; btn.disabled = true; }
     try {
+      // ── Save to database ──
       await dbClockOut(_clockEntry.id);
       _clockEntry = null;
       stopClockTimer();
+      // ── Update UI ──
       await renderClockWidget();
-      await renderMyHours(); // refresh weekly summary
+      await renderMyHours();
     } catch(e) {
       alert('Failed to clock out: ' + (e.message || e));
       if (btn) { btn.textContent = '🔴 Clock Out'; btn.disabled = false; }
@@ -7324,14 +7286,13 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // ═══ PHOTO STORAGE (GOOGLE DRIVE) ═══
+  // ═══ 5g. Photo Storage (Google Drive) ═══
   // Depends on: SUPABASE AUTH (gAccessToken — Google Drive OAuth token)
   //             CUSTOMER TABLE (customers, customerPhotos object)
   //             localStorage (twc_photos_* keys for metadata cache)
   // Called by:  CUSTOMER TYPEAHEAD (updateQuotePhotoPanel, renderQuotePhotoGrid),
   //             PHOTO MODAL (upload, delete, load photo actions)
   // ═══════════════════════════════════════════════════════════════
-  const PHOTO_FOLDER_NAME = 'CrewHub Photos';
 
   async function ensurePhotoFolder() {
     if (photoFolderId) return photoFolderId;
@@ -7375,7 +7336,6 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   // ── LOGO ──
-  let cachedLogoB64 = localStorage.getItem('twc_logo_b64') || '';
 
   function extractLogoId(input) {
     // Accept full share URL or raw file ID
@@ -7415,16 +7375,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     return `<img src="${cachedLogoB64}" style="height:${height}px;max-width:200px;object-fit:contain;display:block;" alt="logo">`;
   }
 
-  // Restore logo preview on load
-  window.addEventListener('load', () => {
-    const savedId = localStorage.getItem('twc_logo_fileid') || '';
-    if (savedId) document.getElementById('bizLogoId').value = savedId;
-    if (cachedLogoB64) {
-      const p = document.getElementById('logoPreview');
-      if (p) { p.src = cachedLogoB64; p.style.display = 'inline-block'; }
-      document.getElementById('logoStatus').textContent = '✓ Logo loaded';
-    }
-  });
+  // (Logo preview restore is handled in the BOOT section at the end of this file)
 
   async function fetchPhotoBlob(fileId) {
     if (photoBlobCache[fileId]) return photoBlobCache[fileId];
@@ -7457,7 +7408,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // ═══ PHOTO MODAL ═══
+  // ═══ 6g. Photo Modal ═══
   // Depends on: PHOTO STORAGE (uploadPhotoToDrive, deletePhotoFromDrive,
   //               ensurePhotoFolder, photoBlobCache)
   //             CUSTOMER TABLE (getPhotosForCustomer, customerPhotos)
@@ -7466,7 +7417,6 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   //             CRM (openPhotoModal from customer card),
   //             CUSTOMER TYPEAHEAD (photo panel in quote form)
   // ═══════════════════════════════════════════════════════════════
-  let photoModalKey = null;
 
   function getPhotoLabel(customerId, legacyNameKey) {
     const photos = getPhotosForCustomer(customerId, legacyNameKey);
@@ -7576,7 +7526,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // ═══ REVIEW REQUESTS ═══
+  // ═══ 6h. Review Requests ═══
   // Depends on: QUOTING ENGINE (savedQuotes — filters receipted jobs),
   //             EMAIL & COMMUNICATIONS (EmailJS for sending review link),
   //             SUPABASE (autoSync after marking request sent)
@@ -7765,7 +7715,6 @@ ${bizEmail}`
     document.getElementById('quoteModal').style.display = 'block';
   }
 
-  let _autoSyncTimer = null;
   function autoSync() {
     // No-op: data writes now go directly to Supabase via db* functions.
     // Kept so existing callers don't crash during transition.
@@ -7775,37 +7724,8 @@ ${bizEmail}`
     // No-op: replaced by direct Supabase writes via db* functions.
   }
 
-  // ── Boot sequence: detect invite link, then restore session ──
-  (async function boot() {
-    // 1. Check for ?invite=UUID in URL
-    const params   = new URLSearchParams(window.location.search);
-    const inviteId = params.get('invite');
-    if (inviteId) {
-      window.history.replaceState({}, '', window.location.pathname); // clean URL
-      try {
-        const { data } = await _sb.rpc('get_invite_info', { invite_id: inviteId });
-        if (data) { _authInviteId = inviteId; _authInviteInfo = data; }
-      } catch(e) { console.warn('[CrewHub] Could not load invite info:', e); }
-    }
-
-    // 2. Restore existing Supabase session
-    const { data: { session } } = await _sb.auth.getSession();
-    if (session) {
-      sbUser = session.user;
-      await afterSignIn();
-    } else {
-      showAuthModal(); // will show 'invite' step if _authInviteInfo is set
-    }
-  })();
-
-  // Keep session alive across tab refreshes / token renewals
-  _sb.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_OUT')     { sbUser = null; setSyncUI('offline', 'Signed out'); showAuthModal(); }
-    if (event === 'TOKEN_REFRESHED' && session) { sbUser = session.user; }
-  });
-
   // ═══════════════════════════════════════════════════════════════
-  // ═══ LEAD PIPELINE ═══
+  // ═══ 5f. Lead Pipeline ═══
   // Depends on: CUSTOMER TABLE (findOrCreateCustomer, saveCustomers)
   //             CRM (renderCRM — after sendLeadToCRM creates customer)
   //             QUOTING ENGINE (quoteFromLead pre-fills quote form)
@@ -7814,10 +7734,6 @@ ${bizEmail}`
   //             Python agent output (importLeadFile reads JSON),
   //             SUPABASE (afterSignIn loads leads from cloud)
   // ═══════════════════════════════════════════════════════════════
-
-  let leads = safeGet('twc_leads', []);
-  let neighborhoods = safeGet('twc_neighborhoods', []);
-  let currentLeadTab = 'commercial';
 
   function saveLeads() {
     localStorage.setItem('twc_leads', JSON.stringify(leads));
@@ -8127,35 +8043,30 @@ ${bizEmail}`
   }
 
   async function sendLeadToCRM(id) {
+    // ── Validate ──
     const lead = leads.find(l => l.id === id);
     if (!lead) return;
-
-    // Check if a customer from this lead already exists
     const alreadyExists = Object.values(customers).some(c => c._leadId === id);
-    if (alreadyExists) {
-      alert(`"${lead.name}" is already in your CRM.`);
-      return;
-    }
+    if (alreadyExists) { alert(`"${lead.name}" is already in your CRM.`); return; }
 
-    // Create customer using the same format as the rest of the app
+    // ── Build customer record ──
     const custId = 'cust_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
     const newCustomer = {
-      customerId: custId,
-      _leadId: id,
-      name: lead.name,
-      company: lead.name,
+      customerId: custId, _leadId: id,
+      name: lead.name, company: lead.name,
       address: lead.address,
-      phone: lead.phone || '',
-      email: lead.email || '',
-      leadSource: 'lead_pipeline',
-      tags: [],
-      archived: false,
+      phone: lead.phone || '', email: lead.email || '',
+      leadSource: 'lead_pipeline', tags: [], archived: false,
       createdAt: new Date().toISOString(),
     };
+
+    // ── Save to database ──
     customers[custId] = newCustomer;
     await dbSaveCustomer(newCustomer).catch(e => console.error('[CrewHub] sendLeadToCRM customer error:', e));
     lead.status = 'contacted';
     await dbSaveLead(lead).catch(e => console.error('[CrewHub] sendLeadToCRM lead error:', e));
+
+    // ── Update UI ──
     renderLeads();
     alert(`✅ "${lead.name}" added to CRM! Switch to the CRM tab to see them.`);
   }
@@ -8166,8 +8077,11 @@ ${bizEmail}`
   }
 
   async function saveManualLead() {
+    // ── Validate ──
     const name = document.getElementById('ml-name').value.trim();
     if (!name) { alert('Please enter a name.'); return; }
+
+    // ── Build lead object ──
     const segVal = document.getElementById('ml-type').value;
     const lead = {
       id: 'lead_manual_' + Date.now(),
@@ -8178,26 +8092,20 @@ ${bizEmail}`
       address: document.getElementById('ml-address').value.trim(),
       phone: document.getElementById('ml-phone').value.trim(),
       email: document.getElementById('ml-email').value.trim(),
-      website: '',
-      rating: 0,
-      review_count: 0,
-      source: 'manual',
-      place_id: '',
-      status: 'new',
-      ai_score: null,
-      ai_tags: [],
-      ai_note: '',
-      business_blurb: '',
-      owner_name: '',
-      notes: [],
-      lat: null,
-      lng: null,
+      website: '', rating: 0, review_count: 0,
+      source: 'manual', place_id: '', status: 'new',
+      ai_score: null, ai_tags: [], ai_note: '',
+      business_blurb: '', owner_name: '',
+      notes: [], lat: null, lng: null,
     };
     const noteText = document.getElementById('ml-notes').value.trim();
     if (noteText) lead.notes.push({ text: noteText, date: new Date().toLocaleDateString('en-CA') });
 
+    // ── Save to database ──
     leads.unshift(lead);
     await dbSaveLead(lead).catch(e => console.error('[CrewHub] saveManualLead error:', e));
+
+    // ── Update UI ──
     document.getElementById('manualLeadModal').style.display = 'none';
     ['ml-name','ml-address','ml-phone','ml-email','ml-notes'].forEach(id => {
       document.getElementById(id).value = '';
@@ -8226,6 +8134,72 @@ ${bizEmail}`
   function escHtml(str) {
     return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
+
+  // ═══════════════════════════════════════════════════════════════
+  // ═══ 7. BOOT ═══
+  // The app initialization sequence. Runs once on page load.
+  // All functions and variables are fully declared by this point.
+  // ═══════════════════════════════════════════════════════════════
+
+  // ── Initial UI state (renders before sign-in data loads) ──
+  updateMeta();
+  calc();
+  renderSaved();
+  renderRecurring();
+  try { renderToday(); } catch(e) { /* todayMap TDZ on cold boot — afterSignIn handles it */ }
+  setTimeout(() => attachPlacesAutocomplete('custAddress'), 1500);
+
+  // ── Data migration ──
+  window._crmOverridesForMigration = crmOverrides;
+  migrateToCustomerTable();
+  window._crmOverridesForMigration = null;
+
+  // ── Deferred DOM listeners (require elements to exist in DOM) ──
+  window.addEventListener('load', function() {
+    // QuickNote modal: close on backdrop click
+    const qnModal = document.getElementById('quickNoteModal');
+    if (qnModal) qnModal.addEventListener('click', function(e) {
+      if (e.target === this) closeQuickNote();
+    });
+    // Restore logo preview
+    const savedLogoId = localStorage.getItem('twc_logo_fileid') || '';
+    if (savedLogoId) { const el = document.getElementById('bizLogoId'); if (el) el.value = savedLogoId; }
+    if (cachedLogoB64) {
+      const p = document.getElementById('logoPreview');
+      if (p) { p.src = cachedLogoB64; p.style.display = 'inline-block'; }
+      const s = document.getElementById('logoStatus');
+      if (s) s.textContent = '✓ Logo loaded';
+    }
+  });
+
+  // ── Supabase session restore ──
+  (async function boot() {
+    // 1. Check for ?invite=UUID in URL
+    const params   = new URLSearchParams(window.location.search);
+    const inviteId = params.get('invite');
+    if (inviteId) {
+      window.history.replaceState({}, '', window.location.pathname); // clean URL
+      try {
+        const { data } = await _sb.rpc('get_invite_info', { invite_id: inviteId });
+        if (data) { _authInviteId = inviteId; _authInviteInfo = data; }
+      } catch(e) { console.warn('[CrewHub] Could not load invite info:', e); }
+    }
+
+    // 2. Restore existing Supabase session
+    const { data: { session } } = await _sb.auth.getSession();
+    if (session) {
+      sbUser = session.user;
+      await afterSignIn();
+    } else {
+      showAuthModal(); // will show 'invite' step if _authInviteInfo is set
+    }
+  })();
+
+  // ── Keep session alive across tab refreshes / token renewals ──
+  _sb.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_OUT')     { sbUser = null; setSyncUI('offline', 'Signed out'); showAuthModal(); }
+    if (event === 'TOKEN_REFRESHED' && session) { sbUser = session.user; }
+  });
 
 </script>
 
