@@ -1,0 +1,8 @@
+node_modules
+dist
+
+# Environment variables (stored in Vercel dashboard)
+.env
+.env.local
+.env.production
+*.local

@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Crew Hub</title>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Google Identity Services (OAuth for Drive/Calendar) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <!-- Leaflet (map on Today tab) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+  <!-- EmailJS (init is called in legacy.js using CONFIG.EMAILJS_USER_ID) -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- React root — mounts alongside legacy DOM. React components render here. -->
+<div id="react-root"></div>
+
+<!-- Hero -->
+<div class="hero-banner">
+  <div class="hero-title">The <span>Crew Hub</span></div>
+</div>
+
+<!-- Tab Nav -->
+<div class="tab-nav">
+  <button class="tab-btn active" id="todayTabBtn" onclick="switchTab('today', this)">📍 Today</button>
+  <button class="tab-btn" onclick="switchTab('leads', this)">🎯 Lead Pipeline</button>
+  <button class="tab-btn" onclick="switchTab('quotes', this)">📋 Quoting</button>
+  <button class="tab-btn" onclick="switchTab('pipeline', this)">⚡ Job Pipeline</button>
+  <button class="tab-btn" onclick="switchTab('crm', this)">👥 CRM</button>
+  <button class="tab-btn" onclick="switchTab('reports', this)">📊 Reports</button>
+  <button class="tab-btn" id="timesheetsTabBtn" onclick="switchTab('timesheets', this)">⏱ Timesheets</button>
+  <button class="tab-btn" id="teamTabBtn" onclick="switchTab('team', this)">🏢 Team</button>
+  <div id="syncStatus" style="margin-left:auto; display:flex; align-items:center; gap:8px; padding-bottom:4px;">
+    <div id="syncIndicator" style="width:8px;height:8px;border-radius:50%;background:#aac4cc;flex-shrink:0;"></div>
+    <span id="syncLabel" style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.6);">Not signed in</span>
+    <button id="syncBtn" onclick="handleSyncBtn()" style="background:rgba(255,255,255,0.15);color:white;border:none;border-radius:20px;padding:5px 14px;font-family:'Nunito',sans-serif;font-weight:800;font-size:11px;cursor:pointer;transition:all 0.15s;white-space:nowrap;">Sign In</button>
+    <button id="signOutBtn" onclick="sbSignOut()" style="display:none;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.55);border:none;border-radius:20px;padding:5px 12px;font-family:'Nunito',sans-serif;font-weight:700;font-size:10px;cursor:pointer;white-space:nowrap;">Sign Out</button>
+  </div>
+</div>
+
+<!-- ═══ AUTH MODAL ═══ -->
+<div id="authModal" style="display:none;position:fixed;inset:0;background:rgba(10,30,40,0.82);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(4px);padding:16px;box-sizing:border-box;">
+  <div id="authModalContent" style="background:#fff;border-radius:20px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.35);text-align:center;max-height:90vh;overflow-y:auto;position:relative;box-sizing:border-box;"></div>
+</div>
+
+<!-- ═══ NO BUSINESS MODAL ═══ -->
+<!-- ═══ NO BUSINESS MODAL ═══ -->
+<div id="noBizModal" style="display:none;position:fixed;inset:0;background:rgba(10,30,40,0.82);z-index:9998;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+  <div style="background:#fff;border-radius:20px;padding:40px 36px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.35);text-align:center;">
+    <div style="font-size:36px;margin-bottom:8px;">🪟</div>
+    <h2 style="font-family:'Montserrat',sans-serif;font-size:20px;font-weight:900;color:#1a3a4a;margin-bottom:8px;">Welcome to Crew Hub</h2>
+    <p style="font-size:13px;color:#6b9aaa;font-weight:600;margin-bottom:24px;line-height:1.6;">Your account isn't linked to a business yet. Were you invited to join an existing team, or are you starting fresh?</p>
+
+    <div id="noBizError" style="display:none;background:#fef2f2;color:#dc2626;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;margin-bottom:16px;text-align:left;"></div>
+
+    <!-- Option 1: Create new business -->
+    <div id="noBiz-create-section" style="background:#f0fdf4;border:2px solid #86efac;border-radius:14px;padding:20px;margin-bottom:16px;text-align:left;">
+      <div style="font-weight:800;font-size:14px;color:#065f46;margin-bottom:12px;">🏢 I'm starting a new business</div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:11px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:4px;">Business Name</label>
+        <input id="noBiz-bizName" type="text" placeholder="e.g. The Window Crew" style="width:100%;padding:10px 14px;border:2px solid #e8f4f7;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;color:#1a3a4a;outline:none;box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:11px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:4px;">Your Name</label>
+        <input id="noBiz-ownerName" type="text" placeholder="e.g. Amadeus" style="width:100%;padding:10px 14px;border:2px solid #e8f4f7;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;color:#1a3a4a;outline:none;box-sizing:border-box;">
+      </div>
+      <button id="noBiz-createBtn" onclick="handleCreateBusiness()" style="width:100%;padding:12px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;border-radius:12px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;cursor:pointer;">🚀 Create My Business</button>
+    </div>
+
+    <!-- Option 2: Was invited -->
+    <div style="background:#f8fafc;border:2px solid #e2e8f0;border-radius:14px;padding:16px;text-align:left;">
+      <div style="font-weight:800;font-size:14px;color:#64748b;margin-bottom:6px;">👥 I was invited to a team</div>
+      <p style="font-size:12px;color:#94a3b8;font-weight:600;line-height:1.5;margin-bottom:10px;">Ask your team owner to add your email address in their Team tab. Make sure it matches the email you signed up with exactly.</p>
+      <button onclick="sbSignOut()" style="width:100%;padding:10px;background:#f1f5f9;color:#64748b;border:2px solid #e2e8f0;border-radius:10px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Sign Out &amp; Try Again</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD TEAM MEMBER MODAL — removed (now handled by TeamTab.jsx) -->
+
+<!-- ═══ QUOTES TAB ═══ -->
+<div id="tab-quotes" class="tab-panel">
+
+<!-- Main -->
+<div class="page-wrap">
+
+  <!-- Customer Info -->
+  <div class="card full">
+    <div class="card-title">Customer Details</div>
+    <div class="customer-grid">
+      <div id="company-name-field" style="display:none;">
+        <label class="field-label">Company Name</label>
+        <div class="input-wrap">
+          <input type="text" id="custCompany" placeholder="e.g. Penticton Coffee Co.">
+        </div>
+      </div>
+      <div>
+        <label class="field-label" id="label-custName">Customer Name</label>
+        <div style="position:relative;">
+          <div class="input-wrap" style="margin-bottom:0;">
+            <input type="text" id="custName" placeholder="Search or enter new customer…" 
+              oninput="onCustNameInput()" 
+              onblur="setTimeout(closeCustDropdown, 180)"
+              autocomplete="off">
+          </div>
+          <!-- Linked badge -->
+          <div id="cust-linked-badge" style="display:none; margin-top:5px; padding:4px 10px; background:#f0fdf4; border:1.5px solid #86efac; border-radius:20px; font-size:11px; font-weight:700; color:#16a34a; display:inline-flex; align-items:center; gap:5px;">
+            <span>✓ Linked to existing customer</span>
+            <button onclick="clearCustomerLink()" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:13px;line-height:1;padding:0 2px;" title="Unlink — treat as new">×</button>
+          </div>
+          <div id="cust-new-badge" style="display:none; margin-top:5px; padding:4px 10px; background:#fff7ed; border:1.5px solid #fed7aa; border-radius:20px; font-size:11px; font-weight:700; color:#c2410c;">
+            ✦ New customer — will be created on save
+          </div>
+          <!-- Dropdown -->
+          <div id="cust-dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:white; border:2px solid var(--teal); border-radius:10px; box-shadow:0 8px 24px rgba(26,110,168,0.15); z-index:200; max-height:220px; overflow-y:auto; margin-top:2px;"></div>
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Address to be Serviced</label>
+        <div class="input-wrap">
+          <input type="text" id="custAddress" placeholder="e.g. 12 Main St, Penticton">
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Phone Number</label>
+        <div class="input-wrap">
+          <input type="tel" id="custPhone" placeholder="250-555-1234" oninput="formatPhone(this)">
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Email Address</label>
+        <div class="input-wrap">
+          <input type="email" id="custEmail" placeholder="e.g. john@email.com">
+        </div>
+      </div>
+      <div>
+        <label class="field-label">How Did They Hear About Us? <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:none;">(saved to CRM — not on quote)</span></label>
+        <div class="input-wrap">
+          <select id="custLeadSource" style="width:100%;background:var(--gray);border:2px solid transparent;border-radius:10px;padding:11px 14px;font-family:'Nunito',sans-serif;font-size:16px;font-weight:700;color:var(--text);outline:none;cursor:pointer;transition:border-color 0.15s,background 0.15s;">
+            <option value="">— Select or leave blank —</option>
+          <option value="Web Search">Web Search</option>
+          <option value="Facebook Ad">Facebook Ad</option>
+          <option value="Instagram Ad">Instagram Ad</option>
+          <option value="Google Ad">Google Ad</option>
+          <option value="Radio Ad">Radio Ad</option>
+          <option value="TV Ad">TV Ad</option>
+          <option value="Billboard / Real World Ad">Billboard / Real World Ad</option>
+          <option value="YouTube Ad">YouTube Ad</option>
+          <option value="Flyer / Door Hanger">Flyer / Door Hanger</option>
+          <option value="Referral Program">Referral Program</option>
+          <option value="Email Marketing">Email Marketing</option>
+          <option value="Cold Call / Door Knock">Cold Call / Door Knock</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Internal Notes <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:none;">(saved to CRM — not on quote)</span></label>
+        <div class="input-wrap">
+          <input type="text" id="custNotes" placeholder="e.g. Dogs in yard, gate code, access notes">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Site Photos -->
+  <div class="card full">
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <span>📷 Site Reference Photos <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0;">(internal only — never on customer docs)</span></span>
+      <span id="quote-photo-signin-note" style="font-size:11px;font-weight:700;color:#f97316;display:none;">⚠ Sign in to Drive to upload photos</span>
+    </div>
+    <div id="quote-photo-name-note" style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:10px;display:none;">Enter a customer name above first.</div>
+    <div id="quote-photo-ui" style="display:none;">
+      <div id="quote-photo-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;min-height:10px;"></div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <input type="file" id="quote-photo-input" accept="image/*" multiple style="flex:1;font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;">
+        <button id="quote-photo-btn" onclick="handleQuotePhotoUpload()" style="background:var(--teal);color:white;border:none;border-radius:20px;padding:9px 18px;font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap;">⬆ Upload</button>
+        <input type="file" id="quote-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="handleQuoteCameraCapture()">
+        <button onclick="document.getElementById('quote-camera-input').click()" style="background:#f97316;color:white;border:none;border-radius:20px;padding:9px 18px;font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap;">📸 Take Photo</button>
+      </div>
+      <div id="quote-photo-status" style="font-size:12px;font-weight:700;margin-top:6px;min-height:16px;"></div>
+    </div>
+  </div>
+
+  <!-- Service Fields + Adjustments — stacked in left column -->
+  <div style="display:flex;flex-direction:column;gap:16px;">
+
+    <!-- Service Fields — injected by the active quote plugin at login -->
+    <div id="service-fields-container"></div>
+
+    <!-- Adjustments (shared across all trades) -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px;">Adjustments</div>
+
+      <div class="two">
+        <div>
+          <label class="field-label">Travel / Call-out ($)</label>
+          <div class="input-wrap pfx-wrap">
+            <span class="pfx">$</span>
+            <input type="number" id="travel" value="0" min="0" oninput="calc()">
+          </div>
+        </div>
+        <div>
+          <label class="field-label">Discount (%)</label>
+          <div class="input-wrap">
+            <input type="number" id="discount" value="0" min="0" max="100" oninput="calc()">
+          </div>
+        </div>
+        <div>
+          <label class="field-label">Discount ($)</label>
+          <div class="input-wrap pfx-wrap">
+            <span class="pfx">$</span>
+            <input type="number" id="discountDollar" value="0" min="0" oninput="calc()">
+          </div>
+        </div>
+        <div>
+          <label class="field-label">GST / Tax (%)</label>
+          <div class="input-wrap">
+            <input type="number" id="tax" value="0" min="0" oninput="calc()">
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Business Info (for quote generation) -->
+  <div class="card full" id="bizInfoCard">
+    <div class="card-title">Your Business Details <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0;">(used on generated quotes)</span></div>
+    <div class="customer-grid">
+      <div>
+        <label class="field-label">Business Name</label>
+        <div class="input-wrap"><input type="text" id="bizName" value="The Window Crew"></div>
+      </div>
+      <div>
+        <label class="field-label">Address</label>
+        <div class="input-wrap"><input type="text" id="bizAddress" value="368 Haynes St, Penticton, BC"></div>
+      </div>
+      <div>
+        <label class="field-label">Phone</label>
+        <div class="input-wrap"><input type="tel" id="bizPhone" value="587-220-8775" oninput="formatPhone(this)"></div>
+      </div>
+      <div>
+        <label class="field-label">Email</label>
+        <div class="input-wrap"><input type="text" id="bizEmail" value="amadeus@thewindowcrew.ca"></div>
+      </div>
+    </div>
+    <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:200px;">
+        <label class="field-label">Logo — Drive File ID <span style="font-weight:600;text-transform:none;letter-spacing:0;font-size:11px;">(right-click file in Drive → Share → Copy link, paste here and I extract the ID)</span></label>
+        <div class="input-wrap"><input type="text" id="bizLogoId" placeholder="e.g. 1aBcD2eFgH... or paste full Drive share link" oninput="extractLogoId(this)"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button onclick="fetchAndCacheLogo()" style="background:var(--teal);color:white;border:none;border-radius:20px;padding:9px 18px;font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;cursor:pointer;">⬆ Load Logo</button>
+        <span id="logoStatus" style="font-size:12px;font-weight:700;color:var(--muted);"></span>
+        <img id="logoPreview" src="" style="height:40px;display:none;border-radius:6px;border:1.5px solid #e2e8f0;">
+      </div>
+    </div>
+  </div>
+
+  <!-- Quote Result -->
+  <div class="quote-card full">
+    <div class="qc-label">Live Quote</div>
+    <div class="qc-inner">
+      <div class="line-items" id="lineItems"></div>
+      <div class="total-block">
+        <div class="total-lbl">Total inc. tax</div>
+        <div class="total-amt" id="totalAmt">$0.00</div>
+        <div class="total-sub">Excl. tax: <span id="totalSub">$0.00</span></div>
+      </div>
+    </div>
+    <div class="action-row">
+      <button class="btn btn-yellow" onclick="saveQuote()">💾 Save Quote</button>
+      <button class="btn btn-white-outline" onclick="resetForm()">Reset</button>
+    </div>
+  </div>
+
+
+</div>
+
+</div> <!-- end tab-quotes -->
+
+<!-- ═══ PIPELINE TAB ═══ -->
+<div id="tab-pipeline" class="tab-panel">
+  <div id="pipeline-react-root"></div>
+</div>
+
+<!-- ═══ TODAY TAB ═══ -->
+<div id="tab-today" class="tab-panel active">
+  <div id="today-react-root"></div>
+</div>
+
+<!-- ═══ CRM TAB ═══ -->
+<div id="tab-crm" class="tab-panel">
+  <div id="crm-react-root"></div>
+</div>
+
+<!-- ═══ QUOTE MODAL ═══ -->
+<div id="quoteModal" style="display:none; position:fixed; inset:0; background:rgba(10,30,45,0.7); z-index:1000; overflow-y:auto; padding:30px 16px;">
+  <div style="max-width:680px; margin:0 auto; position:relative;">
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
+      <button id="sendEmailBtn" onclick="sendDocumentEmail()" style="background:#10b981;color:white;border:none;border-radius:30px;padding:10px 22px;font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;cursor:pointer;">📧 Send Email</button>
+      <button onclick="downloadQuoteHTML()" style="background:var(--yellow);color:var(--blue-dark);border:none;border-radius:30px;padding:10px 22px;font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;cursor:pointer;">⬇️ Download to Email</button>
+      <button onclick="printQuote()" style="background:white;color:var(--blue);border:none;border-radius:30px;padding:10px 22px;font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;cursor:pointer;">🖨 Print / Save PDF</button>
+      <button onclick="closeModal()" style="background:rgba(255,255,255,0.15);color:white;border:none;border-radius:30px;padding:10px 22px;font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;cursor:pointer;">✕ Close</button>
+    </div>
+    <div id="quoteDocument" style="background:white; border-radius:16px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.3);"></div>
+  </div>
+</div>
+
+
+<!-- CRM Edit Modal removed — handled by React CrmTab component -->
+
+<!-- Schedule Job Modal -->
+<div id="schedModal" style="display:none; position:fixed; inset:0; background:rgba(10,30,45,0.75); z-index:1100; overflow-y:auto; padding:30px 16px;">
+  <div style="max-width:440px; margin:0 auto; background:white; border-radius:16px; overflow:hidden; box-shadow:0 12px 48px rgba(26,110,168,0.25);">
+    <div style="background:#1a3a4a; padding:20px 24px; display:flex; justify-content:space-between; align-items:center;">
+      <div style="color:white; font-weight:800; font-size:15px;">📅 Schedule Job</div>
+      <button onclick="closeScheduleModal()" style="background:none;border:none;color:white;font-size:24px;cursor:pointer;line-height:1;">×</button>
+    </div>
+    <div style="padding:24px; display:flex; flex-direction:column; gap:16px;">
+      <div id="schedModal-title" style="font-weight:700; font-size:14px; color:#1a3a4a; background:#f0f7fa; padding:10px 14px; border-radius:10px;"></div>
+      <div>
+        <label style="font-size:12px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;">Date</label>
+        <input id="schedModal-date" type="date" onchange="renderSchedDayPreview()" style="width:100%;padding:10px 14px;border:2px solid #e2e8f0;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;outline:none;">
+      </div>
+      <!-- Day schedule preview -->
+      <div id="schedModal-day-preview" style="display:none;"></div>
+
+      <div>
+        <label style="font-size:12px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;">Start Time</label>
+        <input id="schedModal-time" type="time" value="08:00" onchange="updateDurationLabel(document.getElementById('schedModal-duration').value)" oninput="updateDurationLabel(document.getElementById('schedModal-duration').value)" style="width:100%;padding:10px 14px;border:2px solid #e2e8f0;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;outline:none;">
+      </div>
+      <!-- End time display -->
+      <div style="background:#f0f7fa; border-radius:10px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center;">
+        <div style="font-size:12px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;">End Time</div>
+        <div id="schedModal-endtime" style="font-size:16px;font-weight:800;color:#1a6ea8;">—</div>
+      </div>
+
+      <div>
+        <label style="font-size:12px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;">
+          Estimated Duration — <span id="schedModal-duration-label" style="color:#1a3a4a;font-size:13px;">1 hr 0 min</span>
+        </label>
+        <input id="schedModal-duration" type="range" min="1" max="20" value="4" step="1"
+          oninput="updateDurationLabel(this.value)"
+          style="width:100%;accent-color:#1a6ea8;cursor:pointer;height:6px;margin-top:4px;">
+        <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700;color:#aac4cc;margin-top:4px;">
+          <span>15 min</span><span>1 hr</span><span>2 hr</span><span>3 hr</span><span>4 hr</span><span>5 hr</span>
+        </div>
+      </div>
+      <input type="hidden" id="schedModal-idx">
+      <div style="display:flex; gap:10px; margin-top:4px;">
+        <button id="schedModal-confirm" onclick="confirmSchedule()" style="flex:1;background:#1a6ea8;color:white;border:none;border-radius:30px;padding:12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;cursor:pointer;">Add to Calendar</button>
+        <button onclick="closeScheduleModal()" style="flex:1;background:#f1f5f9;color:#1a3a4a;border:none;border-radius:30px;padding:12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;cursor:pointer;">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ REPORTS TAB ═══ -->
+<div id="tab-reports" class="tab-panel">
+  <div id="reports-react-root"></div>
+</div>
+
+<!-- ═══ TIMESHEETS TAB ═══ -->
+<div id="tab-timesheets" class="tab-panel">
+  <div id="timesheets-react-root"></div>
+</div>
+
+<!-- ═══ TEAM TAB ═══ -->
+<div id="tab-team" class="tab-panel">
+  <div id="team-react-root"></div>
+</div>
+
+<!-- ═══ LEAD FINDER TAB ═══ -->
+<div id="tab-leads" class="tab-panel">
+  <div id="leads-react-root"></div>
+</div>
+
+<!-- Review Request Modal -->
+<div id="reviewModal" style="display:none; position:fixed; inset:0; background:rgba(10,30,45,0.75); z-index:1200; overflow-y:auto; padding:30px 16px;">
+  <div style="max-width:460px; margin:0 auto; background:white; border-radius:16px; overflow:hidden; box-shadow:0 12px 48px rgba(26,110,168,0.25);">
+    <div style="background:linear-gradient(135deg,#16a34a,#15803d); padding:20px 24px; display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <div style="color:white; font-weight:800; font-size:16px;">⭐ Send Review Request</div>
+        <div style="color:rgba(255,255,255,0.75); font-size:12px; font-weight:600; margin-top:2px;">Job complete — time to get that review!</div>
+      </div>
+      <button onclick="closeReviewModal()" style="background:none;border:none;color:white;font-size:24px;cursor:pointer;line-height:1;">×</button>
+    </div>
+    <div style="padding:24px;">
+
+      <!-- Customer info -->
+      <div style="background:#f0fdf4; border:2px solid #86efac; border-radius:10px; padding:14px 18px; margin-bottom:20px;">
+        <div style="font-size:11px; font-weight:700; color:#16a34a; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;">Sending To</div>
+        <div style="font-size:15px; font-weight:800; color:var(--text);" id="rrm-name"></div>
+        <div style="font-size:13px; font-weight:600; color:var(--muted); margin-top:2px;" id="rrm-contact"></div>
+      </div>
+
+      <!-- Message preview -->
+      <div style="font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px;">Message Preview</div>
+      <div id="rrm-preview" style="background:#f8fafc; border:2px solid var(--gray); border-radius:10px; padding:14px 16px; font-size:13px; font-weight:600; color:var(--text); line-height:1.7; margin-bottom:6px; white-space:pre-wrap; max-height:220px; overflow-y:auto;"></div>
+      <div style="font-size:11px; font-weight:600; color:var(--muted); margin-bottom:20px;"></div>
+
+      <!-- Action buttons -->
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <a id="rrm-mailto" href="" style="flex:1; min-width:140px; background:#16a34a; color:white; border-radius:30px; padding:13px; font-family:'Nunito',sans-serif; font-weight:800; font-size:14px; text-align:center; text-decoration:none; display:flex; align-items:center; justify-content:center;">📧 Open in Email App</a>
+        <button onclick="copyReviewEmail(this)" style="flex:1; min-width:120px; background:#e0f2fe; color:#0369a1; border:2px solid #7dd3fc; border-radius:30px; padding:13px; font-family:'Nunito',sans-serif; font-weight:800; font-size:14px; cursor:pointer;">📋 Copy Email</button>
+        <button onclick="closeReviewModal()" style="flex:1; min-width:100px; background:#f1f5f9; color:var(--text); border:none; border-radius:30px; padding:13px; font-family:'Nunito',sans-serif; font-weight:800; font-size:14px; cursor:pointer;">Skip</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Photo Modal -->
+<div id="photoModal" style="display:none; position:fixed; inset:0; background:rgba(10,30,45,0.8); z-index:1200; overflow-y:auto; padding:30px 16px;">
+  <div style="max-width:560px; margin:0 auto; background:white; border-radius:16px; overflow:hidden; box-shadow:0 12px 48px rgba(26,110,168,0.3);">
+    <div style="background:var(--teal-dark); padding:18px 24px; display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <div style="color:white; font-weight:800; font-size:15px;">📷 Site Photos</div>
+        <div id="pm-title" style="color:rgba(255,255,255,0.7); font-size:12px; font-weight:600; margin-top:2px;"></div>
+      </div>
+      <button onclick="closePhotoModal()" style="background:none;border:none;color:white;font-size:24px;cursor:pointer;line-height:1;">×</button>
+    </div>
+    <div style="padding:20px 24px;">
+      <div id="pm-grid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px; min-height:80px;"></div>
+      <div style="border-top:2px solid var(--gray); padding-top:16px;">
+        <label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:8px;">Add Photos</label>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <input type="file" id="pm-file-input" accept="image/*" multiple style="flex:1; font-family:'Nunito',sans-serif; font-size:13px; font-weight:600;">
+          <button id="pm-upload-btn" onclick="handlePhotoUpload()" style="background:var(--teal);color:white;border:none;border-radius:20px;padding:10px 20px;font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;cursor:pointer;white-space:nowrap;">⬆ Upload</button>
+        </div>
+        <div id="pm-upload-status" style="font-size:12px;font-weight:700;margin-top:8px;min-height:18px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Photo Lightbox -->
+<div id="photoLightbox" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:1300; align-items:center; justify-content:center;" onclick="closePhotoLightbox()">
+  <img id="lb-img" src="" style="max-width:90vw; max-height:90vh; border-radius:8px; box-shadow:0 8px 40px rgba(0,0,0,0.6);">
+  <button onclick="closePhotoLightbox()" style="position:fixed;top:20px;right:24px;background:rgba(255,255,255,0.15);color:white;border:none;border-radius:50%;width:40px;height:40px;font-size:22px;cursor:pointer;">×</button>
+</div>
+
+<!-- Quick Note Modal -->
+<!-- quickNoteModal removed — handled by React PipelineTab component -->
+
+<!-- Payment Method Modal -->
+<div id="paymentMethodModal" style="display:none; position:fixed; inset:0; background:rgba(10,30,45,0.75); z-index:1200; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:white; border-radius:16px; overflow:hidden; box-shadow:0 12px 48px rgba(26,110,168,0.3); max-width:360px; width:100%;">
+    <div style="background:#1a3a4a; padding:20px 24px; display:flex; justify-content:space-between; align-items:center;">
+      <div style="color:white; font-weight:800; font-size:15px;">💳 How did they pay?</div>
+      <button onclick="document.getElementById('paymentMethodModal').style.display='none'" style="background:none;border:none;color:white;font-size:24px;cursor:pointer;line-height:1;">×</button>
+    </div>
+    <div style="padding:24px; display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      <button onclick="selectPaymentMethod('Cash')" style="background:#f0fdf4;border:2px solid #10b981;border-radius:12px;padding:18px 12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:15px;color:#065f46;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
+        💵<span>Cash</span>
+      </button>
+      <button onclick="selectPaymentMethod('Debit')" style="background:#eff6ff;border:2px solid #3b82f6;border-radius:12px;padding:18px 12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:15px;color:#1e40af;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
+        💳<span>Debit</span>
+      </button>
+      <button onclick="selectPaymentMethod('Credit')" style="background:#fdf4ff;border:2px solid #a855f7;border-radius:12px;padding:18px 12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:15px;color:#6b21a8;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
+        💳<span>Credit</span>
+      </button>
+      <button onclick="selectPaymentMethod('Cheque')" style="background:#fff7ed;border:2px solid #f97316;border-radius:12px;padding:18px 12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:15px;color:#c2410c;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
+        📝<span>Cheque</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Pre-expose initGooglePlaces BEFORE the Maps SDK loads.
+     type="module" scripts always execute after defer scripts, so without this
+     inline stub the Maps SDK callback fires before legacy.js has run and throws
+     "initGooglePlaces is not a function". The stub sets a flag; the real
+     implementation in legacy.js picks it up after initLegacyApp() finishes. -->
+<script>
+  window._mapsApiReady = false;
+  window.initGooglePlaces = function() { window._mapsApiReady = true; };
+</script>
+
+<!-- Google Maps + Places (keep hardcoded key here; Phase 1 will move to env) -->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCgAGOJoIJsKfcbqWBMuib63aH6M4T089Y&libraries=places&v=weekly&callback=initGooglePlaces" defer></script>
+
+<!-- Vite entry point -->
+<script type="module" src="/src/main.jsx"></script>
+
+</body>
+</html>

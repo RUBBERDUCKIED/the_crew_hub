@@ -1,0 +1,74 @@
+import { _sb } from './supabaseClient.js';
+
+export async function dbLoadTeamMembers() {
+  const { data, error } = await _sb
+    .from('team_members')
+    .select('*')
+    .order('created_at', { ascending: true });
+  if (error) { console.error('[CrewHub] dbLoadTeamMembers error:', error); return []; }
+  return (data || []).map(row => ({
+    id:         row.id,
+    name:       row.name,
+    email:      row.email,
+    role:       row.role,
+    active:     row.active,
+    createdAt:  row.created_at,
+    authUserId: row.auth_user_id,
+  }));
+}
+
+export async function dbAddTeamMember(name, email, role, businessId) {
+  const { data, error } = await _sb
+    .from('team_members')
+    .insert({
+      business_id:  businessId,
+      auth_user_id: null,
+      name,
+      email: email.toLowerCase().trim(),
+      role,
+      active: true,
+    })
+    .select().single();
+  if (error) { console.error('[CrewHub] dbAddTeamMember error:', error); throw error; }
+  return data;
+}
+
+export async function dbUpdateTeamMember(memberId, updates) {
+  const { data, error } = await _sb
+    .from('team_members')
+    .update(updates)
+    .eq('id', memberId)
+    .select().single();
+  if (error) { console.error('[CrewHub] dbUpdateTeamMember error:', error); throw error; }
+  return data;
+}
+
+export async function dbRemoveTeamMember(memberId) {
+  const { error } = await _sb
+    .from('team_members')
+    .delete()
+    .eq('id', memberId);
+  if (error) { console.error('[CrewHub] dbRemoveTeamMember error:', error); throw error; }
+}
+
+export async function dbLoadBusinessInfo(businessId) {
+  if (!businessId) return null;
+  const { data, error } = await _sb
+    .from('businesses')
+    .select('*')
+    .eq('id', businessId)
+    .single();
+  if (error) { console.error('[CrewHub] dbLoadBusinessInfo error:', error); return null; }
+  return data;
+}
+
+export async function dbUpdateBusiness(updates, businessId) {
+  if (!businessId) return null;
+  const { data, error } = await _sb
+    .from('businesses')
+    .update(updates)
+    .eq('id', businessId)
+    .select().single();
+  if (error) { console.error('[CrewHub] dbUpdateBusiness error:', error); throw error; }
+  return data;
+}
