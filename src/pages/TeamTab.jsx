@@ -7,6 +7,8 @@ import {
   dbRemoveTeamMember,
   dbLoadBusinessInfo,
   dbUpdateBusiness,
+  dbUploadLogo,
+  dbRemoveLogo,
 } from '../db/team.js';
 import { sendInviteEmail } from '../services/emailService.js';
 import { ModalShell, labelStyle, inputStyle } from '../components/shared.jsx';
@@ -44,8 +46,10 @@ export default function TeamTab() {
   const [modalSaving,  setModalSaving]  = useState(false);
 
   // ── Business-info edit state ─────────────────────────────────
-  const [bizEdit,   setBizEdit]   = useState({ name: '', email: '', phone: '', address: '' });
-  const [bizSaving, setBizSaving] = useState(false);
+  const [bizEdit,      setBizEdit]      = useState({ name: '', email: '', phone: '', address: '' });
+  const [bizSaving,    setBizSaving]    = useState(false);
+  const [logoUrl,      setLogoUrl]      = useState('');
+  const [logoUploading, setLogoUploading] = useState(false);
 
   // ── Load data ────────────────────────────────────────────────
   const loadData = useCallback(async () => {
@@ -63,6 +67,7 @@ export default function TeamTab() {
         phone:   biz.phone   || '',
         address: biz.address || '',
       });
+      setLogoUrl(biz.logo_url || '');
     }
     setLoading(false);
   }, [currentBusinessId]);
@@ -153,6 +158,32 @@ export default function TeamTab() {
       loadData();
     } catch (e) { alert('Failed to save: ' + (e.message || e)); }
     setBizSaving(false);
+  }
+
+  // ── Logo upload / remove ────────────────────────────────────
+  async function handleLogoUpload(file) {
+    if (!file) return;
+    setLogoUploading(true);
+    try {
+      const url = await dbUploadLogo(file, currentBusinessId);
+      setLogoUrl(url);
+      // Keep legacy.js documents in sync
+      if (typeof window !== 'undefined') window._currentLogoUrl = url;
+    } catch (e) {
+      alert('Logo upload failed: ' + (e.message || e));
+    }
+    setLogoUploading(false);
+  }
+
+  async function handleLogoRemove() {
+    if (!confirm('Remove your business logo?')) return;
+    try {
+      await dbRemoveLogo(currentBusinessId);
+      setLogoUrl('');
+      if (typeof window !== 'undefined') window._currentLogoUrl = null;
+    } catch (e) {
+      alert('Failed to remove logo: ' + (e.message || e));
+    }
   }
 
   // ── Derived stats ─────────────────────────────────────────────
@@ -308,6 +339,46 @@ export default function TeamTab() {
                 >
                   {bizSaving ? 'Saving…' : '💾 Save Business Info'}
                 </button>
+
+                {/* ── Logo upload ── */}
+                <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 10 }}>Business Logo</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                    {logoUrl && (
+                      <img
+                        src={logoUrl}
+                        alt="logo"
+                        style={{ height: 64, maxWidth: 160, objectFit: 'contain', borderRadius: 8, border: '2px solid var(--gray)', background: '#f8fafc', padding: 4 }}
+                      />
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <label style={{
+                        display: 'inline-block', background: 'var(--teal)', color: 'white',
+                        borderRadius: 30, padding: '8px 18px', fontSize: 12, fontWeight: 800,
+                        cursor: logoUploading ? 'default' : 'pointer', opacity: logoUploading ? 0.7 : 1,
+                        fontFamily: "'Nunito', sans-serif",
+                      }}>
+                        {logoUploading ? 'Uploading…' : (logoUrl ? '🔄 Change Logo' : '📷 Upload Logo')}
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                          style={{ display: 'none' }}
+                          disabled={logoUploading}
+                          onChange={e => { if (e.target.files[0]) handleLogoUpload(e.target.files[0]); e.target.value = ''; }}
+                        />
+                      </label>
+                      {logoUrl && (
+                        <button
+                          onClick={handleLogoRemove}
+                          style={{ background: '#fee2e2', color: '#dc2626', border: '2px solid #fca5a5', borderRadius: 30, padding: '6px 16px', fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: "'Nunito', sans-serif" }}
+                        >
+                          🗑 Remove
+                        </button>
+                      )}
+                      <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>PNG, JPG, SVG, WebP · appears on quotes &amp; invoices</span>
+                    </div>
+                  </div>
+                </div>
               </>
             ) : (
               <div>
