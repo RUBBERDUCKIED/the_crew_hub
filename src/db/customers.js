@@ -37,6 +37,7 @@ export function rowToCustomer(row) {
     archived:        row.archived         || false,
     createdAt:       row.created_at       || null,
     updatedAt:       row.updated_at       || null,
+    photos:          row.photos           || [],
   };
 }
 
@@ -59,4 +60,35 @@ export async function dbLoadAllCustomers() {
   const { data, error } = await _sb.from('customers').select('*');
   if (error) { console.error('[CrewHub] dbLoadAllCustomers error:', error); return []; }
   return (data || []).map(rowToCustomer);
+}
+
+// ── Photo Storage ─────────────────────────────────────────────────────────
+
+export async function dbUploadCustomerPhoto(file, businessId, customerId) {
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const path     = `${businessId}/${customerId}/${Date.now()}-${safeName}`;
+  const { error } = await _sb.storage
+    .from('photos')
+    .upload(path, file, { upsert: false, contentType: file.type });
+  if (error) { console.error('[CrewHub] dbUploadCustomerPhoto error:', error); throw error; }
+  const { data } = _sb.storage.from('photos').getPublicUrl(path);
+  return {
+    fileId:     path,
+    url:        data.publicUrl,
+    name:       file.name,
+    uploadedAt: new Date().toISOString().slice(0, 10),
+  };
+}
+
+export async function dbDeleteCustomerPhoto(path) {
+  const { error } = await _sb.storage.from('photos').remove([path]);
+  if (error) { console.error('[CrewHub] dbDeleteCustomerPhoto error:', error); throw error; }
+}
+
+export async function dbUpdateCustomerPhotos(customerId, photos) {
+  // customerId here is the Supabase UUID (same as c.customerId in the app)
+  const { error } = await _sb.from('customers')
+    .update({ photos })
+    .eq('id', customerId);
+  if (error) { console.error('[CrewHub] dbUpdateCustomerPhotos error:', error); throw error; }
 }

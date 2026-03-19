@@ -13,7 +13,7 @@
 import { CONFIG } from './config.js';
 import { _sb as _sbClient }                                                              from './db/supabaseClient.js';
 import { dbSaveJob as _dbSaveJob, dbDeleteJob as _dbDeleteJob, dbLoadAllJobs }                                               from './db/jobs.js';
-import { dbSaveCustomer as _dbSaveCustomer, dbDeleteCustomer as _dbDeleteCustomer, dbLoadAllCustomers }                      from './db/customers.js';
+import { dbSaveCustomer as _dbSaveCustomer, dbDeleteCustomer as _dbDeleteCustomer, dbLoadAllCustomers, dbUploadCustomerPhoto as _dbUploadCustomerPhoto, dbDeleteCustomerPhoto as _dbDeleteCustomerPhoto, dbUpdateCustomerPhotos as _dbUpdateCustomerPhotos } from './db/customers.js';
 import { rowToNote, dbSaveNote as _dbSaveNote, dbDeleteNote as _dbDeleteNote, dbLoadAllNotes }                               from './db/notes.js';
 import { dbSaveLead as _dbSaveLead, dbDeleteLead as _dbDeleteLead, dbSaveLeadsBatch as _dbSaveLeadsBatch, dbLoadAllLeads }   from './db/leads.js';
 import { dbSaveNeighborhoodsBatch as _dbSaveNeighborhoodsBatch, dbLoadAllNeighborhoods }                                                                       from './db/neighborhoods.js';
@@ -288,24 +288,18 @@ function initLegacyApp() {
   }
 
   function updateQuotePhotoPanel() {
-    const key = getActivePhotoKey();
+    const key        = getActivePhotoKey();
     const signinNote = document.getElementById('quote-photo-signin-note');
     const nameNote   = document.getElementById('quote-photo-name-note');
     const photoUI    = document.getElementById('quote-photo-ui');
-    if (!gAccessToken) {
-      signinNote.style.display = 'inline';
-      nameNote.style.display   = 'none';
-      photoUI.style.display    = 'none';
-      return;
-    }
-    signinNote.style.display = 'none';
+    if (signinNote) signinNote.style.display = 'none'; // no longer needed — Supabase Storage
     if (!key) {
-      nameNote.style.display = 'block';
-      photoUI.style.display  = 'none';
+      if (nameNote)  nameNote.style.display = 'block';
+      if (photoUI)   photoUI.style.display  = 'none';
       return;
     }
-    nameNote.style.display = 'none';
-    photoUI.style.display  = 'block';
+    if (nameNote)  nameNote.style.display = 'none';
+    if (photoUI)   photoUI.style.display  = 'block';
     renderQuotePhotoGrid(key);
   }
 
@@ -321,19 +315,9 @@ function initLegacyApp() {
     if (!photos.length) { grid.innerHTML = ''; return; }
     grid.innerHTML = photos.map(p => `
       <div style="position:relative;border-radius:8px;overflow:hidden;background:#f1f5f9;aspect-ratio:1;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="openPhotoLightbox('${p.fileId}')">
-        <img id="qpg-img-${p.fileId}" src="" style="width:100%;height:100%;object-fit:cover;display:none;">
-        <span id="qpg-spin-${p.fileId}" style="font-size:16px;color:var(--muted);">⟳</span>
+        <img src="${p.url || ''}" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
         <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.4);color:white;font-size:9px;font-weight:600;padding:3px 5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</div>
       </div>`).join('');
-    photos.forEach(p => {
-      fetchPhotoBlob(p.fileId).then(url => {
-        if (!url) return;
-        const img  = document.getElementById('qpg-img-' + p.fileId);
-        const spin = document.getElementById('qpg-spin-' + p.fileId);
-        if (img)  { img.src = url; img.style.display = 'block'; }
-        if (spin) spin.style.display = 'none';
-      });
-    });
   }
 
   async function handleQuoteCameraCapture() {
@@ -346,13 +330,15 @@ function initLegacyApp() {
     status.style.color = 'var(--teal)';
     status.textContent = 'Uploading photo...';
     try {
-      const meta = await uploadPhotoToDrive(files[0], key);
+      const cust = customers[key] || Object.values(customers).find(c => (c.name||'').trim().toUpperCase() === key);
+      const custId = cust ? cust.customerId : key;
+      const meta = await _dbUploadCustomerPhoto(files[0], currentBusinessId, custId);
       if (!customerPhotos[key]) customerPhotos[key] = [];
       customerPhotos[key].push(meta);
+      if (cust) await _dbUpdateCustomerPhotos(cust.customerId, customerPhotos[cust.customerId] || []);
       status.style.color = '#16a34a';
-      status.textContent = '✓ Photo saved to Drive!';
+      status.textContent = '✓ Photo saved!';
       input.value = '';
-      autoSync();
       renderQuotePhotoGrid(key);
     } catch(e) {
       status.style.color = '#dc2626';
@@ -372,16 +358,18 @@ function initLegacyApp() {
     status.style.color = 'var(--teal)';
     status.textContent = `Uploading ${files.length} photo${files.length > 1 ? 's' : ''}...`;
     try {
+      const cust = customers[key] || Object.values(customers).find(c => (c.name||'').trim().toUpperCase() === key);
+      const custId = cust ? cust.customerId : key;
       for (let i = 0; i < files.length; i++) {
         status.textContent = `Uploading ${i+1} of ${files.length}...`;
-        const meta = await uploadPhotoToDrive(files[i], key);
+        const meta = await _dbUploadCustomerPhoto(files[i], currentBusinessId, custId);
         if (!customerPhotos[key]) customerPhotos[key] = [];
         customerPhotos[key].push(meta);
       }
+      if (cust) await _dbUpdateCustomerPhotos(cust.customerId, customerPhotos[cust.customerId] || []);
       status.style.color = '#16a34a';
-      status.textContent = `✓ ${files.length} photo${files.length > 1 ? 's' : ''} saved to Drive!`;
+      status.textContent = `✓ ${files.length} photo${files.length > 1 ? 's' : ''} saved!`;
       input.value = '';
-      autoSync();
       renderQuotePhotoGrid(key);
     } catch(e) {
       status.style.color = '#dc2626';
@@ -2395,6 +2383,11 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     customers = {};
     custList.forEach(c => { customers[c.customerId] = c; });
     localStorage.setItem('twc_customers', JSON.stringify(customers));
+    // Hydrate customerPhotos from customer records (persists across sessions)
+    customerPhotos = {};
+    custList.forEach(c => {
+      if (c.photos && c.photos.length > 0) customerPhotos[c.customerId] = c.photos;
+    });
     // 3. Notes (raw rows so we can group by customer_id)
     const noteRows = await dbLoadAllNotes();
     crmNotes = {};
@@ -2668,25 +2661,28 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   // (Logo preview restore is handled in the BOOT section at the end of this file)
 
   async function fetchPhotoBlob(fileId) {
+    // With Supabase Storage, photos have a direct public URL — no blob fetch needed
     if (photoBlobCache[fileId]) return photoBlobCache[fileId];
-    const blob = await driveDownloadBlob(fileId, gAccessToken);
-    if (!blob) return null;
-    const url = URL.createObjectURL(blob);
+    const allPhotos = Object.values(customerPhotos).flat();
+    const photo = allPhotos.find(p => p.fileId === fileId);
+    const url = photo?.url;
+    if (!url) return null;
     photoBlobCache[fileId] = url;
     return url;
   }
 
-  async function deletePhotoDrive(fileId, customerKey) {
+  async function deleteCustomerPhoto(fileId, customerKey) {
     if (!confirm('Delete this photo?')) return;
     try {
-      await driveDeleteFile(fileId, gAccessToken);
-    } catch(e) { console.warn('Drive delete failed:', e); }
+      await _dbDeleteCustomerPhoto(fileId);
+    } catch(e) { console.warn('Supabase Storage delete failed:', e); }
     // Remove from local state
     if (customerPhotos[customerKey]) {
       customerPhotos[customerKey] = customerPhotos[customerKey].filter(p => p.fileId !== fileId);
     }
-    if (photoBlobCache[fileId]) { URL.revokeObjectURL(photoBlobCache[fileId]); delete photoBlobCache[fileId]; }
-    pushSync();
+    // Persist updated photos array to Supabase
+    const cust = customers[customerKey] || Object.values(customers).find(c => (c.name||'').trim().toUpperCase() === customerKey);
+    if (cust) await _dbUpdateCustomerPhotos(cust.customerId, customerPhotos[cust.customerId] || []);
     renderPhotoModal(customerKey);
   }
 
@@ -2717,10 +2713,6 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   function openPhotoModal(customerKey, customerName) {
-    if (!gAccessToken) {
-      alert('Please sign in to Google Drive first to use photo storage.');
-      return;
-    }
     photoModalKey = customerKey;
     document.getElementById('pm-title').textContent = customerName;
     document.getElementById('pm-upload-status').textContent = '';
@@ -2749,19 +2741,17 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     }
     grid.innerHTML = photos.map(p => `
       <div style="position:relative;border-radius:10px;overflow:hidden;background:#f1f5f9;aspect-ratio:1;display:flex;align-items:center;justify-content:center;">
-        <img id="pm-img-${p.fileId}" src="" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;display:none;" onclick="openPhotoLightbox('${p.fileId}')">
-        <div id="pm-spin-${p.fileId}" style="font-size:24px;color:var(--muted);">⟳</div>
-        <button onclick="deletePhotoDrive('${p.fileId}','${customerKey}')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.6);color:white;border:none;border-radius:50%;width:24px;height:24px;font-size:12px;cursor:pointer;line-height:1;">×</button>
+        <img src="${p.url || ''}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onclick="openPhotoLightbox('${p.fileId}')">
+        <button onclick="deleteCustomerPhoto('${p.fileId}','${customerKey}')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.6);color:white;border:none;border-radius:50%;width:24px;height:24px;font-size:12px;cursor:pointer;line-height:1;">×</button>
         <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.45);color:white;font-size:10px;font-weight:600;padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name}</div>
       </div>`).join('');
     for (const p of photos) {
-      fetchPhotoBlob(p.fileId).then(url => {
-        if (!url) return;
+      // URL-based display — no blob fetch needed; keep loop for future hooks
+      const img = document.getElementById('pm-img-' + p.fileId);
+      if (false) { // placeholder — blob fetch removed
         const img = document.getElementById('pm-img-' + p.fileId);
         const spin = document.getElementById('pm-spin-' + p.fileId);
-        if (img) { img.src = url; img.style.display = 'block'; }
-        if (spin) spin.style.display = 'none';
-      });
+        }
     }
   }
 
@@ -2776,12 +2766,15 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     status.style.color = 'var(--teal)';
     status.textContent = `Uploading ${files.length} photo${files.length > 1 ? 's' : ''}...`;
     try {
+      const cust   = customers[photoModalKey] || Object.values(customers).find(c => (c.name||'').trim().toUpperCase() === photoModalKey);
+      const custId = cust ? cust.customerId : photoModalKey;
       for (let i = 0; i < files.length; i++) {
         status.textContent = `Uploading ${i+1} of ${files.length}...`;
-        const photoMeta = await uploadPhotoToDrive(files[i], photoModalKey);
+        const photoMeta = await _dbUploadCustomerPhoto(files[i], currentBusinessId, custId);
         if (!customerPhotos[photoModalKey]) customerPhotos[photoModalKey] = [];
         customerPhotos[photoModalKey].push(photoMeta);
       }
+      if (cust) await _dbUpdateCustomerPhotos(cust.customerId, customerPhotos[cust.customerId] || []);
       status.style.color = '#16a34a';
       status.textContent = `✓ ${files.length} photo${files.length > 1 ? 's' : ''} uploaded!`;
       input.value = '';
@@ -2797,7 +2790,10 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
   // Lightbox
   function openPhotoLightbox(fileId) {
-    const url = photoBlobCache[fileId];
+    // Find URL from metadata — no blob fetch needed with Supabase Storage
+    const allPhotos = Object.values(customerPhotos).flat();
+    const photo = allPhotos.find(p => p.fileId === fileId);
+    const url = photo?.url;
     if (!url) return;
     const lb = document.getElementById('photoLightbox');
     document.getElementById('lb-img').src = url;
@@ -3122,7 +3118,7 @@ ${bizEmail}`
 
     // ── Photo Modal (index.html + React onclick handlers) ──
     openPhotoModal, openPhotoModalByIndex, closePhotoModal,
-    handlePhotoUpload, deletePhotoDrive, extractLogoId, fetchAndCacheLogo,
+    handlePhotoUpload, deleteCustomerPhoto, extractLogoId, fetchAndCacheLogo,
     openPhotoLightbox:  typeof openPhotoLightbox  !== 'undefined' ? openPhotoLightbox  : undefined,
     closePhotoLightbox: typeof closePhotoLightbox !== 'undefined' ? closePhotoLightbox : undefined,
 
