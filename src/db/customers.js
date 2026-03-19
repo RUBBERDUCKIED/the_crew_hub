@@ -64,12 +64,49 @@ export async function dbLoadAllCustomers() {
 
 // ── Photo Storage ─────────────────────────────────────────────────────────
 
+/**
+ * Compress an image file client-side using Canvas.
+ * - Caps longest edge at maxPx (default 1200px)
+ * - Exports as JPEG at the given quality (default 0.82 ≈ ~200–500 KB for phone shots)
+ * - SVGs and GIFs are returned unchanged (can't meaningfully compress via canvas)
+ * Returns a Blob ready for upload.
+ */
+function compressImage(file, { maxPx = 1200, quality = 0.82 } = {}) {
+  // Skip compression for SVG / GIF — they don't benefit from canvas re-encode
+  if (file.type === 'image/svg+xml' || file.type === 'image/gif') return Promise.resolve(file);
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      let { width, height } = img;
+      // Downscale if either dimension exceeds maxPx
+      if (width > maxPx || height > maxPx) {
+        if (width >= height) { height = Math.round(height * maxPx / width); width = maxPx; }
+        else                 { width  = Math.round(width  * maxPx / height); height = maxPx; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width  = width;
+      canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      canvas.toBlob(blob => {
+        if (!blob) { reject(new Error('Canvas compression failed')); return; }
+        resolve(blob);
+      }, 'image/jpeg', quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Image load failed')); };
+    img.src = objectUrl;
+  });
+}
+
 export async function dbUploadCustomerPhoto(file, businessId, customerId) {
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const path     = `${businessId}/${customerId}/${Date.now()}-${safeName}`;
+  // Compress before upload — keeps storage lean and uploads faster on mobile
+  const compressed = await compressImage(file);
+  const safeName   = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/\.[^.]+$/, '') + '.jpg';
+  const path       = `${businessId}/${customerId}/${Date.now()}-${safeName}`;
   const { error } = await _sb.storage
     .from('photos')
-    .upload(path, file, { upsert: false, contentType: file.type });
+    .upload(path, compressed, { upsert: false, contentType: 'image/jpeg' });
   if (error) { console.error('[CrewHub] dbUploadCustomerPhoto error:', error); throw error; }
   const { data } = _sb.storage.from('photos').getPublicUrl(path);
   return {
