@@ -1904,7 +1904,27 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       content.innerHTML = `${_authHeader(null)}
         <p style="font-size:14px;font-weight:700;color:#1a3a4a;margin-bottom:16px;">Select a business</p>
         ${cards}
+        <button onclick="showAuthStep('add-business')" style="${BS}margin-top:4px;">+ Create New Business</button>
         <button onclick="sbSignOut()" style="${BG}margin-top:4px;">Sign Out</button>
+      </div>`;
+
+    } else if (step === 'add-business') {
+      const types = getAvailableServiceTypes();
+      const tradeCards = types.map(t => `
+        <button onclick="_pendingNewBizServiceType='${t.id}';document.querySelectorAll('.add-biz-trade-btn').forEach(b=>b.style.borderColor='#e2e8f0');this.style.borderColor='var(--teal)';"
+          class="add-biz-trade-btn"
+          style="width:100%;padding:14px;background:#f8fafc;border:2px solid #e2e8f0;border-radius:14px;text-align:left;cursor:pointer;margin-bottom:8px;display:block;transition:border-color .15s;">
+          <div style="font-weight:800;font-size:13px;color:#1a3a4a;">${t.label}</div>
+        </button>`).join('');
+      content.innerHTML = `${_authHeader('pick-business')}
+        <p style="font-size:14px;font-weight:700;color:#1a3a4a;margin-bottom:6px;">Create a New Business</p>
+        <label style="${LB}">Business Name</label>
+        <input type="text" id="addBizName" placeholder="My Cleaning Co." style="${I}">
+        <label style="${LB}">Your Name (Owner)</label>
+        <input type="text" id="addBizOwnerName" placeholder="Jane Doe" style="${I}">
+        <p style="font-size:12px;font-weight:700;color:#1a3a4a;margin-top:12px;margin-bottom:8px;">What trade?</p>
+        ${tradeCards}
+        <button id="addBizCreateBtn" onclick="handleAddBusiness()" style="${BP}margin-top:8px;">🚀 Create My Business</button>
       </div>`;
 
     } else if (step === 'pick-trade') {
@@ -1927,6 +1947,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   // ── Pending state for two-step business creation (credentials → pick-trade) ──
   let _pendingServiceType = 'window-cleaning';
   let _pendingAuthData    = null; // { bizName, ownerName, email }
+  let _pendingNewBizServiceType = 'window-cleaning';
 
   // ── Auth handler functions ──
   async function handleSignIn() {
@@ -1989,6 +2010,25 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     try {
       await dbBootstrapBusiness(bizName, ownerName, email, _pendingServiceType);
       _pendingAuthData = null;
+      hideAuthModal();
+      hideNoBizModal();
+      await afterSignIn();
+    } catch(e) {
+      showAuthError(e.message || 'Failed to create business.');
+      if (btn) { btn.textContent = '🚀 Create My Business'; btn.disabled = false; }
+    }
+  }
+
+  async function handleAddBusiness() {
+    const bizName   = document.getElementById('addBizName')?.value.trim();
+    const ownerName = document.getElementById('addBizOwnerName')?.value.trim();
+    if (!bizName)   { showAuthError('Please enter your business name.'); return; }
+    if (!ownerName) { showAuthError('Please enter your name.'); return; }
+    const btn = document.getElementById('addBizCreateBtn');
+    if (btn) { btn.textContent = '⏳ Creating...'; btn.disabled = true; }
+    try {
+      if (!sbUser) throw new Error('Not signed in. Please sign out and sign back in.');
+      await dbBootstrapBusiness(bizName, ownerName, sbUser.email, _pendingNewBizServiceType);
       hideAuthModal();
       hideNoBizModal();
       await afterSignIn();
@@ -2182,15 +2222,9 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       return;
     }
 
-    // Step 4: Multiple businesses — show picker (with last-used memory)
+    // Step 4: Multiple businesses — always show picker
     if (activeMemberships.length > 1) {
       _authMemberships = activeMemberships;
-      const lastBiz    = localStorage.getItem('twc_last_business');
-      const remembered = activeMemberships.find(m => m.business_id === lastBiz);
-      if (remembered) {
-        await selectBusiness(remembered.id, remembered.business_id, remembered.role);
-        return;
-      }
       setSyncUI('idle', 'Pick a business');
       showAuthStep('pick-business');
       return;
@@ -3057,7 +3091,7 @@ ${bizEmail}`
     handleSignIn, esc, escHtml: esc,
     handleNewBusinessSignup, handleJoinTeamSignup, handleInviteSignup,
     showAuthStep, selectBusiness, sbSignOut, handleSyncBtn, handleCreateBusiness,
-    _doCreateBusiness,
+    _doCreateBusiness, handleAddBusiness,
 
     // ── Plugin registry (exposed so the pick-trade step can list service types) ──
     getAvailableServiceTypes,
@@ -3144,6 +3178,11 @@ ${bizEmail}`
   Object.defineProperty(window, '_pendingServiceType', {
     get: () => _pendingServiceType,
     set: (v) => { _pendingServiceType = v; },
+    configurable: true,
+  });
+  Object.defineProperty(window, '_pendingNewBizServiceType', {
+    get: () => _pendingNewBizServiceType,
+    set: (v) => { _pendingNewBizServiceType = v; },
     configurable: true,
   });
 

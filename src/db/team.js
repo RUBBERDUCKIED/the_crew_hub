@@ -1,10 +1,9 @@
 import { _sb } from './supabaseClient.js';
 
-export async function dbLoadTeamMembers() {
-  const { data, error } = await _sb
-    .from('team_members')
-    .select('*')
-    .order('created_at', { ascending: true });
+export async function dbLoadTeamMembers(businessId) {
+  let query = _sb.from('team_members').select('*');
+  if (businessId) query = query.eq('business_id', businessId);
+  const { data, error } = await query.order('created_at', { ascending: true });
   if (error) { console.error('[CrewHub] dbLoadTeamMembers error:', error); return []; }
   return (data || []).map(row => ({
     id:         row.id,

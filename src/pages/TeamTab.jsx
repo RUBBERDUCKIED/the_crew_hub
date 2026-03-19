@@ -55,7 +55,7 @@ export default function TeamTab() {
   const loadData = useCallback(async () => {
     setLoading(true);
     const [mems, biz] = await Promise.all([
-      dbLoadTeamMembers(),
+      dbLoadTeamMembers(currentBusinessId),
       dbLoadBusinessInfo(currentBusinessId),
     ]);
     setMembers(mems);
@@ -311,6 +311,11 @@ export default function TeamTab() {
         {/* Business Info */}
         <div className="stat-card" style={{ marginTop: 24 }}>
           <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--teal-dark)', marginBottom: 14 }}>🏢 Business Information</div>
+          {!bizInfo && !loading && (
+            <div style={{ padding: '20px 0', fontSize: 13, fontWeight: 600, color: 'var(--muted)', textAlign: 'center' }}>
+              Unable to load business information. Try refreshing the page.
+            </div>
+          )}
           {bizInfo && (
             isOwner ? (
               <>
