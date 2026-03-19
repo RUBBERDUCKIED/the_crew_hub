@@ -72,3 +72,21 @@ export async function dbUpdateBusiness(updates, businessId) {
   if (error) { console.error('[CrewHub] dbUpdateBusiness error:', error); throw error; }
   return data;
 }
+
+export async function dbUploadLogo(file, businessId) {
+  const ext  = file.name.split('.').pop().toLowerCase();
+  const path = `${businessId}/logo.${ext}`;
+  const { error: uploadError } = await _sb.storage
+    .from('logos')
+    .upload(path, file, { upsert: true, contentType: file.type });
+  if (uploadError) { console.error('[CrewHub] dbUploadLogo upload error:', uploadError); throw uploadError; }
+  const { data } = _sb.storage.from('logos').getPublicUrl(path);
+  // Cache-bust so the browser picks up the new file immediately
+  const publicUrl = data.publicUrl + '?t=' + Date.now();
+  await _sb.from('businesses').update({ logo_url: data.publicUrl }).eq('id', businessId);
+  return publicUrl;
+}
+
+export async function dbRemoveLogo(businessId) {
+  await _sb.from('businesses').update({ logo_url: null }).eq('id', businessId);
+}

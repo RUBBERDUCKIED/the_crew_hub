@@ -18,7 +18,7 @@ import { rowToNote, dbSaveNote as _dbSaveNote, dbDeleteNote as _dbDeleteNote, db
 import { dbSaveLead as _dbSaveLead, dbDeleteLead as _dbDeleteLead, dbSaveLeadsBatch as _dbSaveLeadsBatch, dbLoadAllLeads }   from './db/leads.js';
 import { dbSaveNeighborhoodsBatch as _dbSaveNeighborhoodsBatch, dbLoadAllNeighborhoods }                                                                       from './db/neighborhoods.js';
 import { dbClockIn as _dbClockIn, dbClockOut as _dbClockOut, dbUpdateBreakMins as _dbUpdateBreakMins }                       from './db/timeEntries.js';
-import { dbLoadTeamMembers, dbAddTeamMember as _dbAddTeamMember, dbUpdateTeamMember, dbRemoveTeamMember, dbLoadBusinessInfo as _dbLoadBusinessInfo, dbUpdateBusiness as _dbUpdateBusiness } from './db/team.js';
+import { dbLoadTeamMembers, dbAddTeamMember as _dbAddTeamMember, dbUpdateTeamMember, dbRemoveTeamMember, dbLoadBusinessInfo as _dbLoadBusinessInfo, dbUpdateBusiness as _dbUpdateBusiness, dbUploadLogo as _dbUploadLogo, dbRemoveLogo as _dbRemoveLogo } from './db/team.js';
 import { dbBootstrapBusiness as _dbBootstrapBusiness, dbLoadIdentity as _dbLoadIdentity, dbClaimInvite as _dbClaimInvite, canAccess as _canAccess }            from './db/auth.js';
 
 import { safeGet, esc, formatPhone } from './helpers/formatting.js';
@@ -2084,18 +2084,33 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   // quote builder, registers the window bridge functions, and runs calc() once
   // to initialise the price display.
   async function initPluginAndUI() {
-    // Load service_type from the business record
+    // Load service_type + logo_url from the business record
     let serviceType = 'window-cleaning'; // safe default
     if (currentBusinessId) {
       try {
         const { data } = await _sb
           .from('businesses')
-          .select('service_type')
+          .select('service_type, logo_url')
           .eq('id', currentBusinessId)
           .single();
         if (data?.service_type) serviceType = data.service_type;
+        window._currentLogoUrl = data?.logo_url || null;
       } catch(e) {
-        console.warn('[CrewHub] Could not load service_type:', e);
+        console.warn('[CrewHub] Could not load business data:', e);
+      }
+    }
+
+    // Populate logo preview if one exists
+    const preview   = document.getElementById('bizLogoPreview');
+    const removeBtn = document.getElementById('bizLogoRemoveBtn');
+    if (preview) {
+      if (window._currentLogoUrl) {
+        preview.src = window._currentLogoUrl;
+        preview.style.display = 'block';
+        if (removeBtn) removeBtn.style.display = 'inline-flex';
+      } else {
+        preview.style.display = 'none';
+        if (removeBtn) removeBtn.style.display = 'none';
       }
     }
 
@@ -2122,6 +2137,10 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     await dbLoadAll();
     applyRolePermissions();
     syncAllToStore({ sbUser, currentBusinessId, currentMemberId, currentUserRole, savedQuotes, customers, crmNotes, leads, neighborhoods });
+    // Load business plan for alpha banner
+    dbLoadBusinessInfo().then(biz => {
+      if (biz) useAppStore.getState().setPlan(biz.plan, biz.subscription_status);
+    }).catch(() => {});
     await initPluginAndUI();
     const now = new Date().toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' });
     setSyncUI('idle', `Synced ${now} · ${savedQuotes.length} jobs`);
@@ -2198,6 +2217,10 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     applyRolePermissions();
     // Sync state to Zustand store for React components
     syncAllToStore({ sbUser, currentBusinessId, currentMemberId, currentUserRole, savedQuotes, customers, crmNotes, leads, neighborhoods });
+    // Load business plan for alpha banner
+    dbLoadBusinessInfo().then(biz => {
+      if (biz) useAppStore.getState().setPlan(biz.plan, biz.subscription_status);
+    }).catch(() => {});
     await initPluginAndUI();
     const now = new Date().toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' });
     setSyncUI('idle', `Synced ${now} · ${savedQuotes.length} jobs`);
@@ -2636,8 +2659,10 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   function logoImgTag(height) {
-    if (!cachedLogoB64) return null;
-    return `<img src="${cachedLogoB64}" style="height:${height}px;max-width:200px;object-fit:contain;display:block;" alt="logo">`;
+    // Prefer base64 (works offline + in emails); fall back to Supabase Storage URL
+    const src = cachedLogoB64 || window._currentLogoUrl || null;
+    if (!src) return null;
+    return `<img src="${src}" style="height:${height}px;max-width:200px;object-fit:contain;display:block;" alt="logo">`;
   }
 
   // (Logo preview restore is handled in the BOOT section at the end of this file)
@@ -3040,6 +3065,34 @@ ${bizEmail}`
 
     // ── Plugin registry (exposed so the pick-trade step can list service types) ──
     getAvailableServiceTypes,
+
+    // ── Logo Upload ──
+    uploadBusinessLogo: async function(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const btn = document.getElementById('bizLogoUploadLabel');
+      if (btn) btn.textContent = 'Uploading…';
+      try {
+        const url = await _dbUploadLogo(file, currentBusinessId);
+        window._currentLogoUrl = url;
+        const preview = document.getElementById('bizLogoPreview');
+        if (preview) { preview.src = url; preview.style.display = 'block'; }
+        const removeBtn = document.getElementById('bizLogoRemoveBtn');
+        if (removeBtn) removeBtn.style.display = 'inline-flex';
+      } catch(e) {
+        alert('Logo upload failed: ' + e.message);
+      } finally {
+        if (btn) btn.textContent = '📷 Upload Logo';
+      }
+    },
+    removeBusinessLogo: async function() {
+      await _dbRemoveLogo(currentBusinessId);
+      window._currentLogoUrl = null;
+      const preview = document.getElementById('bizLogoPreview');
+      if (preview) { preview.src = ''; preview.style.display = 'none'; }
+      const removeBtn = document.getElementById('bizLogoRemoveBtn');
+      if (removeBtn) removeBtn.style.display = 'none';
+    },
 
     // ── Tab Switching ──
     switchTab,

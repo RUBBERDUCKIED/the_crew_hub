@@ -23,6 +23,10 @@ const useAppStore = create((set, get) => ({
   leads:         [],
   neighborhoods: [],
 
+  // ── Business Plan ──
+  businessPlan:       'alpha',   // 'alpha' | 'free' | 'starter' | 'pro' | 'enterprise'
+  subscriptionStatus: 'active',  // 'active' | 'past_due' | 'canceled' | 'trialing'
+
   // ── UI State ──
   activeTab:  'today',
   isSyncing:  false,
@@ -52,6 +56,11 @@ const useAppStore = create((set, get) => ({
   setActiveTab: (tab) => set({ activeTab: tab }),
 
   setSyncing: (val) => set({ isSyncing: val }),
+
+  setPlan: (plan, status) => set({
+    businessPlan:       plan   || 'alpha',
+    subscriptionStatus: status || 'active',
+  }),
 
   // ── Granular updaters (for Phase 6+ React components) ──
 

@@ -153,84 +153,120 @@ export const windowCleaningPlugin = {
   // getWindowBridge(), or call window.calc() for recalculation.
   getFormHTML(propType) {
     return `
-      <!-- Property Type -->
-      <div class="card full" style="margin-top:4px;">
-        <label class="field-label">Property Type</label>
-        <div style="display:flex; gap:8px; margin-top:6px;">
-          <button class="wc-type-btn type-btn active" data-type="Residential" onclick="wcSetType(this)">Residential</button>
-          <button class="wc-type-btn type-btn" data-type="Commercial" onclick="wcSetType(this)">Commercial</button>
-          <button class="wc-type-btn type-btn" data-type="Storefront" onclick="wcSetType(this)">Storefront</button>
-        </div>
-      </div>
+      <!-- ── 2-column layout: core fields left, add-ons + adjustments right ── -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;">
 
-      <!-- Window Details -->
-      <div class="card">
-        <div class="card-title">Window Details</div>
+        <!-- ── LEFT COLUMN: Window Details + Condition + Plan + Pricing ── -->
+        <div class="card">
 
-        <div class="two">
-          <div>
-            <label class="field-label"># Standard Panes</label>
-            <div class="input-wrap">
-              <input type="number" id="wc-stdCount" value="10" min="0" oninput="calc()">
+          <div class="card-title" style="margin-bottom:4px;">Property Type</div>
+          <div style="display:flex;gap:8px;margin-bottom:16px;">
+            <button class="wc-type-btn type-btn active" data-type="Residential" onclick="wcSetType(this)">Residential</button>
+            <button class="wc-type-btn type-btn" data-type="Commercial" onclick="wcSetType(this)">Commercial</button>
+            <button class="wc-type-btn type-btn" data-type="Storefront" onclick="wcSetType(this)">Storefront</button>
+          </div>
+
+          <hr class="divider">
+          <div class="card-title">Window Details</div>
+
+          <div class="two">
+            <div>
+              <label class="field-label"># Standard Panes</label>
+              <div class="input-wrap">
+                <input type="number" id="wc-stdCount" value="10" min="0" oninput="calc()">
+              </div>
+            </div>
+            <div>
+              <label class="field-label"># Large Panes</label>
+              <div class="input-wrap">
+                <input type="number" id="wc-largeCount" value="0" min="0" oninput="calc()">
+              </div>
             </div>
           </div>
-          <div>
-            <label class="field-label"># Large Panes</label>
+
+          <div id="wc-storey-surcharge-row">
+            <label class="field-label">Storeys / Floors</label>
             <div class="input-wrap">
-              <input type="number" id="wc-largeCount" value="0" min="0" oninput="calc()">
+              <input type="number" id="wc-storeys" value="1" min="1" oninput="calc()">
             </div>
           </div>
-        </div>
 
-        <div id="wc-storey-surcharge-row">
-          <label class="field-label">Storeys / Floors</label>
-          <div class="input-wrap">
-            <input type="number" id="wc-storeys" value="1" min="1" oninput="calc()">
+          <hr class="divider">
+
+          <div class="addon-name" style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:8px;">Window Condition</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:4px;">
+            <button class="side-btn active-side" id="wc-cond-maintenance" onclick="wcSetCondition('maintenance')">✨ Maintenance</button>
+            <button class="side-btn" id="wc-cond-mild" onclick="wcSetCondition('mild')">🟡 Mildly Soiled</button>
+            <button class="side-btn" id="wc-cond-moderate" onclick="wcSetCondition('moderate')">🟠 Moderately Soiled</button>
+            <button class="side-btn" id="wc-cond-heavy" onclick="wcSetCondition('heavy')">🔴 Heavily Soiled</button>
+          </div>
+          <div style="font-size:10px;font-weight:600;color:var(--muted);margin-bottom:14px;" id="wc-condNote">No surcharge — standard rate</div>
+
+          <hr class="divider">
+
+          <div class="addon-name" style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:8px;">Service Plan</div>
+          <div id="wc-plans-residential" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:4px;">
+            <button class="side-btn active-side" id="wc-plan-oneoff" onclick="wcSetPlan('oneoff')">1× One-Off</button>
+            <button class="side-btn" id="wc-plan-annual" onclick="wcSetPlan('annual')">📅 Annual  −5%</button>
+            <button class="side-btn" id="wc-plan-biannual" onclick="wcSetPlan('biannual')">📅 Twice/Year  −7.5%</button>
+            <button class="side-btn" id="wc-plan-quarterly" onclick="wcSetPlan('quarterly')">📅 Quarterly  −10%</button>
+          </div>
+          <div id="wc-plans-storefront" style="display:none;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:4px;">
+            <button class="side-btn" id="wc-plan-weekly" onclick="wcSetPlan('weekly')">📆 Weekly</button>
+            <button class="side-btn" id="wc-plan-biweekly" onclick="wcSetPlan('biweekly')">📆 Bi-Weekly</button>
+            <button class="side-btn active-side" id="wc-plan-monthly" onclick="wcSetPlan('monthly')">📆 Monthly</button>
+          </div>
+          <div style="font-size:10px;font-weight:600;color:var(--muted);margin-bottom:14px;" id="wc-planNote"></div>
+
+          <hr class="divider">
+          <div class="card-title" style="margin-bottom:12px;">Pricing</div>
+          <div class="two">
+            <div>
+              <label class="field-label" id="wc-label-priceStd">Standard ($ / pane)</label>
+              <div class="input-wrap pfx-wrap">
+                <span class="pfx">$</span>
+                <input type="number" id="wc-priceStd" value="4.00" min="0" step="0.50" oninput="calc()">
+              </div>
+            </div>
+            <div>
+              <label class="field-label" id="wc-label-priceLarge">Large ($ / pane)</label>
+              <div class="input-wrap pfx-wrap">
+                <span class="pfx">$</span>
+                <input type="number" id="wc-priceLarge" value="7.00" min="0" step="0.50" oninput="calc()">
+              </div>
+            </div>
+          </div>
+
+          <div id="wc-storey-surcharge-row-price">
+            <label class="field-label">Upper Floor Surcharge ($ / window)</label>
+            <div class="input-wrap pfx-wrap">
+              <span class="pfx">$</span>
+              <input type="number" id="wc-floorSurcharge" value="3.00" min="0" step="0.50" oninput="calc()">
+            </div>
+          </div>
+
+          <label class="field-label">Minimum Job Charge ($)</label>
+          <div class="input-wrap pfx-wrap">
+            <span class="pfx">$</span>
+            <input type="number" id="wc-minCharge" value="60.00" min="0" oninput="calc()">
           </div>
         </div>
+        <!-- /LEFT COLUMN -->
 
-        <hr class="divider">
+        <!-- ── RIGHT COLUMN: Add-ons + Adjustments ── -->
+        <div style="display:flex;flex-direction:column;gap:16px;">
 
-        <div class="addon-name" style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:8px;">Window Condition</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:4px;">
-          <button class="side-btn active-side" id="wc-cond-maintenance" onclick="wcSetCondition('maintenance')">✨ Maintenance</button>
-          <button class="side-btn" id="wc-cond-mild" onclick="wcSetCondition('mild')">🟡 Mildly Soiled</button>
-          <button class="side-btn" id="wc-cond-moderate" onclick="wcSetCondition('moderate')">🟠 Moderately Soiled</button>
-          <button class="side-btn" id="wc-cond-heavy" onclick="wcSetCondition('heavy')">🔴 Heavily Soiled</button>
-        </div>
-        <div style="font-size:10px;font-weight:600;color:var(--muted);margin-bottom:14px;" id="wc-condNote">No surcharge — standard rate</div>
+          <div class="card">
+            <div class="card-title" style="margin-bottom:12px;">Add-ons</div>
 
-        <hr class="divider">
+            <div class="addon-name" style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:8px;">Cleaning Side</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+              <button class="side-btn active-side" id="wc-side-outside" onclick="wcSetSide('outside')">Outside Only</button>
+              <button class="side-btn" id="wc-side-inside" onclick="wcSetSide('inside')">Inside Only</button>
+              <button class="side-btn" id="wc-side-both" onclick="wcSetSide('both')">Inside &amp; Out</button>
+            </div>
+            <div style="font-size:10px;font-weight:600;color:var(--muted);margin-top:6px;margin-bottom:14px;" id="wc-sideNote">Outside only — standard rate</div>
 
-        <div class="addon-name" style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:8px;">Service Plan</div>
-        <div id="wc-plans-residential" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:4px;">
-          <button class="side-btn active-side" id="wc-plan-oneoff" onclick="wcSetPlan('oneoff')">1× One-Off</button>
-          <button class="side-btn" id="wc-plan-annual" onclick="wcSetPlan('annual')">📅 Annual  −5%</button>
-          <button class="side-btn" id="wc-plan-biannual" onclick="wcSetPlan('biannual')">📅 Twice/Year  −7.5%</button>
-          <button class="side-btn" id="wc-plan-quarterly" onclick="wcSetPlan('quarterly')">📅 Quarterly  −10%</button>
-        </div>
-        <div id="wc-plans-storefront" style="display:none;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:4px;">
-          <button class="side-btn" id="wc-plan-weekly" onclick="wcSetPlan('weekly')">📆 Weekly</button>
-          <button class="side-btn" id="wc-plan-biweekly" onclick="wcSetPlan('biweekly')">📆 Bi-Weekly</button>
-          <button class="side-btn active-side" id="wc-plan-monthly" onclick="wcSetPlan('monthly')">📆 Monthly</button>
-        </div>
-        <div style="font-size:10px;font-weight:600;color:var(--muted);margin-bottom:14px;" id="wc-planNote"></div>
-
-        <hr class="divider">
-
-        <div class="addon-name" style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:8px;">Cleaning Side</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
-          <button class="side-btn active-side" id="wc-side-outside" onclick="wcSetSide('outside')">Outside Only</button>
-          <button class="side-btn" id="wc-side-inside" onclick="wcSetSide('inside')">Inside Only</button>
-          <button class="side-btn" id="wc-side-both" onclick="wcSetSide('both')">Inside &amp; Out</button>
-        </div>
-        <div style="font-size:10px;font-weight:600;color:var(--muted);margin-top:6px;margin-bottom:14px;" id="wc-sideNote">Outside only — standard rate</div>
-
-        <hr class="divider">
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start;">
-          <!-- Screen Cleaning -->
-          <div>
             <div class="addon" id="wc-ao-screens" onclick="wcToggleAddon(this)">
               <div class="addon-info">
                 <div class="addon-name">Screen Cleaning</div>
@@ -238,82 +274,83 @@ export const windowCleaningPlugin = {
               </div>
               <div class="check"><svg viewBox="0 0 14 14"><polyline points="2,7 5.5,11 12,3"/></svg></div>
             </div>
-            <div id="wc-screenCountWrap" style="display:none; margin-top:-4px; padding: 10px 14px; background:#e6f6fa; border: 2px solid var(--teal); border-top:none; border-radius: 0 0 10px 10px;">
+            <div id="wc-screenCountWrap" style="display:none;margin-top:-4px;padding:10px 14px;background:#e6f6fa;border:2px solid var(--teal);border-top:none;border-radius:0 0 10px 10px;margin-bottom:8px;">
               <label class="field-label"># of Screens</label>
               <div class="input-wrap" style="margin-bottom:0;">
                 <input type="number" id="wc-screenCount" value="0" min="0" oninput="calc()" onclick="event.stopPropagation()">
               </div>
             </div>
-          </div>
-          <!-- Hard Water Treatment -->
-          <div>
-            <div class="addon" id="wc-ao-hw" onclick="wcToggleAddon(this)">
+
+            <div class="addon" id="wc-ao-hw" onclick="wcToggleAddon(this)" style="margin-top:8px;">
               <div class="addon-info">
                 <div class="addon-name">Hard Water Treatment</div>
                 <div class="addon-sub" id="wc-hwMeta">$6.00 per window</div>
               </div>
               <div class="check"><svg viewBox="0 0 14 14"><polyline points="2,7 5.5,11 12,3"/></svg></div>
             </div>
-            <div id="wc-hwCountWrap" style="display:none; margin-top:-4px; padding: 10px 14px; background:#fef3c7; border: 2px solid #d97706; border-top:none; border-radius: 0 0 10px 10px;">
+            <div id="wc-hwCountWrap" style="display:none;margin-top:-4px;padding:10px 14px;background:#fef3c7;border:2px solid #d97706;border-top:none;border-radius:0 0 10px 10px;">
               <label class="field-label"># of Windows</label>
               <div class="input-wrap" style="margin-bottom:0;">
                 <input type="number" id="wc-hwCount" value="0" min="0" oninput="calc()" onclick="event.stopPropagation()">
               </div>
             </div>
-          </div>
-        </div>
 
-        <hr class="divider">
-        <div class="card-title" style="margin-bottom:12px;">Add-on Rates</div>
-        <div class="two">
-          <div>
-            <label class="field-label">Screen price ($)</label>
-            <div class="input-wrap pfx-wrap">
-              <span class="pfx">$</span>
-              <input type="number" id="wc-screenPrice" value="2.00" min="0" step="0.50" oninput="wcUpdateMeta();calc()">
+            <hr class="divider">
+            <div class="card-title" style="margin-bottom:12px;">Add-on Rates</div>
+            <div class="two">
+              <div>
+                <label class="field-label">Screen price ($)</label>
+                <div class="input-wrap pfx-wrap">
+                  <span class="pfx">$</span>
+                  <input type="number" id="wc-screenPrice" value="2.00" min="0" step="0.50" oninput="wcUpdateMeta();calc()">
+                </div>
+              </div>
+              <div>
+                <label class="field-label">Hard water ($)</label>
+                <div class="input-wrap pfx-wrap">
+                  <span class="pfx">$</span>
+                  <input type="number" id="wc-hwPrice" value="6.00" min="0" step="0.50" oninput="wcUpdateMeta();calc()">
+                </div>
+              </div>
             </div>
           </div>
-          <div>
-            <label class="field-label">Hard water ($)</label>
-            <div class="input-wrap pfx-wrap">
-              <span class="pfx">$</span>
-              <input type="number" id="wc-hwPrice" value="6.00" min="0" step="0.50" oninput="wcUpdateMeta();calc()">
+
+          <!-- Adjustments — shared across all trades, IDs read by legacy.js calc() -->
+          <div class="card">
+            <div class="card-title" style="margin-bottom:12px;">Adjustments</div>
+            <div class="two">
+              <div>
+                <label class="field-label">Travel / Call-out ($)</label>
+                <div class="input-wrap pfx-wrap">
+                  <span class="pfx">$</span>
+                  <input type="number" id="travel" value="0" min="0" oninput="calc()">
+                </div>
+              </div>
+              <div>
+                <label class="field-label">Discount (%)</label>
+                <div class="input-wrap">
+                  <input type="number" id="discount" value="0" min="0" max="100" oninput="calc()">
+                </div>
+              </div>
+              <div>
+                <label class="field-label">Discount ($)</label>
+                <div class="input-wrap pfx-wrap">
+                  <span class="pfx">$</span>
+                  <input type="number" id="discountDollar" value="0" min="0" oninput="calc()">
+                </div>
+              </div>
+              <div>
+                <label class="field-label">GST / Tax (%)</label>
+                <div class="input-wrap">
+                  <input type="number" id="tax" value="0" min="0" oninput="calc()">
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <hr class="divider">
-        <div class="card-title" style="margin-bottom:12px;">Base Rates</div>
-        <div class="two">
-          <div>
-            <label class="field-label" id="wc-label-priceStd">Standard ($ / pane)</label>
-            <div class="input-wrap pfx-wrap">
-              <span class="pfx">$</span>
-              <input type="number" id="wc-priceStd" value="4.00" min="0" step="0.50" oninput="calc()">
-            </div>
-          </div>
-          <div>
-            <label class="field-label" id="wc-label-priceLarge">Large ($ / pane)</label>
-            <div class="input-wrap pfx-wrap">
-              <span class="pfx">$</span>
-              <input type="number" id="wc-priceLarge" value="7.00" min="0" step="0.50" oninput="calc()">
-            </div>
-          </div>
         </div>
+        <!-- /RIGHT COLUMN -->
 
-        <div id="wc-storey-surcharge-row-price">
-          <label class="field-label">Upper Floor Surcharge ($ / window)</label>
-          <div class="input-wrap pfx-wrap">
-            <span class="pfx">$</span>
-            <input type="number" id="wc-floorSurcharge" value="3.00" min="0" step="0.50" oninput="calc()">
-          </div>
-        </div>
-
-        <label class="field-label">Minimum Job Charge ($)</label>
-        <div class="input-wrap pfx-wrap">
-          <span class="pfx">$</span>
-          <input type="number" id="wc-minCharge" value="60.00" min="0" oninput="calc()">
-        </div>
       </div>
     `;
   },

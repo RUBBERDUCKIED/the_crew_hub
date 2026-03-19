@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import useAppStore from './state/useAppStore.js';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
+import AlphaBanner from './components/AlphaBanner.jsx';
 import TodayTab from './pages/TodayTab.jsx';
 import TeamTab from './pages/TeamTab.jsx';
 import TimesheetsTab from './pages/TimesheetsTab.jsx';
@@ -36,6 +37,7 @@ export default function App() {
 
   return (
     <>
+      <AlphaBanner />
       {isSignedIn && roots.today      && createPortal(<ErrorBoundary name="Today">      <TodayTab />      </ErrorBoundary>, roots.today)}
       {isSignedIn && roots.team       && createPortal(<ErrorBoundary name="Team">       <TeamTab />       </ErrorBoundary>, roots.team)}
       {isSignedIn && roots.timesheets && createPortal(<ErrorBoundary name="Timesheets"> <TimesheetsTab /> </ErrorBoundary>, roots.timesheets)}
