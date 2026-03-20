@@ -72,8 +72,9 @@ export default function TeamTab() {
         phone:   biz.phone   || '',
         address: biz.address || '',
       });
-      setLogoUrl(biz.logo_url || '');
-      if (typeof window !== 'undefined') window._currentLogoUrl = biz.logo_url || null;
+      const freshLogo = biz.logo_url ? biz.logo_url.split('?')[0] + '?t=' + Date.now() : '';
+      setLogoUrl(freshLogo);
+      if (typeof window !== 'undefined') window._currentLogoUrl = freshLogo || null;
       setBrandColor(biz.brand_color || '#2a9db5');
     }
     setLoading(false);

@@ -2146,7 +2146,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           .eq('id', currentBusinessId)
           .single();
         if (data?.service_type) serviceType = data.service_type;
-        window._currentLogoUrl = data?.logo_url || null;
+        // Always cache-bust logo URL so CDN/email clients fetch the latest version
+        window._currentLogoUrl = data?.logo_url ? data.logo_url.split('?')[0] + '?t=' + Date.now() : null;
         // Populate hidden business-info fields used by quote/invoice generators
         const _set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
         _set('bizName',    data?.name);
