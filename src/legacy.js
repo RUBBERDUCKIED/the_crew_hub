@@ -173,6 +173,21 @@ function initLegacyApp() {
   function v(id) { const el = document.getElementById(id); return el ? (parseFloat(el.value) || 0) : 0; }
   function s(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
 
+  // ── Brand-aware color helper for doc templates (inline styles can't use CSS vars) ──
+  function docColors() {
+    const cs = getComputedStyle(document.documentElement);
+    const gv = name => cs.getPropertyValue(name).trim();
+    return {
+      teal:      gv('--teal')       || '#1e7d93',
+      tealDark:  gv('--teal-dark')  || '#1a6ea8',
+      blue:      gv('--blue')       || '#145689',
+      blueDark:  gv('--blue-dark')  || '#0e3d5e',
+      tealLight: gv('--teal-light') || '#2a9db5',
+      offwhite:  gv('--offwhite')   || '#f4fbfc',
+      gray:      gv('--gray')       || '#eaf4f7',
+    };
+  }
+
   // ═══════════════════════════════════════════════════════════════
   // ═══ 2. Utilities — Customer Typeahead & Quoting UI ═══
   // Depends on: CUSTOMER TABLE (customers, currentCustomerId,
@@ -501,14 +516,15 @@ function initLegacyApp() {
       </tr>`).join('');
 
     const discLine = currentLines.find(l => l.c === 'disc');
+    const dc = docColors();
 
     document.getElementById('quoteDocument').innerHTML = `
       <div style="font-family:'Nunito',sans-serif;">
 
         <!-- Header bar -->
-        <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:24px 28px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+        <div style="background:linear-gradient(135deg,${dc.teal} 0%,${dc.tealDark} 100%); padding:24px 28px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
           <div style="min-width:0; flex:1;">
-            ${logoImgTag(110) ? `<div style="margin-bottom:10px; text-align:left;">${logoImgTag(110)}</div>` : `<div style="background:#f0d000; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;"><span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:#145689; letter-spacing:0.02em;">${bizName}</span></div>`}
+            ${logoImgTag(110) ? `<div style="margin-bottom:10px; text-align:left;">${logoImgTag(110)}</div>` : `<div style="background:${dc.tealLight}; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;"><span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:white; letter-spacing:0.02em;">${bizName}</span></div>`}
             ${bizAddress ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:4px;">📍 ${bizAddress}</div>` : ''}
             ${bizPhone ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">📞 ${bizPhone}</div>` : ''}
             ${bizEmail ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">✉️ ${bizEmail}</div>` : ''}
@@ -517,29 +533,29 @@ function initLegacyApp() {
             <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:28px; color:white; letter-spacing:0.04em;">QUOTE</div>
             <div style="color:rgba(255,255,255,0.7); font-size:12px; font-weight:700; letter-spacing:0.1em; margin-top:2px;">${quoteNum}</div>
             <div style="color:rgba(255,255,255,0.85); font-size:12px; font-weight:600; margin-top:8px;">Date: ${fmt(today)}</div>
-            <div style="color:#f0d000; font-size:12px; font-weight:700; margin-top:2px;">Valid until: ${fmt(expiry)}</div>
+            <div style="color:${dc.offwhite}; font-size:12px; font-weight:700; margin-top:2px;">Valid until: ${fmt(expiry)}</div>
           </div>
         </div>
 
         <!-- Customer info -->
-        <div style="background:#f4fbfc; padding:22px 36px; display:flex; gap:40px; flex-wrap:wrap; border-bottom:2px solid #eaf4f7;">
+        <div style="background:${dc.offwhite}; padding:22px 36px; display:flex; gap:40px; flex-wrap:wrap; border-bottom:2px solid ${dc.gray};">
           <div>
             <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:6px;">Prepared For</div>
-            ${custCompany ? `<div style="font-size:14px; font-weight:800; color:#2a9db5;">${custCompany}</div>` : ''}
+            ${custCompany ? `<div style="font-size:14px; font-weight:800; color:${dc.tealLight};">${custCompany}</div>` : ''}
             <div style="font-size:16px; font-weight:800; color:#1a3a4a;">${custName || '—'}</div>
             ${custAddress ? `<div style="font-size:13px; font-weight:600; color:#6b9aaa; margin-top:2px;">${custAddress}</div>` : ''}
             ${custContact ? `<div style="font-size:13px; font-weight:600; color:#6b9aaa; margin-top:2px;">${custContact}</div>` : ''}
           </div>
           <div>
             <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:6px;">Service Type</div>
-            <div style="display:inline-block; background:#2a9db5; color:white; font-size:12px; font-weight:800; padding:4px 12px; border-radius:20px;">${propType}</div>
+            <div style="display:inline-block; background:${dc.tealLight}; color:white; font-size:12px; font-weight:800; padding:4px 12px; border-radius:20px;">${propType}</div>
           </div>
         </div>
 
         <!-- Line items table -->
         <table style="width:100%; border-collapse:collapse;">
           <thead>
-            <tr style="background:#1a3a4a;">
+            <tr style="background:${dc.blueDark};">
               <th style="padding:11px 20px; text-align:left; font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.7);">Description</th>
               <th style="padding:11px 20px; text-align:right; font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.7);">Amount</th>
             </tr>
@@ -550,11 +566,11 @@ function initLegacyApp() {
         </table>
 
         <!-- Totals -->
-        <div style="background:#f4fbfc; padding:20px 36px; border-top:2px solid #eaf4f7;">
+        <div style="background:${dc.offwhite}; padding:20px 36px; border-top:2px solid ${dc.gray};">
           ${discLine ? `
           <div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;">
             <span style="color:#6b9aaa; font-weight:600;">${discLine.l.replace(/\s{2,}/g,' ')}</span>
-            <span style="color:#2a9db5; font-weight:700;">−$${Math.abs(discLine.a).toFixed(2)}</span>
+            <span style="color:${dc.tealLight}; font-weight:700;">−$${Math.abs(discLine.a).toFixed(2)}</span>
           </div>` : ''}
           <div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;">
             <span style="color:#6b9aaa; font-weight:600;">Subtotal (excl. tax)</span>
@@ -567,9 +583,9 @@ function initLegacyApp() {
         </div>
 
         <!-- Total banner -->
-        <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:22px 36px; display:flex; justify-content:space-between; align-items:center;">
+        <div style="background:linear-gradient(135deg,${dc.teal} 0%,${dc.tealDark} 100%); padding:22px 36px; display:flex; justify-content:space-between; align-items:center;">
           <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:16px; color:rgba(255,255,255,0.8); letter-spacing:0.06em; text-transform:uppercase;">Total Due (inc. GST)</div>
-          <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:42px; color:#f0d000; letter-spacing:-0.01em;">$${currentGrand.toFixed(2)}</div>
+          <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:42px; color:white; letter-spacing:-0.01em;">$${currentGrand.toFixed(2)}</div>
         </div>
 
         <!-- Footer -->
@@ -627,10 +643,11 @@ function initLegacyApp() {
     const bizEmail = s('bizEmail');
     const taxAmt = q.grand - q.subtotal;
     const discLine = q.lines.find(l => l.c === 'disc');
+    const dc = docColors();
     const lineRows = q.lines.filter(l => l.c !== 'tax-l' && l.c !== 'disc').map(l => `
       <tr>
-        <td style="padding:13px 20px; font-size:14px; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">${esc(l.l.replace(/\s{2,}/g, ' '))}</td>
-        <td style="padding:13px 20px; text-align:right; font-size:14px; font-weight:700; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">$${l.a.toFixed(2)}</td>
+        <td style="padding:13px 20px; font-size:14px; color:#1a3a4a; border-bottom:1px solid ${dc.gray};">${esc(l.l.replace(/\s{2,}/g, ' '))}</td>
+        <td style="padding:13px 20px; text-align:right; font-size:14px; font-weight:700; color:#1a3a4a; border-bottom:1px solid ${dc.gray};">$${l.a.toFixed(2)}</td>
       </tr>`).join('');
 
     const prevLines = currentLines, prevGrand = currentGrand, prevSub = currentSubtotal;
@@ -641,15 +658,15 @@ function initLegacyApp() {
       <div style="font-family:'Nunito',sans-serif;">
 
         <!-- Header -->
-        <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:24px 28px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+        <div style="background:linear-gradient(135deg,${dc.teal} 0%,${dc.tealDark} 100%); padding:24px 28px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
           <div style="min-width:0; flex:1;">
-            ${logoImgTag(110) ? `<div style="margin-bottom:10px; text-align:left;">${logoImgTag(110)}</div>` : `<div style="background:#f0d000; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;"><span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:#145689; letter-spacing:0.02em;">${bizName}</span></div>`}
+            ${logoImgTag(110) ? `<div style="margin-bottom:10px; text-align:left;">${logoImgTag(110)}</div>` : `<div style="background:${dc.tealLight}; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;"><span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:white; letter-spacing:0.02em;">${bizName}</span></div>`}
             ${bizAddress ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:4px;">📍 ${bizAddress}</div>` : ''}
             ${bizPhone ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">📞 ${bizPhone}</div>` : ''}
             ${bizEmail ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">✉️ ${bizEmail}</div>` : ''}
           </div>
           <div style="text-align:right; flex-shrink:0;">
-            <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:28px; color:#f0d000; letter-spacing:0.04em;">RECEIPT</div>
+            <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:28px; color:white; letter-spacing:0.04em;">RECEIPT</div>
             <div style="color:rgba(255,255,255,0.7); font-size:12px; font-weight:700; letter-spacing:0.1em; margin-top:2px;">Ref: ${refNum}</div>
             <div style="color:rgba(255,255,255,0.85); font-size:12px; font-weight:600; margin-top:8px;">Date Paid: ${fmt(today)}</div>
             <div style="background:#10b981; display:inline-block; border-radius:20px; padding:3px 12px; margin-top:6px;">
@@ -659,7 +676,7 @@ function initLegacyApp() {
         </div>
 
         <!-- Customer info -->
-        <div style="background:#f4fbfc; padding:22px 36px; display:flex; gap:40px; flex-wrap:wrap; border-bottom:2px solid #eaf4f7;">
+        <div style="background:${dc.offwhite}; padding:22px 36px; display:flex; gap:40px; flex-wrap:wrap; border-bottom:2px solid ${dc.gray};">
           <div>
             <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:6px;">Receipt For</div>
             <div style="font-size:16px; font-weight:800; color:#1a3a4a;">${esc(q.name || '—')}</div>
@@ -668,7 +685,7 @@ function initLegacyApp() {
           </div>
           <div>
             <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:6px;">Service Type</div>
-            <div style="display:inline-block; background:#2a9db5; color:white; font-size:12px; font-weight:800; padding:4px 12px; border-radius:20px;">${q.type}</div>
+            <div style="display:inline-block; background:${dc.tealLight}; color:white; font-size:12px; font-weight:800; padding:4px 12px; border-radius:20px;">${q.type}</div>
             <div style="margin-top:10px;">
               <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:4px;">Reference</div>
               <div style="font-size:12px; font-weight:700; color:#1a3a4a;">${refNum}</div>
@@ -679,7 +696,7 @@ function initLegacyApp() {
         <!-- Line items -->
         <table style="width:100%; border-collapse:collapse;">
           <thead>
-            <tr style="background:#1a3a4a;">
+            <tr style="background:${dc.blueDark};">
               <th style="padding:11px 20px; text-align:left; font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.7);">Description</th>
               <th style="padding:11px 20px; text-align:right; font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.7);">Amount</th>
             </tr>
@@ -688,8 +705,8 @@ function initLegacyApp() {
         </table>
 
         <!-- Totals -->
-        <div style="background:#f4fbfc; padding:20px 36px; border-top:2px solid #eaf4f7;">
-          ${discLine ? `<div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;"><span style="color:#6b9aaa; font-weight:600;">${discLine.l.replace(/\s{2,}/g,' ')}</span><span style="color:#2a9db5; font-weight:700;">−$${Math.abs(discLine.a).toFixed(2)}</span></div>` : ''}
+        <div style="background:${dc.offwhite}; padding:20px 36px; border-top:2px solid ${dc.gray};">
+          ${discLine ? `<div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;"><span style="color:#6b9aaa; font-weight:600;">${discLine.l.replace(/\s{2,}/g,' ')}</span><span style="color:${dc.tealLight}; font-weight:700;">−$${Math.abs(discLine.a).toFixed(2)}</span></div>` : ''}
           <div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;"><span style="color:#6b9aaa; font-weight:600;">Subtotal</span><span style="color:#1a3a4a; font-weight:700;">$${q.subtotal.toFixed(2)}</span></div>
           ${taxAmt > 0 ? `<div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;"><span style="color:#6b9aaa; font-weight:600;">GST ${q.taxRate || 0}%</span><span style="color:#6b9aaa; font-weight:600;">$${taxAmt.toFixed(2)}</span></div>` : ''}
         </div>
@@ -712,9 +729,9 @@ function initLegacyApp() {
             <div style="font-size:14px; font-weight:800; color:#065f46; margin-bottom:4px;">✓ Payment Received — Thank You!</div>
             <div style="font-size:12px; font-weight:600; color:#6b9aaa;">Please keep this receipt for your records. Reference: <strong>${refNum}</strong></div>
           </div>
-          <div style="background:#f4fbfc; border:2px solid #2a9db5; border-radius:10px; padding:14px 18px; margin-bottom:12px;">
-            <div style="font-size:14px; font-weight:800; color:#1a3a4a; margin-bottom:6px;">Windows lookin' sharp? 🪟</div>
-            <div style="font-size:13px; font-weight:600; color:#1a3a4a; line-height:1.6;">If you were happy with our service, we'd love if you left us a quick review!<br>You'll get <span style="background:#f0d000; padding:2px 8px; border-radius:4px; font-weight:800; color:#1a3a4a;">$25 off</span> your next service — just show your review when you book again.</div>
+          <div style="background:${dc.offwhite}; border:2px solid ${dc.tealLight}; border-radius:10px; padding:14px 18px; margin-bottom:12px;">
+            <div style="font-size:14px; font-weight:800; color:#1a3a4a; margin-bottom:6px;">Happy with the service? ⭐</div>
+            <div style="font-size:13px; font-weight:600; color:#1a3a4a; line-height:1.6;">If you were happy with our service, we'd love if you left us a quick review!<br>You'll get <span style="background:${dc.tealLight}; padding:2px 8px; border-radius:4px; font-weight:800; color:white;">$25 off</span> your next service — just show your review when you book again.</div>
           </div>
           <div style="font-size:11px; font-weight:600; color:#aac4cc; text-align:center;">Thank you for choosing ${bizName}! We appreciate your business.</div>
         </div>
@@ -862,7 +879,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
       // Strip original header, keep only the body (customer info + line items)
       // Body starts at the light-background customer info section
-      const bodyStart = rawContent.indexOf('<div style="background:#f4fbfc;');
+      const dc = docColors();
+      const bodyStart = rawContent.indexOf('<div style="background:' + dc.offwhite);
       const docBody = bodyStart !== -1 ? rawContent.slice(bodyStart) : rawContent;
 
       // Extract right-col content (QUOTE/INVOICE/RECEIPT title, number, dates)
@@ -873,10 +891,10 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       const logoPublicUrl = window._currentLogoUrl ? window._currentLogoUrl.split('?')[0] : null;
       const logoBlock = logoPublicUrl
         ? '<div style="margin-bottom:10px;"><img src="' + logoPublicUrl + '" alt="' + bizNameEmail + '" style="height:60px;max-width:200px;object-fit:contain;display:block;"></div>'
-        : '<div style="background:#f0d000;display:inline-block;border-radius:10px;padding:8px 14px;margin-bottom:10px;">' +
-            '<span style="font-family:Montserrat,Arial,sans-serif;font-weight:900;font-size:18px;color:#145689;letter-spacing:0.02em;">' + bizNameEmail + '</span>' +
+        : '<div style="background:' + dc.tealLight + ';display:inline-block;border-radius:10px;padding:8px 14px;margin-bottom:10px;">' +
+            '<span style="font-family:Montserrat,Arial,sans-serif;font-weight:900;font-size:18px;color:white;letter-spacing:0.02em;">' + bizNameEmail + '</span>' +
           '</div>';
-      const tableHeader = '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%);">' +
+      const tableHeader = '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:linear-gradient(135deg,' + dc.teal + ' 0%,' + dc.tealDark + ' 100%);">' +
         '<tr>' +
           '<td style="padding:24px 28px; vertical-align:middle;">' +
             logoBlock +
@@ -1324,10 +1342,11 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const bizEmail = s('bizEmail');
     const taxAmt = q.grand - q.subtotal;
     const discLine = q.lines.find(l => l.c === 'disc');
+    const dc = docColors();
     const lineRows = q.lines.filter(l => l.c !== 'tax-l' && l.c !== 'disc').map(l => `
       <tr>
-        <td style="padding:13px 20px; font-size:14px; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">${esc(l.l.replace(/\s{2,}/g, ' '))}</td>
-        <td style="padding:13px 20px; text-align:right; font-size:14px; font-weight:700; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">$${l.a.toFixed(2)}</td>
+        <td style="padding:13px 20px; font-size:14px; color:#1a3a4a; border-bottom:1px solid ${dc.gray};">${esc(l.l.replace(/\s{2,}/g, ' '))}</td>
+        <td style="padding:13px 20px; text-align:right; font-size:14px; font-weight:700; color:#1a3a4a; border-bottom:1px solid ${dc.gray};">$${l.a.toFixed(2)}</td>
       </tr>`).join('');
 
     // Temporarily set globals so buildStandaloneHTML works
@@ -1337,9 +1356,9 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
     document.getElementById('quoteDocument').innerHTML = `
       <div style="font-family:'Nunito',sans-serif;">
-        <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:24px 28px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+        <div style="background:linear-gradient(135deg,${dc.teal} 0%,${dc.tealDark} 100%); padding:24px 28px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
           <div style="min-width:0; flex:1;">
-            ${logoImgTag(110) ? `<div style="margin-bottom:10px; text-align:left;">${logoImgTag(110)}</div>` : `<div style="background:#f0d000; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;"><span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:#145689; letter-spacing:0.02em;">${bizName}</span></div>`}
+            ${logoImgTag(110) ? `<div style="margin-bottom:10px; text-align:left;">${logoImgTag(110)}</div>` : `<div style="background:${dc.tealLight}; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;"><span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:white; letter-spacing:0.02em;">${bizName}</span></div>`}
             ${bizAddress ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:4px;">📍 ${bizAddress}</div>` : ''}
             ${bizPhone ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">📞 ${bizPhone}</div>` : ''}
             ${bizEmail ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">✉️ ${bizEmail}</div>` : ''}
@@ -1348,10 +1367,10 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
             <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:28px; color:white; letter-spacing:0.04em;">QUOTE</div>
             <div style="color:rgba(255,255,255,0.7); font-size:12px; font-weight:700; letter-spacing:0.1em; margin-top:2px;">${quoteNum}</div>
             <div style="color:rgba(255,255,255,0.85); font-size:12px; font-weight:600; margin-top:8px;">Date: ${fmt(today)}</div>
-            <div style="color:#f0d000; font-size:12px; font-weight:700; margin-top:2px;">Valid until: ${fmt(expiry)}</div>
+            <div style="color:${dc.offwhite}; font-size:12px; font-weight:700; margin-top:2px;">Valid until: ${fmt(expiry)}</div>
           </div>
         </div>
-        <div style="background:#f4fbfc; padding:22px 36px; display:flex; gap:40px; flex-wrap:wrap; border-bottom:2px solid #eaf4f7;">
+        <div style="background:${dc.offwhite}; padding:22px 36px; display:flex; gap:40px; flex-wrap:wrap; border-bottom:2px solid ${dc.gray};">
           <div>
             <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:6px;">Prepared For</div>
             <div style="font-size:16px; font-weight:800; color:#1a3a4a;">${esc(q.name || '—')}</div>
@@ -1360,29 +1379,29 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           </div>
           <div>
             <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:6px;">Service Type</div>
-            <div style="display:inline-block; background:#2a9db5; color:white; font-size:12px; font-weight:800; padding:4px 12px; border-radius:20px;">${q.type}</div>
+            <div style="display:inline-block; background:${dc.tealLight}; color:white; font-size:12px; font-weight:800; padding:4px 12px; border-radius:20px;">${q.type}</div>
           </div>
         </div>
         <table style="width:100%; border-collapse:collapse;">
           <thead>
-            <tr style="background:#1a3a4a;">
+            <tr style="background:${dc.blueDark};">
               <th style="padding:11px 20px; text-align:left; font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.7);">Description</th>
               <th style="padding:11px 20px; text-align:right; font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.7);">Amount</th>
             </tr>
           </thead>
           <tbody>${lineRows}</tbody>
         </table>
-        <div style="background:#f4fbfc; padding:20px 36px; border-top:2px solid #eaf4f7;">
-          ${discLine ? `<div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;"><span style="color:#6b9aaa; font-weight:600;">${discLine.l.replace(/\s{2,}/g,' ')}</span><span style="color:#2a9db5; font-weight:700;">−$${Math.abs(discLine.a).toFixed(2)}</span></div>` : ''}
+        <div style="background:${dc.offwhite}; padding:20px 36px; border-top:2px solid ${dc.gray};">
+          ${discLine ? `<div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;"><span style="color:#6b9aaa; font-weight:600;">${discLine.l.replace(/\s{2,}/g,' ')}</span><span style="color:${dc.tealLight}; font-weight:700;">−$${Math.abs(discLine.a).toFixed(2)}</span></div>` : ''}
           <div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;"><span style="color:#6b9aaa; font-weight:600;">Subtotal (excl. tax)</span><span style="color:#1a3a4a; font-weight:700;">$${q.subtotal.toFixed(2)}</span></div>
           <div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;"><span style="color:#6b9aaa; font-weight:600;">GST ${q.taxRate || 5}%</span><span style="color:#6b9aaa; font-weight:600;">$${taxAmt.toFixed(2)}</span></div>
         </div>
-        <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:22px 36px; display:flex; justify-content:space-between; align-items:center;">
+        <div style="background:linear-gradient(135deg,${dc.teal} 0%,${dc.tealDark} 100%); padding:22px 36px; display:flex; justify-content:space-between; align-items:center;">
           <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:16px; color:rgba(255,255,255,0.8); letter-spacing:0.06em; text-transform:uppercase;">Total Due (inc. GST)</div>
-          <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:42px; color:#f0d000; letter-spacing:-0.01em;">$${q.grand.toFixed(2)}</div>
+          <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:42px; color:white; letter-spacing:-0.01em;">$${q.grand.toFixed(2)}</div>
         </div>
         <div style="padding:22px 36px 28px; background:white;">
-          ${q.notes ? `<div style="margin-bottom:16px; background:#f4fbfc; border-left:4px solid #2a9db5; padding:12px 16px; border-radius:0 8px 8px 0;"><div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:4px;">Job Notes</div><div style="font-size:13px; font-weight:600; color:#1a3a4a;">${esc(q.notes)}</div></div>` : ''}
+          ${q.notes ? `<div style="margin-bottom:16px; background:${dc.offwhite}; border-left:4px solid ${dc.tealLight}; padding:12px 16px; border-radius:0 8px 8px 0;"><div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:4px;">Job Notes</div><div style="font-size:13px; font-weight:600; color:#1a3a4a;">${esc(q.notes)}</div></div>` : ''}
           <div style="font-size:11px; font-weight:600; color:#aac4cc; text-align:center; margin-top:8px;">This quote is valid for 30 days from the date of issue. Prices may vary if site conditions differ from those described. Thank you for choosing ${bizName}!</div>
         </div>
       </div>`;
@@ -1414,10 +1433,11 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const bizEmail = s('bizEmail');
     const taxAmt = q.grand - q.subtotal;
     const discLine = q.lines.find(l => l.c === 'disc');
+    const dc = docColors();
     const lineRows = q.lines.filter(l => l.c !== 'tax-l' && l.c !== 'disc').map(l => `
       <tr>
-        <td style="padding:13px 20px; font-size:14px; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">${esc(l.l.replace(/\s{2,}/g, ' '))}</td>
-        <td style="padding:13px 20px; text-align:right; font-size:14px; font-weight:700; color:#1a3a4a; border-bottom:1px solid #eaf4f7;">$${l.a.toFixed(2)}</td>
+        <td style="padding:13px 20px; font-size:14px; color:#1a3a4a; border-bottom:1px solid ${dc.gray};">${esc(l.l.replace(/\s{2,}/g, ' '))}</td>
+        <td style="padding:13px 20px; text-align:right; font-size:14px; font-weight:700; color:#1a3a4a; border-bottom:1px solid ${dc.gray};">$${l.a.toFixed(2)}</td>
       </tr>`).join('');
 
     const prevLines = currentLines, prevGrand = currentGrand, prevSub = currentSubtotal;
@@ -1428,23 +1448,23 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       <div style="font-family:'Nunito',sans-serif;">
 
         <!-- Header -->
-        <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:24px 28px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+        <div style="background:linear-gradient(135deg,${dc.teal} 0%,${dc.tealDark} 100%); padding:24px 28px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
           <div style="min-width:0; flex:1;">
-            ${logoImgTag(110) ? `<div style="margin-bottom:10px; text-align:left;">${logoImgTag(110)}</div>` : `<div style="background:#f0d000; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;"><span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:#145689; letter-spacing:0.02em;">${bizName}</span></div>`}
+            ${logoImgTag(110) ? `<div style="margin-bottom:10px; text-align:left;">${logoImgTag(110)}</div>` : `<div style="background:${dc.tealLight}; display:inline-block; border-radius:10px; padding:8px 14px; margin-bottom:10px;"><span style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:18px; color:white; letter-spacing:0.02em;">${bizName}</span></div>`}
             ${bizAddress ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:4px;">📍 ${bizAddress}</div>` : ''}
             ${bizPhone ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">📞 ${bizPhone}</div>` : ''}
             ${bizEmail ? `<div style="color:rgba(255,255,255,0.85); font-size:13px; font-weight:600; margin-top:2px;">✉️ ${bizEmail}</div>` : ''}
           </div>
           <div style="text-align:right; flex-shrink:0;">
-            <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:28px; color:#f0d000; letter-spacing:0.04em;">INVOICE</div>
+            <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:28px; color:white; letter-spacing:0.04em;">INVOICE</div>
             <div style="color:rgba(255,255,255,0.7); font-size:12px; font-weight:700; letter-spacing:0.1em; margin-top:2px;">${invoiceNum}</div>
             <div style="color:rgba(255,255,255,0.85); font-size:12px; font-weight:600; margin-top:8px;">Date: ${fmt(today)}</div>
-            <div style="color:#f0d000; font-size:12px; font-weight:700; margin-top:2px;">Payment Due: ${fmt(dueDate)}</div>
+            <div style="color:${dc.offwhite}; font-size:12px; font-weight:700; margin-top:2px;">Payment Due: ${fmt(dueDate)}</div>
           </div>
         </div>
 
         <!-- Customer info -->
-        <div style="background:#f4fbfc; padding:22px 36px; display:flex; gap:40px; flex-wrap:wrap; border-bottom:2px solid #eaf4f7;">
+        <div style="background:${dc.offwhite}; padding:22px 36px; display:flex; gap:40px; flex-wrap:wrap; border-bottom:2px solid ${dc.gray};">
           <div>
             <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:6px;">Bill To</div>
             <div style="font-size:16px; font-weight:800; color:#1a3a4a;">${esc(q.name || '—')}</div>
@@ -1453,7 +1473,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           </div>
           <div>
             <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:6px;">Service Type</div>
-            <div style="display:inline-block; background:#2a9db5; color:white; font-size:12px; font-weight:800; padding:4px 12px; border-radius:20px;">${q.type}</div>
+            <div style="display:inline-block; background:${dc.tealLight}; color:white; font-size:12px; font-weight:800; padding:4px 12px; border-radius:20px;">${q.type}</div>
             <div style="margin-top:10px;">
               <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:4px;">Ref. Quote</div>
               <div style="font-size:12px; font-weight:700; color:#1a3a4a;">${invoiceNum}</div>
@@ -1464,7 +1484,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         <!-- Line items -->
         <table style="width:100%; border-collapse:collapse;">
           <thead>
-            <tr style="background:#1a3a4a;">
+            <tr style="background:${dc.blueDark};">
               <th style="padding:11px 20px; text-align:left; font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.7);">Description</th>
               <th style="padding:11px 20px; text-align:right; font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.7);">Amount</th>
             </tr>
@@ -1473,25 +1493,25 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         </table>
 
         <!-- Totals -->
-        <div style="background:#f4fbfc; padding:20px 36px; border-top:2px solid #eaf4f7;">
-          ${discLine ? `<div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;"><span style="color:#6b9aaa; font-weight:600;">${discLine.l.replace(/\s{2,}/g,' ')}</span><span style="color:#2a9db5; font-weight:700;">−$${Math.abs(discLine.a).toFixed(2)}</span></div>` : ''}
+        <div style="background:${dc.offwhite}; padding:20px 36px; border-top:2px solid ${dc.gray};">
+          ${discLine ? `<div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;"><span style="color:#6b9aaa; font-weight:600;">${discLine.l.replace(/\s{2,}/g,' ')}</span><span style="color:${dc.tealLight}; font-weight:700;">−$${Math.abs(discLine.a).toFixed(2)}</span></div>` : ''}
           <div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;"><span style="color:#6b9aaa; font-weight:600;">Subtotal</span><span style="color:#1a3a4a; font-weight:700;">$${q.subtotal.toFixed(2)}</span></div>
           ${taxAmt > 0 ? `<div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;"><span style="color:#6b9aaa; font-weight:600;">GST ${q.taxRate || 0}%</span><span style="color:#6b9aaa; font-weight:600;">$${taxAmt.toFixed(2)}</span></div>` : ''}
         </div>
 
         <!-- Amount Due banner -->
-        <div style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%); padding:22px 36px; display:flex; justify-content:space-between; align-items:center;">
+        <div style="background:linear-gradient(135deg,${dc.teal} 0%,${dc.tealDark} 100%); padding:22px 36px; display:flex; justify-content:space-between; align-items:center;">
           <div>
             <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:16px; color:rgba(255,255,255,0.8); letter-spacing:0.06em; text-transform:uppercase;">Amount Due</div>
             <div style="font-size:12px; font-weight:600; color:rgba(255,255,255,0.55); margin-top:4px;">Due by ${fmt(dueDate)}</div>
           </div>
-          <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:42px; color:#f0d000; letter-spacing:-0.01em;">$${q.grand.toFixed(2)}</div>
+          <div style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:42px; color:white; letter-spacing:-0.01em;">$${q.grand.toFixed(2)}</div>
         </div>
 
         <!-- Payment & notes -->
         <div style="padding:22px 36px 28px; background:white;">
-          ${q.notes ? `<div style="margin-bottom:16px; background:#f4fbfc; border-left:4px solid #2a9db5; padding:12px 16px; border-radius:0 8px 8px 0;"><div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:4px;">Job Notes</div><div style="font-size:13px; font-weight:600; color:#1a3a4a;">${esc(q.notes)}</div></div>` : ''}
-          <div style="background:#fffbea; border:2px solid #f0d000; border-radius:10px; padding:14px 18px; margin-bottom:16px;">
+          ${q.notes ? `<div style="margin-bottom:16px; background:${dc.offwhite}; border-left:4px solid ${dc.tealLight}; padding:12px 16px; border-radius:0 8px 8px 0;"><div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#6b9aaa; margin-bottom:4px;">Job Notes</div><div style="font-size:13px; font-weight:600; color:#1a3a4a;">${esc(q.notes)}</div></div>` : ''}
+          <div style="background:#fffbea; border:2px solid ${dc.teal}; border-radius:10px; padding:14px 18px; margin-bottom:16px;">
             <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#b45309; margin-bottom:8px;">Payment Info</div>
             <div style="font-size:13px; font-weight:600; color:#1a3a4a; margin-bottom:10px;">Payment is due within <strong>15 days</strong> of the invoice date <strong>(Net 15)</strong>.</div>
             <div style="font-size:13px; font-weight:700; color:#1a3a4a; margin-bottom:6px;">We accept:</div>
@@ -1502,9 +1522,9 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
               📝 &nbsp;Cheque made out to: <strong>${bizName}</strong>
             </div>
           </div>
-          <div style="background:#f4fbfc; border:2px solid #2a9db5; border-radius:10px; padding:14px 18px; margin-bottom:16px;">
-            <div style="font-size:14px; font-weight:800; color:#1a3a4a; margin-bottom:6px;">Windows lookin' sharp? 🪟</div>
-            <div style="font-size:13px; font-weight:600; color:#1a3a4a; line-height:1.6;">If you were happy with our service, we'd love if you left us a quick review!<br>You'll get <span style="background:#f0d000; padding:2px 8px; border-radius:4px; font-weight:800; color:#1a3a4a;">$25 off</span> your next service — just show your review when you book again.</div>
+          <div style="background:${dc.offwhite}; border:2px solid ${dc.tealLight}; border-radius:10px; padding:14px 18px; margin-bottom:16px;">
+            <div style="font-size:14px; font-weight:800; color:#1a3a4a; margin-bottom:6px;">Happy with the service? ⭐</div>
+            <div style="font-size:13px; font-weight:600; color:#1a3a4a; line-height:1.6;">If you were happy with our service, we'd love if you left us a quick review!<br>You'll get <span style="background:${dc.tealLight}; padding:2px 8px; border-radius:4px; font-weight:800; color:white;">$25 off</span> your next service — just show your review when you book again.</div>
           </div>
           <div style="font-size:11px; font-weight:600; color:#aac4cc; text-align:center;">Thank you for choosing ${bizName}! We appreciate your business.</div>
         </div>
