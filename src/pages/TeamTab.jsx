@@ -49,9 +49,10 @@ export default function TeamTab() {
   const [bizEdit,      setBizEdit]      = useState({ name: '', email: '', phone: '', address: '' });
   const [bizSaving,    setBizSaving]    = useState(false);
   const [logoUrl,      setLogoUrl]      = useState('');
-  const [logoUploading, setLogoUploading] = useState(false);
+  const [pendingLogo,  setPendingLogo]  = useState(null);   // File staged for upload on save
+  const [logoPreview,  setLogoPreview]  = useState('');      // local preview URL
+  const [logoRemoved,  setLogoRemoved]  = useState(false);   // flag: user wants logo removed
   const [brandColor,   setBrandColor]   = useState('#2a9db5');
-  const [colorSaving,  setColorSaving]  = useState(false);
 
   // ── Load data ────────────────────────────────────────────────
   const loadData = useCallback(async () => {
@@ -143,72 +144,70 @@ export default function TeamTab() {
     } catch (e) { alert('Failed to remove member: ' + (e.message || e)); }
   }
 
-  // ── Business info save ───────────────────────────────────────
-  async function handleSaveBizInfo() {
-    if (!bizEdit.name.trim()) { alert('Business name cannot be empty.'); return; }
-    setBizSaving(true);
-    try {
-      await dbUpdateBusiness(
-        {
-          name:    bizEdit.name.trim(),
-          email:   bizEdit.email.trim(),
-          phone:   bizEdit.phone.trim(),
-          address: bizEdit.address.trim(),
-        },
-        currentBusinessId
-      );
-      alert('✅ Business info saved!');
-      loadData();
-    } catch (e) { alert('Failed to save: ' + (e.message || e)); }
-    setBizSaving(false);
-  }
-
-  // ── Logo upload / remove ────────────────────────────────────
-  async function handleLogoUpload(file) {
+  // ── Logo staging (preview only — no upload until save) ──────
+  function handleLogoSelect(file) {
     if (!file) return;
-    setLogoUploading(true);
-    try {
-      const url = await dbUploadLogo(file, currentBusinessId);
-      setLogoUrl(url);
-      // Keep legacy.js documents in sync
-      if (typeof window !== 'undefined') window._currentLogoUrl = url;
-    } catch (e) {
-      alert('Logo upload failed: ' + (e.message || e));
-    }
-    setLogoUploading(false);
+    setPendingLogo(file);
+    setLogoRemoved(false);
+    setLogoPreview(URL.createObjectURL(file));
   }
 
-  async function handleLogoRemove() {
-    if (!confirm('Remove your business logo?')) return;
-    try {
-      await dbRemoveLogo(currentBusinessId);
-      setLogoUrl('');
-      if (typeof window !== 'undefined') window._currentLogoUrl = null;
-    } catch (e) {
-      alert('Failed to remove logo: ' + (e.message || e));
-    }
+  function handleLogoRemove() {
+    setPendingLogo(null);
+    setLogoPreview('');
+    setLogoRemoved(true);
   }
 
-  // ── Brand color ────────────────────────────────────────────────
+  // ── Brand color live preview ───────────────────────────────────
   function handleColorPreview(hex) {
     setBrandColor(hex);
     if (window.applyBrandTheme) window.applyBrandTheme(hex);
-  }
-
-  async function handleSaveBrandColor() {
-    setColorSaving(true);
-    try {
-      await dbUpdateBusiness({ brand_color: brandColor }, currentBusinessId);
-    } catch (e) {
-      alert('Failed to save brand color: ' + (e.message || e));
-    }
-    setColorSaving(false);
   }
 
   function handleResetColor() {
     const defaultColor = '#2a9db5';
     setBrandColor(defaultColor);
     if (window.applyBrandTheme) window.applyBrandTheme(defaultColor);
+  }
+
+  // ── Unified save — text fields + logo + brand color ────────────
+  async function handleSaveAll() {
+    if (!bizEdit.name.trim()) { alert('Business name cannot be empty.'); return; }
+    setBizSaving(true);
+    try {
+      // 1. Handle logo changes
+      if (logoRemoved && !pendingLogo) {
+        await dbRemoveLogo(currentBusinessId);
+        setLogoUrl('');
+        if (typeof window !== 'undefined') window._currentLogoUrl = null;
+      }
+      if (pendingLogo) {
+        const url = await dbUploadLogo(pendingLogo, currentBusinessId);
+        setLogoUrl(url);
+        if (typeof window !== 'undefined') window._currentLogoUrl = url;
+      }
+
+      // 2. Save text fields + brand color in one call
+      await dbUpdateBusiness(
+        {
+          name:        bizEdit.name.trim(),
+          email:       bizEdit.email.trim(),
+          phone:       bizEdit.phone.trim(),
+          address:     bizEdit.address.trim(),
+          brand_color: brandColor,
+        },
+        currentBusinessId
+      );
+
+      // 3. Clean up staged state
+      setPendingLogo(null);
+      setLogoPreview('');
+      setLogoRemoved(false);
+
+      alert('✅ Business settings saved!');
+      loadData();
+    } catch (e) { alert('Failed to save: ' + (e.message || e)); }
+    setBizSaving(false);
   }
 
   // ── Derived stats ─────────────────────────────────────────────
@@ -344,6 +343,7 @@ export default function TeamTab() {
           {bizInfo && (
             isOwner ? (
               <>
+                {/* ── Text fields ── */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   {[
                     { label: 'Business Name', key: 'name',    type: 'text'  },
@@ -362,87 +362,82 @@ export default function TeamTab() {
                     </div>
                   ))}
                 </div>
-                <button
-                  onClick={handleSaveBizInfo}
-                  disabled={bizSaving}
-                  style={{ marginTop: 14, background: 'var(--teal)', color: 'white', border: 'none', borderRadius: 30, padding: '10px 24px', fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 13, cursor: bizSaving ? 'default' : 'pointer' }}
-                >
-                  {bizSaving ? 'Saving…' : '💾 Save Business Info'}
-                </button>
 
-                {/* ── Logo upload ── */}
-                <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 10 }}>Business Logo</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                    {logoUrl && (
-                      <img
-                        src={logoUrl}
-                        alt="logo"
-                        style={{ height: 64, maxWidth: 160, objectFit: 'contain', borderRadius: 8, border: '2px solid var(--gray)', background: '#f8fafc', padding: 4 }}
-                      />
-                    )}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <label style={{
-                        display: 'inline-block', background: 'var(--teal)', color: 'white',
-                        borderRadius: 30, padding: '8px 18px', fontSize: 12, fontWeight: 800,
-                        cursor: logoUploading ? 'default' : 'pointer', opacity: logoUploading ? 0.7 : 1,
-                        fontFamily: "'Nunito', sans-serif",
-                      }}>
-                        {logoUploading ? 'Uploading…' : (logoUrl ? '🔄 Change Logo' : '📷 Upload Logo')}
-                        <input
-                          type="file"
-                          accept="image/png,image/jpeg,image/svg+xml,image/webp"
-                          style={{ display: 'none' }}
-                          disabled={logoUploading}
-                          onChange={e => { if (e.target.files[0]) handleLogoUpload(e.target.files[0]); e.target.value = ''; }}
+                {/* ── Logo + Brand Color row ── */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
+
+                  {/* Logo */}
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 10 }}>Business Logo</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                      {(logoPreview || (!logoRemoved && logoUrl)) && (
+                        <img
+                          src={logoPreview || logoUrl}
+                          alt="logo"
+                          style={{ height: 56, maxWidth: 140, objectFit: 'contain', borderRadius: 8, border: '2px solid var(--gray)', background: '#f8fafc', padding: 4 }}
                         />
-                      </label>
-                      {logoUrl && (
-                        <button
-                          onClick={handleLogoRemove}
-                          style={{ background: '#fee2e2', color: '#dc2626', border: '2px solid #fca5a5', borderRadius: 30, padding: '6px 16px', fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: "'Nunito', sans-serif" }}
-                        >
-                          🗑 Remove
-                        </button>
                       )}
-                      <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>PNG, JPG, SVG, WebP · appears on quotes &amp; invoices</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <label style={{
+                          display: 'inline-block', background: '#f1f5f9', color: 'var(--text)',
+                          border: '2px solid var(--gray)', borderRadius: 30, padding: '6px 14px',
+                          fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: "'Nunito', sans-serif",
+                        }}>
+                          {logoPreview || (!logoRemoved && logoUrl) ? '🔄 Change' : '📷 Upload'}
+                          <input
+                            type="file"
+                            accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                            style={{ display: 'none' }}
+                            onChange={e => { if (e.target.files[0]) handleLogoSelect(e.target.files[0]); e.target.value = ''; }}
+                          />
+                        </label>
+                        {(logoPreview || (!logoRemoved && logoUrl)) && (
+                          <button
+                            onClick={handleLogoRemove}
+                            style={{ background: 'none', color: '#dc2626', border: 'none', padding: 0, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: "'Nunito', sans-serif", textAlign: 'left' }}
+                          >
+                            🗑 Remove
+                          </button>
+                        )}
+                        <span style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 600 }}>PNG, JPG, SVG, WebP</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* ── Brand colour picker ── */}
-                <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 10 }}>Brand Color</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-                    <div style={{ position: 'relative', width: 48, height: 48 }}>
-                      <input
-                        type="color"
-                        value={brandColor}
-                        onChange={e => handleColorPreview(e.target.value)}
-                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none', padding: 0, cursor: 'pointer', borderRadius: 10, overflow: 'hidden' }}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'monospace' }}>{brandColor}</div>
-                      <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>Pick a colour — the app recolours live as you drag</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+                  {/* Brand Color */}
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 10 }}>Brand Color</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{ position: 'relative', width: 44, height: 44, flexShrink: 0 }}>
+                        <input
+                          type="color"
+                          value={brandColor}
+                          onChange={e => handleColorPreview(e.target.value)}
+                          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none', padding: 0, cursor: 'pointer', borderRadius: 10, overflow: 'hidden' }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'monospace' }}>{brandColor}</div>
+                        <span style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 600 }}>Live preview as you drag</span>
+                      </div>
                       <button
                         onClick={handleResetColor}
-                        style={{ background: '#f1f5f9', color: 'var(--muted)', border: '2px solid var(--gray)', borderRadius: 30, padding: '6px 14px', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: "'Nunito', sans-serif" }}
+                        style={{ background: 'none', color: 'var(--muted)', border: 'none', padding: 0, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: "'Nunito', sans-serif", marginLeft: 'auto' }}
                       >
                         Reset
                       </button>
-                      <button
-                        onClick={handleSaveBrandColor}
-                        disabled={colorSaving}
-                        style={{ background: brandColor, color: 'white', border: 'none', borderRadius: 30, padding: '6px 16px', fontSize: 11, fontWeight: 800, cursor: colorSaving ? 'default' : 'pointer', fontFamily: "'Nunito', sans-serif", transition: 'background .15s' }}
-                      >
-                        {colorSaving ? 'Saving…' : '💾 Save Color'}
-                      </button>
                     </div>
                   </div>
                 </div>
+
+                {/* ── Single save button ── */}
+                <button
+                  onClick={handleSaveAll}
+                  disabled={bizSaving}
+                  style={{ marginTop: 20, width: '100%', background: 'var(--teal)', color: 'white', border: 'none', borderRadius: 30, padding: '12px 24px', fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 14, cursor: bizSaving ? 'default' : 'pointer', opacity: bizSaving ? 0.7 : 1, transition: 'opacity .15s' }}
+                >
+                  {bizSaving ? '⏳ Saving…' : '💾 Save Business Settings'}
+                </button>
               </>
             ) : (
               <div>
