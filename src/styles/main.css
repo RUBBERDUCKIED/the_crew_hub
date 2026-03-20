@@ -92,7 +92,7 @@ body {
 /* ─── HERO BANNER ─── */
 .hero-banner {
   background: linear-gradient(135deg, var(--teal) 0%, var(--teal-dark) 60%, var(--blue) 100%);
-  padding: 36px 32px 40px;
+  padding: 10px 32px 12px;
   text-align: center;
   position: relative;
   overflow: hidden;
