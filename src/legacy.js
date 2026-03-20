@@ -888,7 +888,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       const docRightCol = rightColMatch ? rightColMatch[1].trim() : '';
 
       // Build clean table-based header — use Supabase logo URL if available (not base64)
-      const logoPublicUrl = window._currentLogoUrl ? window._currentLogoUrl.split('?')[0] : null;
+      const logoPublicUrl = window._currentLogoUrl || null;
       const logoBlock = logoPublicUrl
         ? '<div style="margin-bottom:10px;"><img src="' + logoPublicUrl + '" alt="' + bizNameEmail + '" style="height:60px;max-width:200px;object-fit:contain;display:block;"></div>'
         : '<div style="background:' + dc.tealLight + ';display:inline-block;border-radius:10px;padding:8px 14px;margin-bottom:10px;">' +
@@ -2146,7 +2146,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           .eq('id', currentBusinessId)
           .single();
         if (data?.service_type) serviceType = data.service_type;
-        window._currentLogoUrl = data?.logo_url ? data.logo_url + '?t=' + Date.now() : null;
+        window._currentLogoUrl = data?.logo_url || null;
         // Populate hidden business-info fields used by quote/invoice generators
         const _set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
         _set('bizName',    data?.name);

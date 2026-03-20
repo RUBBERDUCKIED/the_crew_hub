@@ -80,9 +80,9 @@ export async function dbUploadLogo(file, businessId) {
     .upload(path, file, { upsert: true, contentType: file.type });
   if (uploadError) { console.error('[CrewHub] dbUploadLogo upload error:', uploadError); throw uploadError; }
   const { data } = _sb.storage.from('logos').getPublicUrl(path);
-  // Cache-bust so the browser picks up the new file immediately
+  // Store URL with cache-bust so CDN/email clients always fetch the latest version
   const publicUrl = data.publicUrl + '?t=' + Date.now();
-  await _sb.from('businesses').update({ logo_url: data.publicUrl }).eq('id', businessId);
+  await _sb.from('businesses').update({ logo_url: publicUrl }).eq('id', businessId);
   return publicUrl;
 }
 
