@@ -72,7 +72,9 @@ export default function TeamTab() {
         phone:   biz.phone   || '',
         address: biz.address || '',
       });
-      setLogoUrl(biz.logo_url ? biz.logo_url + '?t=' + Date.now() : '');
+      const freshLogoUrl = biz.logo_url ? biz.logo_url + '?t=' + Date.now() : '';
+      setLogoUrl(freshLogoUrl);
+      if (typeof window !== 'undefined') window._currentLogoUrl = freshLogoUrl || null;
       setBrandColor(biz.brand_color || '#2a9db5');
     }
     setLoading(false);
@@ -185,8 +187,9 @@ export default function TeamTab() {
       }
       if (pendingLogo) {
         const url = await dbUploadLogo(pendingLogo, currentBusinessId);
-        setLogoUrl(url);
-        if (typeof window !== 'undefined') window._currentLogoUrl = url;
+        const cacheBusted = url + '?t=' + Date.now();
+        setLogoUrl(cacheBusted);
+        if (typeof window !== 'undefined') window._currentLogoUrl = cacheBusted;
       }
 
       // 2. Save text fields + brand color in one call
