@@ -2138,6 +2138,13 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       }
     }
 
+    // Clear legacy base64 logo cache — Supabase Storage is now the source of truth
+    if (window._currentLogoUrl) {
+      cachedLogoB64 = '';
+      localStorage.removeItem('twc_logo_b64');
+      localStorage.removeItem('twc_logo_fileid');
+    }
+
     // Populate logo preview if one exists
     const preview   = document.getElementById('bizLogoPreview');
     const removeBtn = document.getElementById('bizLogoRemoveBtn');
@@ -2742,8 +2749,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   function logoImgTag(height) {
-    // Prefer base64 (works offline + in emails); fall back to Supabase Storage URL
-    const src = cachedLogoB64 || window._currentLogoUrl || null;
+    // Prefer Supabase Storage URL (current source of truth); fall back to legacy base64 cache
+    const src = window._currentLogoUrl || cachedLogoB64 || null;
     if (!src) return null;
     return `<img src="${src}" style="height:${height}px;max-width:200px;object-fit:contain;display:block;" alt="logo">`;
   }
