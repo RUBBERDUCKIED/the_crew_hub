@@ -2052,7 +2052,12 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     if (btn) { btn.textContent = '⏳ Creating...'; btn.disabled = true; }
     try {
       if (!sbUser) throw new Error('Not signed in. Please sign out and sign back in.');
-      await dbBootstrapBusiness(bizName, ownerName, sbUser.email, _pendingNewBizServiceType);
+      const result = await dbBootstrapBusiness(bizName, ownerName, sbUser.email, _pendingNewBizServiceType);
+      // Ensure business name is saved (RPC may not set it reliably)
+      if (result?.businessId || result?.business_id) {
+        const newBizId = result.businessId || result.business_id;
+        await _sb.from('businesses').update({ name: bizName }).eq('id', newBizId).catch(() => {});
+      }
       hideAuthModal();
       hideNoBizModal();
       await afterSignIn();

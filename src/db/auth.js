@@ -14,13 +14,17 @@ export async function dbBootstrapBusiness(businessName, ownerName, ownerEmail, s
 
 export async function dbLoadIdentity(authUserId) {
   if (!authUserId) return null;
+  // Use .limit() instead of .single() — user may own multiple businesses
   const { data, error } = await _sb
     .from('team_members')
     .select('id, business_id, role')
     .eq('auth_user_id', authUserId)
-    .single();
-  if (error || !data) return null;
-  return { businessId: data.business_id, memberId: data.id, role: data.role };
+    .eq('active', true)
+    .order('created_at', { ascending: true })
+    .limit(1);
+  if (error || !data || data.length === 0) return null;
+  const row = data[0];
+  return { businessId: row.business_id, memberId: row.id, role: row.role };
 }
 
 export async function dbClaimInvite() {
