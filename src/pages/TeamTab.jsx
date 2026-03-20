@@ -50,6 +50,8 @@ export default function TeamTab() {
   const [bizSaving,    setBizSaving]    = useState(false);
   const [logoUrl,      setLogoUrl]      = useState('');
   const [logoUploading, setLogoUploading] = useState(false);
+  const [brandColor,   setBrandColor]   = useState('#2a9db5');
+  const [colorSaving,  setColorSaving]  = useState(false);
 
   // ── Load data ────────────────────────────────────────────────
   const loadData = useCallback(async () => {
@@ -68,6 +70,7 @@ export default function TeamTab() {
         address: biz.address || '',
       });
       setLogoUrl(biz.logo_url || '');
+      setBrandColor(biz.brand_color || '#2a9db5');
     }
     setLoading(false);
   }, [currentBusinessId]);
@@ -184,6 +187,28 @@ export default function TeamTab() {
     } catch (e) {
       alert('Failed to remove logo: ' + (e.message || e));
     }
+  }
+
+  // ── Brand color ────────────────────────────────────────────────
+  function handleColorPreview(hex) {
+    setBrandColor(hex);
+    if (window.applyBrandTheme) window.applyBrandTheme(hex);
+  }
+
+  async function handleSaveBrandColor() {
+    setColorSaving(true);
+    try {
+      await dbUpdateBusiness({ brand_color: brandColor }, currentBusinessId);
+    } catch (e) {
+      alert('Failed to save brand color: ' + (e.message || e));
+    }
+    setColorSaving(false);
+  }
+
+  function handleResetColor() {
+    const defaultColor = '#2a9db5';
+    setBrandColor(defaultColor);
+    if (window.applyBrandTheme) window.applyBrandTheme(defaultColor);
   }
 
   // ── Derived stats ─────────────────────────────────────────────
@@ -381,6 +406,40 @@ export default function TeamTab() {
                         </button>
                       )}
                       <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>PNG, JPG, SVG, WebP · appears on quotes &amp; invoices</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Brand colour picker ── */}
+                <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 10 }}>Brand Color</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                    <div style={{ position: 'relative', width: 48, height: 48 }}>
+                      <input
+                        type="color"
+                        value={brandColor}
+                        onChange={e => handleColorPreview(e.target.value)}
+                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none', padding: 0, cursor: 'pointer', borderRadius: 10, overflow: 'hidden' }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'monospace' }}>{brandColor}</div>
+                      <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>Pick a colour — the app recolours live as you drag</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+                      <button
+                        onClick={handleResetColor}
+                        style={{ background: '#f1f5f9', color: 'var(--muted)', border: '2px solid var(--gray)', borderRadius: 30, padding: '6px 14px', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: "'Nunito', sans-serif" }}
+                      >
+                        Reset
+                      </button>
+                      <button
+                        onClick={handleSaveBrandColor}
+                        disabled={colorSaving}
+                        style={{ background: brandColor, color: 'white', border: 'none', borderRadius: 30, padding: '6px 16px', fontSize: 11, fontWeight: 800, cursor: colorSaving ? 'default' : 'pointer', fontFamily: "'Nunito', sans-serif", transition: 'background .15s' }}
+                      >
+                        {colorSaving ? 'Saving…' : '💾 Save Color'}
+                      </button>
                     </div>
                   </div>
                 </div>

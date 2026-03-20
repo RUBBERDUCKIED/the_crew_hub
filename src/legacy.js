@@ -2165,9 +2165,12 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     await dbLoadAll();
     applyRolePermissions();
     syncAllToStore({ sbUser, currentBusinessId, currentMemberId, currentUserRole, savedQuotes, customers, crmNotes, leads, neighborhoods });
-    // Load business plan for alpha banner
+    // Load business plan + brand theme for alpha banner
     dbLoadBusinessInfo().then(biz => {
-      if (biz) useAppStore.getState().setPlan(biz.plan, biz.subscription_status);
+      if (biz) {
+        useAppStore.getState().setPlan(biz.plan, biz.subscription_status);
+        if (biz.brand_color) applyBrandTheme(biz.brand_color);
+      }
     }).catch(() => {});
     await initPluginAndUI();
     const now = new Date().toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' });
@@ -2239,9 +2242,12 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     applyRolePermissions();
     // Sync state to Zustand store for React components
     syncAllToStore({ sbUser, currentBusinessId, currentMemberId, currentUserRole, savedQuotes, customers, crmNotes, leads, neighborhoods });
-    // Load business plan for alpha banner
+    // Load business plan + brand theme
     dbLoadBusinessInfo().then(biz => {
-      if (biz) useAppStore.getState().setPlan(biz.plan, biz.subscription_status);
+      if (biz) {
+        useAppStore.getState().setPlan(biz.plan, biz.subscription_status);
+        if (biz.brand_color) applyBrandTheme(biz.brand_color);
+      }
     }).catch(() => {});
     await initPluginAndUI();
     const now = new Date().toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' });
@@ -2555,6 +2561,41 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   //               dbUpdateBusiness, canAccess, currentUserRole)
   // Called by:  afterSignIn (applyRolePermissions, loadBusinessInfo)
   // ═══════════════════════════════════════════════════════════════
+
+  // ── Brand theming ──────────────────────────────────────────────
+  // Takes a single hex colour and derives all teal-family CSS vars.
+  // Neutrals (--text, --muted, --gray, --offwhite) stay untouched.
+  function applyBrandTheme(hex) {
+    if (!hex || !/^#[0-9a-fA-F]{6}$/.test(hex)) return;
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+
+    // Darken: mix toward black
+    const darken = (r, g, b, pct) => {
+      const f = 1 - pct / 100;
+      return `#${[r, g, b].map(c => Math.round(c * f).toString(16).padStart(2, '0')).join('')}`;
+    };
+    // Lighten: mix toward white
+    const lighten = (r, g, b, pct) => {
+      const f = pct / 100;
+      return `#${[r, g, b].map(c => Math.round(c + (255 - c) * f).toString(16).padStart(2, '0')).join('')}`;
+    };
+
+    const root = document.documentElement.style;
+    root.setProperty('--teal',       hex);
+    root.setProperty('--teal-dark',  darken(r, g, b, 22));
+    root.setProperty('--teal-light', lighten(r, g, b, 35));
+    root.setProperty('--blue',       darken(r, g, b, 35));
+    root.setProperty('--blue-dark',  darken(r, g, b, 48));
+    // Derived neutrals that have a teal tint
+    root.setProperty('--offwhite',   lighten(r, g, b, 95));
+    root.setProperty('--gray',       lighten(r, g, b, 88));
+    root.setProperty('--shadow',     `0 4px 24px rgba(${r},${g},${b},0.10)`);
+    console.info('[CrewHub] Brand theme applied:', hex);
+  }
+  // Expose so React components can call it
+  window.applyBrandTheme = applyBrandTheme;
 
   function applyRolePermissions() {
     const tabMap = {
