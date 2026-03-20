@@ -869,13 +869,17 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       const rightColMatch = rawContent.match(/text-align:right; flex-shrink:0;">([\s\S]*?)<\/div>\s*<\/div>/);
       const docRightCol = rightColMatch ? rightColMatch[1].trim() : '';
 
-      // Build clean table-based header
+      // Build clean table-based header — use Supabase logo URL if available (not base64)
+      const logoPublicUrl = window._currentLogoUrl ? window._currentLogoUrl.split('?')[0] : null;
+      const logoBlock = logoPublicUrl
+        ? '<div style="margin-bottom:10px;"><img src="' + logoPublicUrl + '" alt="' + bizNameEmail + '" style="height:60px;max-width:200px;object-fit:contain;display:block;"></div>'
+        : '<div style="background:#f0d000;display:inline-block;border-radius:10px;padding:8px 14px;margin-bottom:10px;">' +
+            '<span style="font-family:Montserrat,Arial,sans-serif;font-weight:900;font-size:18px;color:#145689;letter-spacing:0.02em;">' + bizNameEmail + '</span>' +
+          '</div>';
       const tableHeader = '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:linear-gradient(135deg,#1e7d93 0%,#1a6ea8 100%);">' +
         '<tr>' +
           '<td style="padding:24px 28px; vertical-align:middle;">' +
-            '<div style="background:#f0d000;display:inline-block;border-radius:10px;padding:8px 14px;margin-bottom:10px;">' +
-              '<span style="font-family:Montserrat,Arial,sans-serif;font-weight:900;font-size:18px;color:#145689;letter-spacing:0.02em;">' + bizNameEmail + '</span>' +
-            '</div>' +
+            logoBlock +
             (bizAddrEmail ? '<div style="color:rgba(255,255,255,0.85);font-size:13px;font-weight:600;margin-top:4px;">📍 ' + bizAddrEmail + '</div>' : '') +
             (bizPhoneEmail ? '<div style="color:rgba(255,255,255,0.85);font-size:13px;font-weight:600;margin-top:2px;">📞 ' + bizPhoneEmail + '</div>' : '') +
             (bizEmailEmail ? '<div style="color:rgba(255,255,255,0.85);font-size:13px;font-weight:600;margin-top:2px;">✉️ ' + bizEmailEmail + '</div>' : '') +
