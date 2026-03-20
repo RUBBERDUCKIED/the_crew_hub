@@ -32,10 +32,17 @@ export async function dbClaimInvite() {
 export function canAccess(feature, userRole) {
   const permissions = {
     owner:      ['quotes', 'pipeline', 'today', 'crm', 'reports', 'leads', 'team', 'timesheets', 'settings'],
-    dispatcher: ['quotes', 'pipeline', 'today', 'crm', 'reports', 'leads', 'timesheets'],
-    crew:       ['today', 'leads', 'quotes', 'pipeline', 'crm', 'my-timesheet'],
+    admin:      ['quotes', 'pipeline', 'today', 'crm', 'reports', 'leads', 'team', 'timesheets', 'settings'],
+    dispatcher: ['quotes', 'pipeline', 'today', 'crm', 'leads', 'timesheets'],
+    crew:       ['today', 'my-timesheet', 'team'],
   };
   return (permissions[userRole] || []).includes(feature);
+}
+
+// Role hierarchy helper — returns true if roleA outranks roleB
+const ROLE_RANK = { owner: 4, admin: 3, dispatcher: 2, crew: 1 };
+export function roleAtLeast(userRole, minRole) {
+  return (ROLE_RANK[userRole] || 0) >= (ROLE_RANK[minRole] || 99);
 }
 
 // Re-export _sb for auth operations (signIn, signUp, etc.) that still live in legacy.js

@@ -121,7 +121,7 @@ function initLegacyApp() {
   let gTokenExpiry      = 0;
   let currentBusinessId = null;
   let currentMemberId   = null;
-  let currentUserRole   = 'owner'; // 'owner' | 'dispatcher' | 'crew'
+  let currentUserRole   = 'owner'; // 'owner' | 'admin' | 'dispatcher' | 'crew'
   // Auth flow state (multi-step modal)
   let _authInviteId    = null;   // UUID from ?invite= URL param
   let _authInviteInfo  = null;   // { business_name, role, email } from get_invite_info RPC
@@ -1894,7 +1894,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       </div>`;
 
     } else if (step === 'pick-business') {
-      const roleMap = { owner: '👑 Owner', dispatcher: '📋 Dispatcher', crew: '🔧 Crew' };
+      const roleMap = { owner: '👑 Owner', admin: '🛡️ Admin', dispatcher: '📋 Dispatcher', crew: '🔧 Crew' };
       const cards = _authMemberships.map(m => `
         <button onclick="selectBusiness('${m.id}','${m.business_id}','${m.role}')"
           style="width:100%;padding:16px;background:#f8fafc;border:2px solid #e2e8f0;border-radius:14px;text-align:left;cursor:pointer;margin-bottom:10px;display:block;">
@@ -2598,33 +2598,38 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   window.applyBrandTheme = applyBrandTheme;
 
   function applyRolePermissions() {
+    // Maps tab name → feature(s) required (any match = visible)
     const tabMap = {
-      today:      'today',
-      leads:      'leads',
-      quotes:     'quotes',
-      pipeline:   'pipeline',
-      crm:        'crm',
-      reports:    'reports',
-      timesheets: 'timesheets',
-      team:       'team',
+      today:      ['today'],
+      leads:      ['leads'],
+      quotes:     ['quotes'],
+      pipeline:   ['pipeline'],
+      crm:        ['crm'],
+      reports:    ['reports'],
+      timesheets: ['timesheets', 'my-timesheet'],
+      team:       ['team'],
     };
+
+    function canAccessTab(features) {
+      return features.some(f => canAccess(f));
+    }
 
     document.querySelectorAll('.tab-btn').forEach(btn => {
       const onclick = btn.getAttribute('onclick') || '';
       const match = onclick.match(/switchTab\('(\w+)'/);
       if (!match) return;
       const tabKey = match[1];
-      const feature = tabMap[tabKey];
-      if (!feature) return;
-      btn.style.display = canAccess(feature) ? '' : 'none';
+      const features = tabMap[tabKey];
+      if (!features) return;
+      btn.style.display = canAccessTab(features) ? '' : 'none';
     });
 
     // If the currently active tab is now hidden, fall back to Today
     const activeTab = document.querySelector('.tab-panel.active');
     if (activeTab) {
       const tabId = activeTab.id.replace('tab-', '');
-      const feature = tabMap[tabId];
-      if (feature && !canAccess(feature)) {
+      const features = tabMap[tabId];
+      if (features && !canAccessTab(features)) {
         const todayBtn = document.getElementById('todayTabBtn');
         if (todayBtn) switchTab('today', todayBtn);
       }

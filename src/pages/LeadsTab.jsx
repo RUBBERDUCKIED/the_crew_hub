@@ -229,9 +229,13 @@ function ManualLeadModal({ onSave, onClose }) {
 
 // ── Main Component ──
 export default function LeadsTab() {
-  const leads         = useAppStore(s => s.leads);
-  const neighborhoods = useAppStore(s => s.neighborhoods);
-  const customers     = useAppStore(s => s.customers);
+  const leads           = useAppStore(s => s.leads);
+  const neighborhoods   = useAppStore(s => s.neighborhoods);
+  const customers       = useAppStore(s => s.customers);
+  const currentUserRole = useAppStore(s => s.currentUserRole);
+
+  // Leads: dispatcher and above
+  if (currentUserRole === 'crew') return null;
 
   // Tab + filter state
   const [activeTab,     setActiveTab]     = useState('commercial');

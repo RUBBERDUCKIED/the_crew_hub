@@ -18,9 +18,9 @@ import { ModalShell, labelStyle, inputStyle } from '../components/shared.jsx';
 // Mirrors the legacy Team tab UI pixel-for-pixel.
 // ─────────────────────────────────────────────────────────────
 
-const ROLE_LABEL = { owner: '👑 Owner', dispatcher: '📋 Dispatcher', crew: '🔧 Crew' };
-const ROLE_BG    = { owner: '#fef3c7', dispatcher: '#e0f2fe',          crew: '#f0fdf4' };
-const ROLE_COLOR = { owner: '#92400e', dispatcher: '#0369a1',          crew: '#065f46' };
+const ROLE_LABEL = { owner: '👑 Owner', admin: '🛡️ Admin', dispatcher: '📋 Dispatcher', crew: '🔧 Crew' };
+const ROLE_BG    = { owner: '#fef3c7', admin: '#f3e8ff',               dispatcher: '#e0f2fe',          crew: '#f0fdf4' };
+const ROLE_COLOR = { owner: '#92400e', admin: '#6b21a8',               dispatcher: '#0369a1',          crew: '#065f46' };
 
 function getInitials(name) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -30,7 +30,9 @@ export default function TeamTab() {
   const currentMemberId   = useAppStore(s => s.currentMemberId);
   const currentUserRole   = useAppStore(s => s.currentUserRole);
   const currentBusinessId = useAppStore(s => s.currentBusinessId);
-  const isOwner = currentUserRole === 'owner';
+  const isOwner        = currentUserRole === 'owner';
+  const isAdmin        = currentUserRole === 'admin';
+  const canManageTeam  = isOwner || isAdmin;
 
   // ── Data state ──────────────────────────────────────────────
   const [members,  setMembers]  = useState([]);
@@ -228,7 +230,7 @@ export default function TeamTab() {
               {bizInfo?.name || ''}
             </div>
           </div>
-          {isOwner && (
+          {canManageTeam && (
             <button className="crm-btn crm-btn-teal" onClick={openModal}>➕ Add Team Member</button>
           )}
         </div>
@@ -267,7 +269,7 @@ export default function TeamTab() {
                 ? <span style={{ fontSize: 10, fontWeight: 700, background: '#fee2e2', color: '#991b1b', borderRadius: 20, padding: '2px 9px' }}>Deactivated</span>
                 : <span style={{ fontSize: 10, fontWeight: 700, background: '#d1fae5', color: '#065f46', borderRadius: 20, padding: '2px 9px' }}>✓ Active</span>;
 
-            const roleEl = isOwner && !isYou
+            const roleEl = canManageTeam && !isYou
               ? (
                 <select
                   value={m.role}
@@ -276,7 +278,8 @@ export default function TeamTab() {
                 >
                   <option value="crew">🔧 Crew</option>
                   <option value="dispatcher">📋 Dispatcher</option>
-                  <option value="owner">👑 Owner</option>
+                  {isOwner && <option value="admin">🛡️ Admin</option>}
+                  {isOwner && <option value="owner">👑 Owner</option>}
                 </select>
               ) : (
                 <span style={{ fontSize: 12, fontWeight: 700, background: ROLE_BG[m.role] || '#f1f5f9', color: ROLE_COLOR[m.role] || 'var(--text)', borderRadius: 20, padding: '4px 12px' }}>
@@ -312,7 +315,7 @@ export default function TeamTab() {
                       {roleEl}
                     </div>
                   </div>
-                  {isOwner && !isYou && (
+                  {canManageTeam && !isYou && (
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       {m.active
                         ? <button onClick={() => handleToggleActive(m.id, false)} style={{ background: '#f1f5f9', color: '#6b9aaa', border: '2px solid var(--gray)', borderRadius: 20, padding: '5px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Deactivate</button>
@@ -341,7 +344,7 @@ export default function TeamTab() {
             </div>
           )}
           {bizInfo && (
-            isOwner ? (
+            canManageTeam ? (
               <>
                 {/* ── Text fields ── */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

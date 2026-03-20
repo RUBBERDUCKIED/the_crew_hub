@@ -14,8 +14,12 @@ const LEAD_COLORS  = ['#1e7d93','#f97316','#6366f1','#10b981','#f0d000','#e11d48
 const UNREPORTED_COLOR = '#cbd5e1';
 
 export default function ReportsTab() {
-  const savedQuotes = useAppStore(s => s.savedQuotes);
-  const customers   = useAppStore(s => s.customers);
+  const savedQuotes   = useAppStore(s => s.savedQuotes);
+  const customers     = useAppStore(s => s.customers);
+  const currentUserRole = useAppStore(s => s.currentUserRole);
+
+  // Reports: admin and owner only
+  if (currentUserRole !== 'owner' && currentUserRole !== 'admin') return null;
 
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 

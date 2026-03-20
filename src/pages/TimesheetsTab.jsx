@@ -7,7 +7,7 @@ import {
   dbEditTimeEntry,
   dbAddManualTimeEntry,
 } from '../db/timeEntries.js';
-import { canAccess } from '../db/auth.js';
+import { canAccess, roleAtLeast } from '../db/auth.js';
 import { formatHM, formatTime, formatDateLabel } from '../helpers/formatting.js';
 import { ModalShell, labelStyle, inputStyle } from '../components/shared.jsx';
 
@@ -154,7 +154,7 @@ export default function TimesheetsTab() {
 
   // ── Load data ─────────────────────────────────────────────────
   const loadData = useCallback(async () => {
-    if (!canAccess('timesheets', currentUserRole)) return;
+    if (!canAccess('timesheets', currentUserRole) && !canAccess('my-timesheet', currentUserRole)) return;
     setLoading(true);
     const { start, end } = getDateRange();
     const [m, e, ac] = await Promise.all([
@@ -184,7 +184,11 @@ export default function TimesheetsTab() {
   };
 
   // ── Per-member aggregation ────────────────────────────────────
-  const activeMembers = members.filter(m => m.active);
+  const allActiveMembers = members.filter(m => m.active);
+  // Crew only sees their own data
+  const activeMembers = currentUserRole === 'crew'
+    ? allActiveMembers.filter(m => m.id === currentMemberId)
+    : allActiveMembers;
   const clockedInIds  = new Set(activeClocks.map(e => e.member_id));
   const { start, end, label: rangeLabel } = getDateRange();
 
@@ -297,7 +301,9 @@ export default function TimesheetsTab() {
   });
 
   // ── Access guard ──────────────────────────────────────────────
-  if (!canAccess('timesheets', currentUserRole)) return null;
+  const isCrew       = currentUserRole === 'crew';
+  const canEditEntries = roleAtLeast(currentUserRole, 'admin');
+  if (!canAccess('timesheets', currentUserRole) && !canAccess('my-timesheet', currentUserRole)) return null;
 
   // ── Render ────────────────────────────────────────────────────
   return (
@@ -309,12 +315,14 @@ export default function TimesheetsTab() {
           <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--teal-dark)' }}>⏱ Timesheets</div>
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', marginTop: 2 }}>Manage team hours and payroll</div>
         </div>
-        <button
-          onClick={exportCSV}
-          style={{ background: 'var(--teal)', color: 'white', border: 'none', borderRadius: 30, padding: '10px 22px', fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 13, cursor: 'pointer' }}
-        >
-          📥 Export Payroll CSV
-        </button>
+        {!isCrew && (
+          <button
+            onClick={exportCSV}
+            style={{ background: 'var(--teal)', color: 'white', border: 'none', borderRadius: 30, padding: '10px 22px', fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 13, cursor: 'pointer' }}
+          >
+            📥 Export Payroll CSV
+          </button>
+        )}
       </div>
 
       {/* ── Date range filters ── */}
@@ -451,13 +459,15 @@ export default function TimesheetsTab() {
                     </div>
                     <div className="cust-chevron">{isExpanded ? '▲' : '▼'}</div>
                   </div>
-                  {/* ── Add Entry button — always visible, never triggers expand ── */}
-                  <button
-                    onClick={e => { e.stopPropagation(); openAddModal(m); }}
-                    style={{ background: 'var(--teal)', color: 'white', border: 'none', borderRadius: 20, padding: '7px 16px', fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
-                  >
-                    ➕ Add Entry
-                  </button>
+                  {/* ── Add Entry button — admin and above only ── */}
+                  {canEditEntries && (
+                    <button
+                      onClick={e => { e.stopPropagation(); openAddModal(m); }}
+                      style={{ background: 'var(--teal)', color: 'white', border: 'none', borderRadius: 20, padding: '7px 16px', fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+                    >
+                      ➕ Add Entry
+                    </button>
+                  )}
                 </div>
 
                 {/* ── Expanded entry list ── */}
@@ -471,13 +481,18 @@ export default function TimesheetsTab() {
                       </div>
                       {mEntries.length === 0 ? (
                         <div style={{ padding: '20px 12px', fontSize: 13, fontWeight: 600, color: 'var(--muted)', textAlign: 'center', background: '#f8fafc', borderRadius: 10 }}>
-                          No entries for this period.{' '}
-                          <button
-                            onClick={() => openAddModal(m)}
-                            style={{ background: 'none', border: 'none', color: 'var(--teal)', fontWeight: 800, fontSize: 13, cursor: 'pointer', padding: 0 }}
-                          >
-                            Add one now →
-                          </button>
+                          No entries for this period.
+                          {canEditEntries && (
+                            <>
+                              {' '}
+                              <button
+                                onClick={() => openAddModal(m)}
+                                style={{ background: 'none', border: 'none', color: 'var(--teal)', fontWeight: 800, fontSize: 13, cursor: 'pointer', padding: 0 }}
+                              >
+                                Add one now →
+                              </button>
+                            </>
+                          )}
                         </div>
                       ) : mEntries.map(e => {
                         const workedMins = e.clock_out
@@ -508,12 +523,14 @@ export default function TimesheetsTab() {
                                   Edited
                                 </span>
                               )}
-                              <button
-                                onClick={() => openEdit(e, m.name)}
-                                style={{ background: 'white', color: 'var(--teal-dark)', border: '2px solid var(--gray)', borderRadius: 8, padding: '3px 10px', fontSize: 11, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap' }}
-                              >
-                                ✏️ Edit
-                              </button>
+                              {canEditEntries && (
+                                <button
+                                  onClick={() => openEdit(e, m.name)}
+                                  style={{ background: 'white', color: 'var(--teal-dark)', border: '2px solid var(--gray)', borderRadius: 8, padding: '3px 10px', fontSize: 11, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                >
+                                  ✏️ Edit
+                                </button>
+                              )}
                             </div>
                             {/* Row 2 — IN time → OUT time · break */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>

@@ -468,9 +468,13 @@ function QuickNoteModal({ job, crmNotes, onClose }) {
 const STAGES_ALL   = ['quoted', 'won', 'invoiced', 'complete', 'lost'];
 
 export default function PipelineTab() {
-  const savedQuotes = useAppStore(s => s.savedQuotes);
-  const customers   = useAppStore(s => s.customers);
-  const crmNotes    = useAppStore(s => s.crmNotes);
+  const savedQuotes   = useAppStore(s => s.savedQuotes);
+  const customers     = useAppStore(s => s.customers);
+  const crmNotes      = useAppStore(s => s.crmNotes);
+  const currentUserRole = useAppStore(s => s.currentUserRole);
+
+  // Pipeline: dispatcher and above
+  if (currentUserRole === 'crew') return null;
 
   const [typeFilter,  setTypeFilter]  = useState('all');
   const [stageFilter, setStageFilter] = useState('all');

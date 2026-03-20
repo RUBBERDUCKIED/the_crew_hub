@@ -396,7 +396,7 @@ function CustomerCard({ customer, notes, jobs, role, onEdit, onArchive, onDelete
               ? <ActionButton bg="#64748b" onClick={() => onArchive(customer.customerId, true)}>📦 Archive</ActionButton>
               : <ActionButton bg="#059669" onClick={() => onArchive(customer.customerId, false)}>📂 Restore</ActionButton>
             }
-            {role === 'owner' && (
+            {(role === 'owner' || role === 'admin') && (
               <ActionButton bg="#dc2626" onClick={() => onDelete(customer.customerId)}>🗑️ Delete</ActionButton>
             )}
           </div>
