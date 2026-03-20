@@ -69,7 +69,7 @@ export default function TeamTab() {
         phone:   biz.phone   || '',
         address: biz.address || '',
       });
-      setLogoUrl(biz.logo_url || '');
+      setLogoUrl(biz.logo_url ? biz.logo_url + '?t=' + Date.now() : '');
       setBrandColor(biz.brand_color || '#2a9db5');
     }
     setLoading(false);
