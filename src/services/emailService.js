@@ -5,13 +5,16 @@ import { esc } from '../helpers/formatting.js';
 
 export async function sendEmail({ toEmail, subject, htmlContent, fromName, fromEmail }) {
   if (typeof emailjs === 'undefined') throw new Error('EmailJS not loaded');
+  // Pass public key explicitly as 4th arg — more reliable than depending on emailjs.init() timing
+  const publicKey = CONFIG.EMAILJS_USER_ID;
+  if (!publicKey) throw new Error('EmailJS public key not configured');
   return emailjs.send(CONFIG.EMAILJS_SERVICE_ID, CONFIG.EMAILJS_TEMPLATE_ID, {
     to_email:     toEmail,
     subject:      subject,
     html_content: htmlContent,
     name:         fromName  || '',
     email:        fromEmail || '',
-  });
+  }, publicKey);
 }
 
 export async function sendInviteEmail(toEmail, memberName, memberRole, inviteId, businessInfo) {
