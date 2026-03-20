@@ -742,7 +742,7 @@ function initLegacyApp() {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quote — The Window Crew</title>
+<title>Quote — ${s('bizName') || 'Quote'}</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -904,8 +904,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         toEmail,
         subject,
         htmlContent: emailHtml,
-        fromName:  s('bizName')  || 'The Window Crew',
-        fromEmail: s('bizEmail') || 'amadeus@thewindowcrew.ca',
+        fromName:  s('bizName')  || 'Your Business',
+        fromEmail: s('bizEmail') || '',
       });
       btn.textContent = '✅ Sent!';
       btn.style.background = '#16a34a';
@@ -2122,11 +2122,17 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       try {
         const { data } = await _sb
           .from('businesses')
-          .select('service_type, logo_url')
+          .select('service_type, logo_url, name, email, phone, address')
           .eq('id', currentBusinessId)
           .single();
         if (data?.service_type) serviceType = data.service_type;
         window._currentLogoUrl = data?.logo_url || null;
+        // Populate hidden business-info fields used by quote/invoice generators
+        const _set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+        _set('bizName',    data?.name);
+        _set('bizAddress', data?.address);
+        _set('bizPhone',   data?.phone);
+        _set('bizEmail',   data?.email);
       } catch(e) {
         console.warn('[CrewHub] Could not load business data:', e);
       }
@@ -2903,7 +2909,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       return;
     }
     const bizName = s('bizName') || 'The Window Crew';
-    const bizEmail = s('bizEmail') || 'amadeus@thewindowcrew.ca';
+    const bizEmail = s('bizEmail') || '';
     const firstName = (q.name || 'there').split(' ')[0];
 
     if (btn) btn.textContent = '⏳ Sending...';
@@ -2911,7 +2917,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
     const plainBody = `Hey ${firstName}!
 
-Thanks again for choosing The Window Crew. We really appreciate your support and hope you're loving those clean windows.
+Thanks again for choosing ${bizName}. We really appreciate your support and hope you're loving those clean windows.
 
 If you were happy with our work, we'd be incredibly thankful if you took a minute to leave us a quick Google review. As a small local business, every review truly helps us grow!
 
@@ -2961,7 +2967,7 @@ ${bizEmail}`;
     const contact = q.contact || '';
     const name    = q.name || 'there';
     const bizName = s('bizName') || 'The Window Crew';
-    const bizEmail = s('bizEmail') || 'amadeus@thewindowcrew.ca';
+    const bizEmail = s('bizEmail') || '';
 
     // Extract email if present, otherwise leave blank for user to fill
     // Use dedicated email field if present, else fall back to regex on contact string
@@ -2973,7 +2979,7 @@ ${bizEmail}`;
     const body = encodeURIComponent(
 `Hey ${firstName}!
 
-Thanks again for choosing The Window Crew. We really appreciate your support and hope you're loving those clean windows.
+Thanks again for choosing ${bizName}. We really appreciate your support and hope you're loving those clean windows.
 
 If you were happy with our work, we'd be incredibly thankful if you took a minute to leave us a quick Google review. As a small local business, every review truly helps us grow!
 
