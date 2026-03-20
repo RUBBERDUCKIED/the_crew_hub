@@ -138,7 +138,7 @@ function initLegacyApp() {
   let neighborhoods      = safeGet('twc_neighborhoods', []);
   let customerPhotos     = {};
   let photoBlobCache     = {};
-  let cachedLogoB64      = localStorage.getItem('twc_logo_b64') || '';
+  let cachedLogoB64      = ''; // Legacy b64 cache disabled — logos come from Supabase Storage now
 
   // ── One-time migration: purge ghost customers (no customerId) left by old bug ──
   (function purgeGhostCustomers() {
@@ -2126,7 +2126,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           .eq('id', currentBusinessId)
           .single();
         if (data?.service_type) serviceType = data.service_type;
-        window._currentLogoUrl = data?.logo_url || null;
+        window._currentLogoUrl = data?.logo_url ? data.logo_url + '?t=' + Date.now() : null;
         // Populate hidden business-info fields used by quote/invoice generators
         const _set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
         _set('bizName',    data?.name);
