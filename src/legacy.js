@@ -2065,24 +2065,32 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       if (!sbUser) throw new Error('Not signed in. Please sign out and sign back in.');
       const result = await dbBootstrapBusiness(bizName, ownerName, sbUser.email, _pendingNewBizServiceType);
       console.log('[CrewHub] bootstrap result:', JSON.stringify(result));
-      // Ensure business name is saved — try every possible key format from the RPC result
+      // The bootstrap RPC should save the name, but as a safety net, also update it explicitly.
+      // Try every possible key format from the RPC result
       const newBizId = result?.businessId || result?.business_id || result?.id
                     || (typeof result === 'string' ? result : null);
+      // Try updating via direct query, then via RPC fallback
+      const trySetName = async (bizId) => {
+        const { error } = await _sb.from('businesses').update({ name: bizName }).eq('id', bizId);
+        if (error) {
+          console.warn('[CrewHub] Direct name update blocked (likely RLS), trying workaround:', error.message);
+          // Fallback: use the set_business_name RPC if it exists, otherwise log warning
+          try { await _sb.rpc('set_business_name', { biz_id: bizId, biz_name: bizName }); }
+          catch(e) { console.warn('[CrewHub] set_business_name RPC not available:', e.message); }
+        }
+      };
       if (newBizId) {
-        const { error: nameErr } = await _sb.from('businesses').update({ name: bizName }).eq('id', newBizId);
-        if (nameErr) console.warn('[CrewHub] Failed to set biz name via result ID:', nameErr);
-      }
-      // Fallback: find the most recently created unnamed business and set its name
-      if (!newBizId) {
-        const { data: unnamed } = await _sb
-          .from('businesses')
-          .select('id')
-          .or('name.is.null,name.eq.')
+        await trySetName(newBizId);
+      } else {
+        // Fallback: find most recently created business owned by this user that has no name
+        const { data: memberships } = await _sb
+          .from('team_members')
+          .select('business_id')
+          .eq('auth_user_id', sbUser.id)
+          .eq('role', 'owner')
           .order('created_at', { ascending: false })
           .limit(1);
-        if (unnamed?.[0]) {
-          await _sb.from('businesses').update({ name: bizName }).eq('id', unnamed[0].id);
-        }
+        if (memberships?.[0]) await trySetName(memberships[0].business_id);
       }
       _justCreatedBusiness = true;
       hideAuthModal();
@@ -2248,9 +2256,10 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const now = new Date().toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' });
     setSyncUI('idle', `Synced ${now} · ${savedQuotes.length} jobs`);
 
-    // Check onboarding for the selected membership
+    // Check onboarding for the selected membership (DB flag + localStorage fallback)
     const selectedMembership = _authMemberships.find(m => m.id === memberId);
-    if (selectedMembership && !selectedMembership.onboarding_completed) {
+    const lsOnboarded2 = localStorage.getItem('twc_onboarding_done_' + memberId) === 'true';
+    if (selectedMembership && !selectedMembership.onboarding_completed && !lsOnboarded2) {
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent('crewhub:start-onboarding', {
           detail: {
@@ -2344,8 +2353,9 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const now = new Date().toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' });
     setSyncUI('idle', `Synced ${now} · ${savedQuotes.length} jobs`);
 
-    // Trigger onboarding if not completed yet
-    if (!m.onboarding_completed) {
+    // Trigger onboarding if not completed yet (check both DB flag and localStorage fallback)
+    const lsOnboarded = localStorage.getItem('twc_onboarding_done_' + m.id) === 'true';
+    if (!m.onboarding_completed && !lsOnboarded) {
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent('crewhub:start-onboarding', {
           detail: {

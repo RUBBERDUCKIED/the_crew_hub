@@ -51,14 +51,15 @@ export async function dbRemoveTeamMember(memberId) {
 }
 
 export async function dbLoadBusinessInfo(businessId) {
-  if (!businessId) return null;
+  if (!businessId) { console.warn('[CrewHub] dbLoadBusinessInfo called without businessId'); return null; }
+  // Use .limit(1) instead of .single() to avoid errors with RLS edge cases
   const { data, error } = await _sb
     .from('businesses')
     .select('*')
     .eq('id', businessId)
-    .single();
-  if (error) { console.error('[CrewHub] dbLoadBusinessInfo error:', error); return null; }
-  return data;
+    .limit(1);
+  if (error) { console.error('[CrewHub] dbLoadBusinessInfo error:', error, 'businessId:', businessId); return null; }
+  return data?.[0] || null;
 }
 
 export async function dbUpdateBusiness(updates, businessId) {
@@ -67,14 +68,14 @@ export async function dbUpdateBusiness(updates, businessId) {
     .from('businesses')
     .update(updates)
     .eq('id', businessId);
-  if (error) { console.error('[CrewHub] dbUpdateBusiness error:', error); throw error; }
-  // Re-fetch to return updated data
+  if (error) { console.error('[CrewHub] dbUpdateBusiness error:', error, 'businessId:', businessId); throw error; }
+  // Re-fetch to return updated data (use .limit(1) instead of .single() for RLS resilience)
   const { data } = await _sb
     .from('businesses')
     .select('*')
     .eq('id', businessId)
-    .single();
-  return data;
+    .limit(1);
+  return data?.[0] || null;
 }
 
 export async function dbUploadLogo(file, businessId) {
@@ -96,10 +97,17 @@ export async function dbRemoveLogo(businessId) {
 }
 
 export async function dbMarkOnboardingComplete(memberId) {
-  if (!memberId) return;
-  const { error } = await _sb
+  if (!memberId) { console.warn('[CrewHub] dbMarkOnboardingComplete: no memberId'); return; }
+  const { error, count } = await _sb
     .from('team_members')
     .update({ onboarding_completed: true })
     .eq('id', memberId);
-  if (error) console.error('[CrewHub] dbMarkOnboardingComplete error:', error);
+  if (error) {
+    console.error('[CrewHub] dbMarkOnboardingComplete error:', error, 'memberId:', memberId);
+    // Fallback: try via localStorage so onboarding doesn't repeat even if DB fails
+    try { localStorage.setItem('twc_onboarding_done_' + memberId, 'true'); } catch(_e) {}
+  } else {
+    console.info('[CrewHub] Onboarding marked complete for member:', memberId, 'rows:', count);
+    try { localStorage.setItem('twc_onboarding_done_' + memberId, 'true'); } catch(_e) {}
+  }
 }
