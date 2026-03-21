@@ -2306,7 +2306,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
     // Cache active team members for assignment dropdowns
     try {
-      const allMembers = await _dbLoadTeamMembers(currentBusinessId);
+      const allMembers = await dbLoadTeamMembers(currentBusinessId);
       window._teamMembers = (allMembers || []).filter(m => m.active);
     } catch(e) { window._teamMembers = []; }
 
