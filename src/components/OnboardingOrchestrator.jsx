@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import useAppStore from '../state/useAppStore.js';
 import { dbMarkOnboardingComplete } from '../db/team.js';
 import OnboardingBrandSetup from './OnboardingBrandSetup.jsx';
@@ -9,13 +9,13 @@ import OnboardingWalkthrough from './OnboardingWalkthrough.jsx';
 // OnboardingOrchestrator — State machine for the 3 onboarding types
 //
 // Type 1 (new owner, first business):
-//   brand-setup → welcome → walkthrough → complete
+//   brand-setup → welcome → walkthrough → finish
 //
 // Type 2 (invited team member):
-//   welcome → walkthrough → complete
+//   welcome → walkthrough → finish
 //
 // Type 3 (existing user, new business):
-//   brand-setup → finish (welcome message only, no tutorial)
+//   brand-setup → finish (no tutorial)
 //
 // Listens for 'crewhub:start-onboarding' custom event from legacy.js.
 // ─────────────────────────────────────────────────────────────
@@ -23,7 +23,7 @@ import OnboardingWalkthrough from './OnboardingWalkthrough.jsx';
 function detectOnboardingType({ role, isNewBusiness, hasOtherMemberships }) {
   if (isNewBusiness && (role === 'owner' || role === 'admin') && !hasOtherMemberships) return 1;
   if (isNewBusiness && (role === 'owner' || role === 'admin') && hasOtherMemberships) return 3;
-  return 2; // Invited member (crew, dispatcher, admin invited to existing business)
+  return 2;
 }
 
 const PHASE_SEQUENCE = {
@@ -33,12 +33,23 @@ const PHASE_SEQUENCE = {
 };
 
 export default function OnboardingOrchestrator() {
-  const [phase, setPhase]               = useState(null);   // current phase name
-  const [onboardingType, setType]        = useState(null);   // 1, 2, or 3
-  const [role, setRole]                  = useState('owner');
-  const [memberId, setMemberId]          = useState(null);
-  const [phaseIndex, setPhaseIndex]      = useState(0);
+  const [phase, setPhase]          = useState(null);
+  const [onboardingType, setType]  = useState(null);
+  const [role, setRole]            = useState('owner');
+  const [memberId, setMemberId]    = useState(null);
+  const [phaseIndex, setPhaseIndex] = useState(0);
+
+  // Use refs to avoid stale closures in callbacks
+  const memberIdRef = useRef(null);
+  const typeRef     = useRef(null);
+  const indexRef    = useRef(0);
+
   const setOnboardingCompleted = useAppStore(s => s.setOnboardingCompleted);
+
+  // Keep refs in sync
+  useEffect(() => { memberIdRef.current = memberId; }, [memberId]);
+  useEffect(() => { typeRef.current = onboardingType; }, [onboardingType]);
+  useEffect(() => { indexRef.current = phaseIndex; }, [phaseIndex]);
 
   // Listen for the start event from legacy.js
   useEffect(() => {
@@ -48,42 +59,47 @@ export default function OnboardingOrchestrator() {
       const type = detectOnboardingType(detail);
       const sequence = PHASE_SEQUENCE[type];
       setType(type);
+      typeRef.current = type;
       setRole(detail.role || 'owner');
       setMemberId(detail.memberId);
+      memberIdRef.current = detail.memberId;
       setPhaseIndex(0);
+      indexRef.current = 0;
       setPhase(sequence[0]);
     }
     window.addEventListener('crewhub:start-onboarding', handleStart);
     return () => window.removeEventListener('crewhub:start-onboarding', handleStart);
   }, []);
 
-  // Advance to the next phase in the sequence
-  const advancePhase = useCallback(() => {
-    if (!onboardingType) return;
-    const sequence = PHASE_SEQUENCE[onboardingType];
-    const nextIdx = phaseIndex + 1;
-    if (nextIdx >= sequence.length) {
-      // All done
-      completeOnboarding();
-    } else {
-      setPhaseIndex(nextIdx);
-      setPhase(sequence[nextIdx]);
-    }
-  }, [onboardingType, phaseIndex]);
-
   // Mark onboarding complete in DB + store
   const completeOnboarding = useCallback(async () => {
     setPhase(null);
     setType(null);
-    if (memberId) {
-      try { await dbMarkOnboardingComplete(memberId); } catch(e) { console.warn(e); }
+    const mid = memberIdRef.current;
+    if (mid) {
+      try {
+        await dbMarkOnboardingComplete(mid);
+        console.info('[Onboarding] Marked complete for member:', mid);
+      } catch(e) {
+        console.error('[Onboarding] Failed to mark complete:', e);
+      }
     }
     setOnboardingCompleted(true);
-  }, [memberId, setOnboardingCompleted]);
+  }, [setOnboardingCompleted]);
 
-  // Skip = jump straight to complete
-  const handleSkip = useCallback(() => {
-    completeOnboarding();
+  // Advance to the next phase in the sequence
+  const advancePhase = useCallback(() => {
+    const type = typeRef.current;
+    if (!type) return;
+    const sequence = PHASE_SEQUENCE[type];
+    const nextIdx = indexRef.current + 1;
+    if (nextIdx >= sequence.length) {
+      completeOnboarding();
+    } else {
+      setPhaseIndex(nextIdx);
+      indexRef.current = nextIdx;
+      setPhase(sequence[nextIdx]);
+    }
   }, [completeOnboarding]);
 
   // Render nothing if no onboarding active
@@ -144,7 +160,7 @@ export default function OnboardingOrchestrator() {
         <OnboardingWelcome
           role={role}
           onStartTour={advancePhase}
-          onSkip={handleSkip}
+          onSkip={completeOnboarding}
         />
       )}
       {phase === 'walkthrough' && (

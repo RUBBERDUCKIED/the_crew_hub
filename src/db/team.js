@@ -63,12 +63,17 @@ export async function dbLoadBusinessInfo(businessId) {
 
 export async function dbUpdateBusiness(updates, businessId) {
   if (!businessId) return null;
-  const { data, error } = await _sb
+  const { error } = await _sb
     .from('businesses')
     .update(updates)
-    .eq('id', businessId)
-    .select().single();
+    .eq('id', businessId);
   if (error) { console.error('[CrewHub] dbUpdateBusiness error:', error); throw error; }
+  // Re-fetch to return updated data
+  const { data } = await _sb
+    .from('businesses')
+    .select('*')
+    .eq('id', businessId)
+    .single();
   return data;
 }
 

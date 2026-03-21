@@ -134,7 +134,8 @@ export default function TeamTab() {
   async function handleChangeRole(memberId, newRole) {
     if (memberId === currentMemberId) { alert("You can't change your own role."); return; }
     try {
-      await dbUpdateTeamMember(memberId, { role: newRole });
+      // Reset onboarding so they get a walkthrough for their new role's tabs
+      await dbUpdateTeamMember(memberId, { role: newRole, onboarding_completed: false });
       loadData();
     } catch (e) { alert('Failed to change role: ' + (e.message || e)); }
   }
