@@ -2111,7 +2111,14 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     if (password.length < 6) { showAuthError('Password must be at least 6 characters.'); return; }
     const btn = document.getElementById('authSignInBtn');
     if (btn) { btn.textContent = '⏳ Joining...'; btn.disabled = true; }
-    const { data, error } = await _sb.auth.signUp({ email, password });
+
+    // Try signUp first; if user already exists, fall back to signIn
+    let { data, error } = await _sb.auth.signUp({ email, password });
+    if (error && (error.message || '').toLowerCase().includes('already registered')) {
+      const signInResult = await _sb.auth.signInWithPassword({ email, password });
+      data  = signInResult.data;
+      error = signInResult.error;
+    }
     if (error) {
       showAuthError(error.message);
       if (btn) { btn.textContent = 'Join Team'; btn.disabled = false; }
@@ -2144,7 +2151,15 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     if (password.length < 6) { showAuthError('Password must be at least 6 characters.'); return; }
     const btn = document.getElementById('authSignInBtn');
     if (btn) { btn.textContent = '⏳ Joining...'; btn.disabled = true; }
-    const { data, error } = await _sb.auth.signUp({ email, password });
+
+    // Try signUp first; if user already exists, fall back to signIn
+    let { data, error } = await _sb.auth.signUp({ email, password });
+    if (error && (error.message || '').toLowerCase().includes('already registered')) {
+      // Existing user — sign them in instead
+      const signInResult = await _sb.auth.signInWithPassword({ email, password });
+      data  = signInResult.data;
+      error = signInResult.error;
+    }
     if (error) {
       showAuthError(error.message);
       if (btn) { btn.textContent = '✓ Accept Invite & Join'; btn.disabled = false; }
