@@ -52,14 +52,22 @@ export async function dbRemoveTeamMember(memberId) {
 
 export async function dbLoadBusinessInfo(businessId) {
   if (!businessId) { console.warn('[CrewHub] dbLoadBusinessInfo called without businessId'); return null; }
-  // Use .limit(1) instead of .single() to avoid errors with RLS edge cases
+  // Try direct query first
   const { data, error } = await _sb
     .from('businesses')
     .select('*')
     .eq('id', businessId)
     .limit(1);
-  if (error) { console.error('[CrewHub] dbLoadBusinessInfo error:', error, 'businessId:', businessId); return null; }
-  return data?.[0] || null;
+  if (!error && data?.[0]) return data[0];
+  // Fallback: query through team_members join (works even if businesses RLS blocks direct access)
+  console.warn('[CrewHub] Direct business query failed, trying via team_members join. Error:', error?.message);
+  const { data: joined, error: joinErr } = await _sb
+    .from('team_members')
+    .select('businesses(*)')
+    .eq('business_id', businessId)
+    .limit(1);
+  if (joinErr) { console.error('[CrewHub] dbLoadBusinessInfo join fallback error:', joinErr); return null; }
+  return joined?.[0]?.businesses || null;
 }
 
 export async function dbUpdateBusiness(updates, businessId) {
@@ -68,14 +76,12 @@ export async function dbUpdateBusiness(updates, businessId) {
     .from('businesses')
     .update(updates)
     .eq('id', businessId);
-  if (error) { console.error('[CrewHub] dbUpdateBusiness error:', error, 'businessId:', businessId); throw error; }
-  // Re-fetch to return updated data (use .limit(1) instead of .single() for RLS resilience)
-  const { data } = await _sb
-    .from('businesses')
-    .select('*')
-    .eq('id', businessId)
-    .limit(1);
-  return data?.[0] || null;
+  if (error) {
+    console.error('[CrewHub] dbUpdateBusiness error:', error, 'businessId:', businessId);
+    throw error;
+  }
+  // Re-fetch updated data
+  return dbLoadBusinessInfo(businessId);
 }
 
 export async function dbUploadLogo(file, businessId) {
