@@ -132,22 +132,7 @@ export default function OnboardingWalkthrough({ role, onComplete }) {
   const isLast = currentStep === steps.length - 1;
 
   // Position the spotlight and tooltip around the target element
-  const updatePosition = useCallback(() => {
-    if (!step) return;
-    const el = document.querySelector(step.selector);
-    if (!el) {
-      // Element not found — position tooltip in center
-      const tw = Math.min(350, window.innerWidth - 32);
-      setSpotlightRect(null);
-      setTooltipPos({ top: window.innerHeight / 2 - 100, left: window.innerWidth / 2 - tw / 2, width: tw });
-      return;
-    }
-
-    // Scroll the highlighted tab button into view on mobile (instant so position reads are accurate)
-    el.scrollIntoView?.({ inline: 'center', block: 'nearest', behavior: 'instant' });
-
-    // Read position after scroll completes
-    const rect = el.getBoundingClientRect();
+  const positionFromRect = useCallback((rect) => {
     const pad = 6;
     setSpotlightRect({
       top:    rect.top - pad,
@@ -155,23 +140,18 @@ export default function OnboardingWalkthrough({ role, onComplete }) {
       width:  rect.width + pad * 2,
       height: rect.height + pad * 2,
     });
-
-    // Position tooltip below the element, centered horizontally
     const vw = window.innerWidth;
     const tooltipW = Math.min(350, vw - 32);
     let left = rect.left + rect.width / 2 - tooltipW / 2;
     let top = rect.bottom + 16;
-
-    // Keep tooltip on screen
     if (left < 16) left = 16;
     if (left + tooltipW > vw - 16) left = vw - tooltipW - 16;
     if (top + 200 > window.innerHeight) {
       top = rect.top - 200 - 16;
       if (top < 16) top = 16;
     }
-
     setTooltipPos({ top, left, width: tooltipW });
-  }, [step]);
+  }, []);
 
   // Switch tab and update position when step changes
   useEffect(() => {
@@ -183,21 +163,41 @@ export default function OnboardingWalkthrough({ role, onComplete }) {
       window.switchTab(step.tab, tabBtn);
     }
 
-    // Wait a frame for the tab switch to render, then position
-    rafRef.current = requestAnimationFrame(() => {
-      rafRef.current = requestAnimationFrame(updatePosition);
-    });
-    // Second update after 150ms to catch any layout shifts from scroll/tab switch
-    const timer = setTimeout(updatePosition, 150);
+    // Manually scroll the tab bar container to center the target tab (not scrollIntoView which can shift the whole page)
+    function scrollTabIntoView() {
+      const el = document.querySelector(step.selector);
+      if (!el) return;
+      const scrollParent = el.closest('.tab-bar') || el.parentElement;
+      if (scrollParent && scrollParent.scrollWidth > scrollParent.clientWidth) {
+        const elCenter = el.offsetLeft + el.offsetWidth / 2;
+        scrollParent.scrollLeft = elCenter - scrollParent.clientWidth / 2;
+      }
+    }
 
-    // Also update on resize and scroll (tab bar can scroll on mobile)
-    window.addEventListener('resize', updatePosition);
+    // Read position after layout settles — use multiple delayed reads to ensure accuracy
+    function readAndPosition() {
+      const el = document.querySelector(step.selector);
+      if (!el) {
+        const tw = Math.min(350, window.innerWidth - 32);
+        setSpotlightRect(null);
+        setTooltipPos({ top: window.innerHeight / 2 - 100, left: window.innerWidth / 2 - tw / 2, width: tw });
+        return;
+      }
+      positionFromRect(el.getBoundingClientRect());
+    }
+
+    // Sequence: switch tab → scroll tab bar → wait → read position
+    scrollTabIntoView();
+    const t1 = setTimeout(() => { scrollTabIntoView(); readAndPosition(); }, 100);
+    const t2 = setTimeout(readAndPosition, 300);
+
+    window.addEventListener('resize', readAndPosition);
     return () => {
-      window.removeEventListener('resize', updatePosition);
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      clearTimeout(timer);
+      window.removeEventListener('resize', readAndPosition);
+      clearTimeout(t1);
+      clearTimeout(t2);
     };
-  }, [step, updatePosition]);
+  }, [step, positionFromRect]);
 
   function handleNext() {
     if (isLast) {
