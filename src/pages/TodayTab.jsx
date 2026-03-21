@@ -398,6 +398,11 @@ export default function TodayTab() {
                   <button onClick={(e) => handleToggleDone(q.quoteNum || q._idx, q._idx, e)} style={{ background: isDone ? '#f1f5f9' : '#f0d000', color: isDone ? 'var(--muted)' : 'var(--blue-dark)', border: 'none', borderRadius: 20, padding: '8px 16px', fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>
                     {isDone ? '↩ Mark Undone' : '✓ Mark Done'}
                   </button>
+                  <button onClick={(e) => { e.stopPropagation(); if (window.openAssignModal) window.openAssignModal(q._idx); }} style={{ background: q.assignedTo ? '#8b5cf6' : '#94a3b8', color: 'white', border: 'none', borderRadius: 20, padding: '8px 16px', fontFamily: "'Nunito',sans-serif", fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>
+                    {q.assignedTo
+                      ? `👤 ${(window._teamMembers || []).find(m => m.id === q.assignedTo)?.name || 'Assigned'}`
+                      : '👤 Assign'}
+                  </button>
                 </div>
               </div>
             </div>

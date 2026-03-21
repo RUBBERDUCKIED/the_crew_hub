@@ -121,6 +121,18 @@ function JobCard({ q, jobIdx, onQuickNote }) {
         {q.won === true && (
           <button
             className="si-gen"
+            style={{ background: q.assignedTo ? '#8b5cf6' : '#94a3b8', color: 'white' }}
+            onClick={e => { e.stopPropagation(); if (window.openAssignModal) window.openAssignModal(jobIdx); }}
+          >
+            {q.assignedTo
+              ? `👤 ${(window._teamMembers || []).find(m => m.id === q.assignedTo)?.name || 'Assigned'}`
+              : '👤 Assign'}
+          </button>
+        )}
+
+        {q.won === true && (
+          <button
+            className="si-gen"
             style={{ background: 'var(--yellow)', color: 'var(--blue-dark)' }}
             onClick={e => { e.stopPropagation(); if (window.generateInvoiceFromSaved) window.generateInvoiceFromSaved(jobIdx); }}
           >🧾 Invoice</button>

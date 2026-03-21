@@ -1200,6 +1200,19 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       document.getElementById('schedModal-date').value = '';
       document.getElementById('schedModal-time').value = '08:00';
     }
+    // Populate assign dropdown with team members
+    const assignSel = document.getElementById('schedModal-assign');
+    if (assignSel) {
+      assignSel.innerHTML = '<option value="">— Unassigned —</option>';
+      const roleLabel = { owner: 'Owner', admin: 'Admin', dispatcher: 'Dispatcher', crew: 'Crew' };
+      (window._teamMembers || []).forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = `${m.name} (${roleLabel[m.role] || m.role})`;
+        if (q.assignedTo === m.id) opt.selected = true;
+        assignSel.appendChild(opt);
+      });
+    }
     document.getElementById('schedModal').style.display = 'block';
     document.body.style.overflow = 'hidden';
   }
@@ -1281,6 +1294,50 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     document.body.style.overflow = '';
   }
 
+  // ── Assign Job Modal ──
+  function openAssignModal(i) {
+    const q = savedQuotes[i];
+    document.getElementById('assignModal-idx').value = i;
+    document.getElementById('assignModal-title').textContent = q.name + (q.address ? ' — ' + q.address : '');
+    const list = document.getElementById('assignModal-list');
+    const roleLabel = { owner: '👑 Owner', admin: '🛡️ Admin', dispatcher: '📋 Dispatcher', crew: '🔧 Crew' };
+    const roleBg    = { owner: '#fef3c7', admin: '#f3e8ff', dispatcher: '#e0f2fe', crew: '#f0fdf4' };
+    const roleColor = { owner: '#92400e', admin: '#6b21a8', dispatcher: '#0369a1', crew: '#065f46' };
+    list.innerHTML = (window._teamMembers || []).map(m => {
+      const isAssigned = q.assignedTo === m.id;
+      return `<button onclick="doAssignJob('${m.id}')" style="width:100%;padding:12px 16px;background:${isAssigned ? '#f0fdf4' : '#f8fafc'};border:2px solid ${isAssigned ? '#86efac' : '#e2e8f0'};border-radius:12px;text-align:left;cursor:pointer;display:flex;align-items:center;gap:10px;font-family:'Nunito',sans-serif;">
+        <div style="font-weight:800;font-size:14px;color:#1a3a4a;flex:1;">${esc(m.name)}${isAssigned ? ' ✓' : ''}</div>
+        <span style="font-size:11px;font-weight:700;background:${roleBg[m.role] || '#f1f5f9'};color:${roleColor[m.role] || '#475569'};padding:2px 8px;border-radius:8px;">${roleLabel[m.role] || m.role}</span>
+      </button>`;
+    }).join('');
+    // Add unassign option if currently assigned
+    if (q.assignedTo) {
+      list.innerHTML += `<button onclick="doAssignJob('')" style="width:100%;padding:10px 16px;background:#fef2f2;border:2px solid #fca5a5;border-radius:12px;text-align:center;cursor:pointer;font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;color:#dc2626;margin-top:4px;">Remove Assignment</button>`;
+    }
+    document.getElementById('assignModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeAssignModal() {
+    document.getElementById('assignModal').style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  async function doAssignJob(memberId) {
+    const i = parseInt(document.getElementById('assignModal-idx').value);
+    const member = (window._teamMembers || []).find(m => m.id === memberId);
+    // Confirmation for non-crew
+    if (member && member.role !== 'crew') {
+      const rl = { owner: 'Owner', admin: 'Admin', dispatcher: 'Dispatcher' }[member.role] || member.role;
+      if (!confirm(`Are you sure you want to assign this job to ${member.name} (${rl})?`)) return;
+    }
+    savedQuotes[i].assignedTo = memberId || null;
+    if (savedQuotes[i].id) await dbSaveJob(savedQuotes[i]);
+    else localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
+    syncDataToStore({ savedQuotes });
+    closeAssignModal();
+  }
+
   async function confirmSchedule() {
     const i    = parseInt(document.getElementById('schedModal-idx').value);
     const date = document.getElementById('schedModal-date').value;
@@ -1289,6 +1346,16 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     if (!gAccessToken) {
       if (confirm('Google Calendar access is needed.\n\nClick OK to connect.')) signIn();
       return;
+    }
+
+    // Check assignment
+    const assignVal = document.getElementById('schedModal-assign')?.value || '';
+    if (assignVal) {
+      const assignedMember = (window._teamMembers || []).find(m => m.id === assignVal);
+      if (assignedMember && assignedMember.role !== 'crew') {
+        const rl = { owner: 'Owner', admin: 'Admin', dispatcher: 'Dispatcher' }[assignedMember.role] || assignedMember.role;
+        if (!confirm(`Are you sure you want to assign this job to ${assignedMember.name} (${rl})?`)) return;
+      }
     }
 
     const btn = document.getElementById('schedModal-confirm');
@@ -1310,11 +1377,12 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       });
       if (!result.id) throw new Error(result.error?.message || 'Calendar API error');
 
-      // ── Persist schedule ──
+      // ── Persist schedule + assignment ──
       savedQuotes[i].scheduled       = true;
       savedQuotes[i].scheduledISO    = startISO;
       savedQuotes[i].scheduledEndISO = endISO;
       savedQuotes[i].scheduledMins   = durationMins;
+      savedQuotes[i].assignedTo      = assignVal || null;
       if (savedQuotes[i].id) await dbSaveJob(savedQuotes[i]);
       else localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
 
@@ -2235,6 +2303,12 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         if (removeBtn) removeBtn.style.display = 'none';
       }
     }
+
+    // Cache active team members for assignment dropdowns
+    try {
+      const allMembers = await _dbLoadTeamMembers(currentBusinessId);
+      window._teamMembers = (allMembers || []).filter(m => m.active);
+    } catch(e) { window._teamMembers = []; }
 
     activePlugin = resolveQuotePlugin(serviceType);
 
@@ -3327,6 +3401,9 @@ ${bizEmail}`
     // ── Schedule Modal (modal onclick handlers) ──
     openScheduleModal, renderSchedDayPreview, updateDurationLabel,
     closeScheduleModal, confirmSchedule,
+
+    // ── Assign Job Modal ──
+    openAssignModal, closeAssignModal, doAssignJob,
 
     // ── Pipeline Actions (called by React PipelineTab via window.*) ──
     deleteQuote, toggleWon, preFillFromQuote,

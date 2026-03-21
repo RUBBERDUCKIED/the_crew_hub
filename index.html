@@ -308,12 +308,31 @@
           <span>15 min</span><span>1 hr</span><span>2 hr</span><span>3 hr</span><span>4 hr</span><span>5 hr</span>
         </div>
       </div>
+      <div>
+        <label style="font-size:12px;font-weight:700;color:#6b9aaa;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;">Assign To</label>
+        <select id="schedModal-assign" style="width:100%;padding:10px 14px;border:2px solid #e2e8f0;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;outline:none;background:white;">
+          <option value="">— Unassigned —</option>
+        </select>
+      </div>
       <input type="hidden" id="schedModal-idx">
       <div style="display:flex; gap:10px; margin-top:4px;">
         <button id="schedModal-confirm" onclick="confirmSchedule()" style="flex:1;background:#1a6ea8;color:white;border:none;border-radius:30px;padding:12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;cursor:pointer;">Add to Calendar</button>
         <button onclick="closeScheduleModal()" style="flex:1;background:#f1f5f9;color:#1a3a4a;border:none;border-radius:30px;padding:12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;cursor:pointer;">Cancel</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ═══ ASSIGN JOB MODAL ═══ -->
+<div id="assignModal" style="display:none; position:fixed; inset:0; background:rgba(10,30,45,0.75); z-index:1100; overflow-y:auto; padding:30px 16px;">
+  <div style="max-width:380px; margin:0 auto; background:white; border-radius:16px; overflow:hidden; box-shadow:0 12px 48px rgba(26,110,168,0.25);">
+    <div style="background:#1a3a4a; padding:16px 24px; display:flex; justify-content:space-between; align-items:center;">
+      <div style="color:white; font-weight:800; font-size:15px;">👤 Assign Job</div>
+      <button onclick="closeAssignModal()" style="background:none;border:none;color:white;font-size:24px;cursor:pointer;line-height:1;">×</button>
+    </div>
+    <div id="assignModal-title" style="padding:12px 24px 0; font-weight:700; font-size:13px; color:#1a3a4a; background:#f0f7fa; margin:0;padding:12px 24px;"></div>
+    <div id="assignModal-list" style="padding:12px 24px 24px; display:flex; flex-direction:column; gap:8px;"></div>
+    <input type="hidden" id="assignModal-idx">
   </div>
 </div>
 
