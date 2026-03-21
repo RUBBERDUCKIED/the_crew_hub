@@ -149,6 +149,9 @@ export default function TodayTab() {
     }).addTo(map);
     mapRef.current = map;
 
+    // Force Leaflet to recalculate container size after render
+    setTimeout(() => { if (mapRef.current) mapRef.current.invalidateSize(); }, 200);
+
     if (!todayJobs.length) return;
 
     // Geocode and add markers (async)
@@ -168,7 +171,11 @@ export default function TodayTab() {
         marker.on('click', () => handleFocusJob(i));
         markersRef.current.push(marker);
       }
-      if (bounds.length && mapRef.current) map.fitBounds(bounds, { padding: [40, 40] });
+      if (bounds.length && mapRef.current) {
+        map.fitBounds(bounds, { padding: [40, 40] });
+        // Ensure tiles render correctly after bounds change
+        setTimeout(() => { if (mapRef.current) mapRef.current.invalidateSize(); }, 300);
+      }
     })();
 
     return () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } };
