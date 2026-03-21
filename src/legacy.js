@@ -3165,11 +3165,17 @@ ${bizEmail}`
 
     // 2. Restore existing Supabase session
     const { data: { session } } = await _sb.auth.getSession();
-    if (session) {
+    if (_authInviteInfo) {
+      // Invite link clicked — always show the invite signup form so they create/confirm their account.
+      // If they were already signed in on this browser, sign them out first to force a fresh login.
+      if (session) await _sb.auth.signOut();
+      sbUser = null;
+      showAuthModal(); // shows 'invite' step with name/email/password fields
+    } else if (session) {
       sbUser = session.user;
       await afterSignIn();
     } else {
-      showAuthModal(); // will show 'invite' step if _authInviteInfo is set
+      showAuthModal();
     }
   })();
 
