@@ -44,9 +44,10 @@ export async function dbDeleteNote(noteId) {
 }
 
 // Returns raw rows so the dbLoadAll wrapper can group them by customer_id
-export async function dbLoadAllNotes() {
-  const { data, error } = await _sb
-    .from('notes').select('*').order('created_at', { ascending: false });
+export async function dbLoadAllNotes(businessId) {
+  let query = _sb.from('notes').select('*');
+  if (businessId) query = query.eq('business_id', businessId);
+  const { data, error } = await query.order('created_at', { ascending: false });
   if (error) { console.error('[CrewHub] dbLoadAllNotes error:', error); return []; }
   return data || [];
 }

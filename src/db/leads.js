@@ -70,9 +70,10 @@ export async function dbSaveLeadsBatch(leadsArray, businessId) {
   return (data || []).map(rowToLead);
 }
 
-export async function dbLoadAllLeads() {
-  const { data, error } = await _sb
-    .from('leads').select('*').order('created_at', { ascending: false });
+export async function dbLoadAllLeads(businessId) {
+  let query = _sb.from('leads').select('*');
+  if (businessId) query = query.eq('business_id', businessId);
+  const { data, error } = await query.order('created_at', { ascending: false });
   if (error) { console.error('[CrewHub] dbLoadAllLeads error:', error); return []; }
   return (data || []).map(rowToLead);
 }

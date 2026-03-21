@@ -101,9 +101,10 @@ export async function dbDeleteJob(jobId) {
   if (error) { console.error('[CrewHub] dbDeleteJob error:', error); throw error; }
 }
 
-export async function dbLoadAllJobs() {
-  const { data, error } = await _sb
-    .from('jobs').select('*').order('created_at', { ascending: false });
+export async function dbLoadAllJobs(businessId) {
+  let query = _sb.from('jobs').select('*');
+  if (businessId) query = query.eq('business_id', businessId);
+  const { data, error } = await query.order('created_at', { ascending: false });
   if (error) { console.error('[CrewHub] dbLoadAllJobs error:', error); return []; }
   return (data || []).map(rowToJob);
 }

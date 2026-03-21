@@ -56,8 +56,10 @@ export async function dbDeleteCustomer(customerId) {
   if (error) { console.error('[CrewHub] dbDeleteCustomer error:', error); throw error; }
 }
 
-export async function dbLoadAllCustomers() {
-  const { data, error } = await _sb.from('customers').select('*');
+export async function dbLoadAllCustomers(businessId) {
+  let query = _sb.from('customers').select('*');
+  if (businessId) query = query.eq('business_id', businessId);
+  const { data, error } = await query;
   if (error) { console.error('[CrewHub] dbLoadAllCustomers error:', error); return []; }
   return (data || []).map(rowToCustomer);
 }

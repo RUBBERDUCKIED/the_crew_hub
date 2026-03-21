@@ -2531,11 +2531,12 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
   async function dbLoadAll() {
     if (!currentBusinessId) return;
+    const bid = currentBusinessId;
     // 1. Jobs
-    savedQuotes = await dbLoadAllJobs();
+    savedQuotes = await dbLoadAllJobs(bid);
     localStorage.setItem('twc_quotes', JSON.stringify(savedQuotes));
     // 2. Customers
-    const custList = await dbLoadAllCustomers();
+    const custList = await dbLoadAllCustomers(bid);
     customers = {};
     custList.forEach(c => { customers[c.customerId] = c; });
     localStorage.setItem('twc_customers', JSON.stringify(customers));
@@ -2545,7 +2546,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       if (c.photos && c.photos.length > 0) customerPhotos[c.customerId] = c.photos;
     });
     // 3. Notes (raw rows so we can group by customer_id)
-    const noteRows = await dbLoadAllNotes();
+    const noteRows = await dbLoadAllNotes(bid);
     crmNotes = {};
     noteRows.forEach(row => {
       const note = rowToNote(row);
@@ -2554,10 +2555,10 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     });
     localStorage.setItem('twc_crm_notes', JSON.stringify(crmNotes));
     // 4. Leads
-    leads = await dbLoadAllLeads();
+    leads = await dbLoadAllLeads(bid);
     localStorage.setItem('twc_leads', JSON.stringify(leads));
     // 5. Neighborhoods
-    neighborhoods = await dbLoadAllNeighborhoods();
+    neighborhoods = await dbLoadAllNeighborhoods(bid);
     localStorage.setItem('twc_neighborhoods', JSON.stringify(neighborhoods));
     syncDataToStore({ savedQuotes, customers, crmNotes, leads, neighborhoods });
   }

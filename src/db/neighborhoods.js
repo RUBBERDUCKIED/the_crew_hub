@@ -14,8 +14,10 @@ export async function dbSaveNeighborhoodsBatch(nbhdArray, businessId) {
   return (data || []).map(r => ({ id: r.id, name: r.name, city: r.city, score: r.score, data: r.data }));
 }
 
-export async function dbLoadAllNeighborhoods() {
-  const { data, error } = await _sb.from('neighborhoods').select('*');
+export async function dbLoadAllNeighborhoods(businessId) {
+  let query = _sb.from('neighborhoods').select('*');
+  if (businessId) query = query.eq('business_id', businessId);
+  const { data, error } = await query;
   if (error) { console.error('[CrewHub] dbLoadAllNeighborhoods error:', error); return []; }
   return (data || []).map(r => ({ id: r.id, name: r.name, city: r.city, score: r.score, data: r.data }));
 }

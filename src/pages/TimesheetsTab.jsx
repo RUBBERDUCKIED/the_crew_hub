@@ -159,8 +159,8 @@ export default function TimesheetsTab() {
     const { start, end } = getDateRange();
     const [m, e, ac] = await Promise.all([
       dbLoadTeamMembers(currentBusinessId),
-      dbGetAllTimeEntries(start, end),
-      dbGetAllActiveClockIns(),
+      dbGetAllTimeEntries(start, end, currentBusinessId),
+      dbGetAllActiveClockIns(currentBusinessId),
     ]);
     setMembers(m);
     setEntries(e);

@@ -66,14 +66,15 @@ export async function dbUpdateBreakMins(entryId, breakMins, memberId) {
   return data;
 }
 
-export async function dbGetAllTimeEntries(startDate, endDate) {
-  const { data, error } = await _sb
+export async function dbGetAllTimeEntries(startDate, endDate, businessId) {
+  let query = _sb
     .from('time_entries')
     .select('*')
     .gte('clock_in', startDate + 'T00:00:00')
     .lte('clock_in', endDate + 'T23:59:59')
-    .eq('entry_type', 'shift')
-    .order('clock_in', { ascending: true });
+    .eq('entry_type', 'shift');
+  if (businessId) query = query.eq('business_id', businessId);
+  const { data, error } = await query.order('clock_in', { ascending: true });
   if (error) { console.error('[CrewHub] dbGetAllTimeEntries error:', error); return []; }
   return data || [];
 }
@@ -106,12 +107,14 @@ export async function dbAddManualTimeEntry(memberId, businessId, clockIn, clockO
   return data;
 }
 
-export async function dbGetAllActiveClockIns() {
-  const { data, error } = await _sb
+export async function dbGetAllActiveClockIns(businessId) {
+  let query = _sb
     .from('time_entries')
     .select('*')
     .is('clock_out', null)
     .eq('entry_type', 'shift');
+  if (businessId) query = query.eq('business_id', businessId);
+  const { data, error } = await query;
   if (error) { console.error('[CrewHub] dbGetAllActiveClockIns error:', error); return []; }
   return data || [];
 }
