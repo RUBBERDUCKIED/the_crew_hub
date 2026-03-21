@@ -2276,17 +2276,17 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const selectedMembership = _authMemberships.find(m => m.id === memberId);
     const lsOnboarded2 = localStorage.getItem('twc_onboarding_done_' + memberId) === 'true';
     if (selectedMembership && !selectedMembership.onboarding_completed && !lsOnboarded2) {
+      const onboardDetail = {
+        role,
+        isNewBusiness:        wasJustCreated,
+        hasOtherMemberships:  _authMemberships.length > 1,
+        memberId,
+        businessId,
+      };
+      window._pendingOnboarding = onboardDetail;
       setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('crewhub:start-onboarding', {
-          detail: {
-            role,
-            isNewBusiness:        wasJustCreated,
-            hasOtherMemberships:  _authMemberships.length > 1,
-            memberId,
-            businessId,
-          }
-        }));
-      }, 500);
+        window.dispatchEvent(new CustomEvent('crewhub:start-onboarding', { detail: onboardDetail }));
+      }, 600);
     }
   }
 
@@ -2372,17 +2372,18 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     // Trigger onboarding if not completed yet (check both DB flag and localStorage fallback)
     const lsOnboarded = localStorage.getItem('twc_onboarding_done_' + m.id) === 'true';
     if (!m.onboarding_completed && !lsOnboarded) {
+      // Store detail on window so React can pick it up even if event fires before mount
+      const onboardDetail = {
+        role:                 m.role,
+        isNewBusiness:        wasJustCreated,
+        hasOtherMemberships:  (memberships || []).length > 1,
+        memberId:             m.id,
+        businessId:           m.business_id,
+      };
+      window._pendingOnboarding = onboardDetail;
       setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('crewhub:start-onboarding', {
-          detail: {
-            role:                 m.role,
-            isNewBusiness:        wasJustCreated,
-            hasOtherMemberships:  (memberships || []).length > 1,
-            memberId:             m.id,
-            businessId:           m.business_id,
-          }
-        }));
-      }, 500); // Small delay so the UI finishes rendering
+        window.dispatchEvent(new CustomEvent('crewhub:start-onboarding', { detail: onboardDetail }));
+      }, 600);
     }
   }
 

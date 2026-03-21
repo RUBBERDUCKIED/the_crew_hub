@@ -54,7 +54,7 @@ export default function OnboardingOrchestrator() {
   // Listen for the start event from legacy.js
   useEffect(() => {
     function handleStart(e) {
-      const detail = e.detail;
+      const detail = e.detail || (e._detail);
       if (!detail) return;
       const type = detectOnboardingType(detail);
       const sequence = PHASE_SEQUENCE[type];
@@ -66,8 +66,16 @@ export default function OnboardingOrchestrator() {
       setPhaseIndex(0);
       indexRef.current = 0;
       setPhase(sequence[0]);
+      // Clear the pending flag
+      window._pendingOnboarding = null;
     }
     window.addEventListener('crewhub:start-onboarding', handleStart);
+
+    // Check if an onboarding event was dispatched before we mounted (mobile timing)
+    if (window._pendingOnboarding) {
+      handleStart({ detail: window._pendingOnboarding });
+    }
+
     return () => window.removeEventListener('crewhub:start-onboarding', handleStart);
   }, []);
 
