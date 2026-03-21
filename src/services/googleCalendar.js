@@ -1,8 +1,8 @@
 // Google Calendar API — creates events on the user's primary calendar
 
-export async function createCalendarEvent(accessToken, { jobName, address, contact, quoteNum, grandTotal, startISO, endISO, timeZone }) {
+export async function createCalendarEvent(accessToken, { jobName, address, contact, quoteNum, grandTotal, startISO, endISO, timeZone, serviceLabel }) {
   const event = {
-    summary:     `Window Cleaning — ${jobName}`,
+    summary:     `${serviceLabel || 'Job'} — ${jobName}`,
     location:    address || '',
     description: `Customer: ${jobName}\nAddress: ${address || 'N/A'}\nContact: ${contact || 'N/A'}\nQuote #: ${quoteNum || 'N/A'}\nTotal: $${grandTotal ? grandTotal.toFixed(2) : 'N/A'}`,
     start:       { dateTime: startISO, timeZone },

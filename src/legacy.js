@@ -1305,7 +1305,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       const result = await createCalendarEvent(gAccessToken, {
         jobName: q.name, address: q.address, contact: q.contact,
         quoteNum: q.quoteNum, grandTotal: q.grand,
-        startISO, endISO, timeZone: 'America/Vancouver'
+        startISO, endISO, timeZone: CONFIG.DEFAULT_TIMEZONE,
+        serviceLabel: activePlugin?.label || 'Job'
       });
       if (!result.id) throw new Error(result.error?.message || 'Calendar API error');
 
