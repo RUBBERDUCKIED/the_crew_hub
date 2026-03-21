@@ -2056,7 +2056,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       // Ensure business name is saved (RPC may not set it reliably)
       if (result?.businessId || result?.business_id) {
         const newBizId = result.businessId || result.business_id;
-        await _sb.from('businesses').update({ name: bizName }).eq('id', newBizId).catch(() => {});
+        try { await _sb.from('businesses').update({ name: bizName }).eq('id', newBizId); } catch(_e) {}
       }
       hideAuthModal();
       hideNoBizModal();
