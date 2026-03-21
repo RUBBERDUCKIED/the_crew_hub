@@ -27,6 +27,9 @@ const useAppStore = create((set, get) => ({
   businessPlan:       'alpha',   // 'alpha' | 'free' | 'starter' | 'pro' | 'enterprise'
   subscriptionStatus: 'active',  // 'active' | 'past_due' | 'canceled' | 'trialing'
 
+  // ── Onboarding ──
+  onboardingCompleted: false,
+
   // ── UI State ──
   activeTab:  'today',
   isSyncing:  false,
@@ -61,6 +64,8 @@ const useAppStore = create((set, get) => ({
     businessPlan:       plan   || 'alpha',
     subscriptionStatus: status || 'active',
   }),
+
+  setOnboardingCompleted: (val) => set({ onboardingCompleted: val }),
 
   // ── Granular updaters (for Phase 6+ React components) ──
 

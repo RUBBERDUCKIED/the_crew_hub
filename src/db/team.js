@@ -89,3 +89,12 @@ export async function dbUploadLogo(file, businessId) {
 export async function dbRemoveLogo(businessId) {
   await _sb.from('businesses').update({ logo_url: null }).eq('id', businessId);
 }
+
+export async function dbMarkOnboardingComplete(memberId) {
+  if (!memberId) return;
+  const { error } = await _sb
+    .from('team_members')
+    .update({ onboarding_completed: true })
+    .eq('id', memberId);
+  if (error) console.error('[CrewHub] dbMarkOnboardingComplete error:', error);
+}

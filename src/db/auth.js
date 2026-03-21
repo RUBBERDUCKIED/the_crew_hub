@@ -37,8 +37,8 @@ export function canAccess(feature, userRole) {
   const permissions = {
     owner:      ['quotes', 'pipeline', 'today', 'crm', 'reports', 'leads', 'team', 'timesheets', 'settings'],
     admin:      ['quotes', 'pipeline', 'today', 'crm', 'reports', 'leads', 'team', 'timesheets', 'settings'],
-    dispatcher: ['quotes', 'pipeline', 'today', 'crm', 'leads', 'timesheets'],
-    crew:       ['today', 'my-timesheet', 'team'],
+    dispatcher: ['quotes', 'pipeline', 'today', 'crm', 'reports', 'leads', 'timesheets'],
+    crew:       ['today', 'my-timesheet'],
   };
   return (permissions[userRole] || []).includes(feature);
 }

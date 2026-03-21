@@ -126,6 +126,7 @@ function initLegacyApp() {
   let _authInviteId    = null;   // UUID from ?invite= URL param
   let _authInviteInfo  = null;   // { business_name, role, email } from get_invite_info RPC
   let _authMemberships = [];     // All active team_members rows (multi-business picker)
+  let _justCreatedBusiness = false; // Flag for onboarding type detection
 
   // ── Core Data (populated from Supabase on sign-in; localStorage is read cache) ──
   let savedQuotes        = safeGet('twc_quotes', []);
@@ -1880,7 +1881,10 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         <label style="${LB}">Password</label>
         <input type="password" id="authPassword" placeholder="6+ characters" style="${I}margin-bottom:18px;">
         <button id="authCreateBizBtn" onclick="handleNewBusinessSignup()" style="${BP}">🚀 Create My Business</button>
-        <p style="font-size:11px;color:#aac4cc;margin-top:6px;font-weight:600;">Already have an account? <button onclick="showAuthStep('main')" style="${BG}">Sign In</button></p>
+        <div style="background:#f0f9ff;border:1.5px solid #7dd3fc;border-radius:10px;padding:10px 14px;margin-top:12px;text-align:center;">
+          <p style="font-size:12px;color:#0369a1;font-weight:700;margin:0;">Already a team member or owner on The Crew Hub?</p>
+          <button onclick="showAuthStep('main')" style="${BG}margin-top:4px;color:#2a9db5;font-weight:800;">Sign In with existing credentials →</button>
+        </div>
       </div>`;
 
     } else if (step === 'join-team') {
@@ -2032,8 +2036,15 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const btn = document.getElementById('authFinishTradeBtn');
     if (btn) { btn.textContent = '⏳ Creating...'; btn.disabled = true; }
     try {
-      await dbBootstrapBusiness(bizName, ownerName, email, _pendingServiceType);
+      const result = await dbBootstrapBusiness(bizName, ownerName, email, _pendingServiceType);
+      // Ensure business name is saved reliably
+      const newBizId = result?.businessId || result?.business_id || result?.id
+                    || (typeof result === 'string' ? result : null);
+      if (newBizId) {
+        await _sb.from('businesses').update({ name: bizName }).eq('id', newBizId);
+      }
       _pendingAuthData = null;
+      _justCreatedBusiness = true;
       hideAuthModal();
       hideNoBizModal();
       await afterSignIn();
@@ -2073,6 +2084,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
           await _sb.from('businesses').update({ name: bizName }).eq('id', unnamed[0].id);
         }
       }
+      _justCreatedBusiness = true;
       hideAuthModal();
       hideNoBizModal();
       await afterSignIn();
@@ -2215,6 +2227,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
   }
 
   async function selectBusiness(memberId, businessId, role) {
+    const wasJustCreated = _justCreatedBusiness;
+    _justCreatedBusiness = false;
     currentMemberId   = memberId;
     currentBusinessId = businessId;
     currentUserRole   = role;
@@ -2233,6 +2247,22 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     await initPluginAndUI();
     const now = new Date().toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' });
     setSyncUI('idle', `Synced ${now} · ${savedQuotes.length} jobs`);
+
+    // Check onboarding for the selected membership
+    const selectedMembership = _authMemberships.find(m => m.id === memberId);
+    if (selectedMembership && !selectedMembership.onboarding_completed) {
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('crewhub:start-onboarding', {
+          detail: {
+            role,
+            isNewBusiness:        wasJustCreated,
+            hasOtherMemberships:  _authMemberships.length > 1,
+            memberId,
+            businessId,
+          }
+        }));
+      }, 500);
+    }
   }
 
   async function sbSignOut() {
@@ -2245,20 +2275,23 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
   async function afterSignIn() {
     setSyncUI('syncing', 'Loading your data...');
+    const wasJustCreated = _justCreatedBusiness;
+    _justCreatedBusiness = false;
 
     // Step 1: Query all active memberships for this user (across all businesses)
     const { data: memberships } = await _sb
       .from('team_members')
-      .select('id, business_id, role, name, active, businesses(name)')
+      .select('id, business_id, role, name, active, onboarding_completed, businesses(name)')
       .eq('auth_user_id', sbUser.id)
       .eq('active', true);
 
     let activeMemberships = (memberships || []).map(m => ({
-      id:            m.id,
-      business_id:   m.business_id,
-      role:          m.role,
-      name:          m.name,
-      business_name: m.businesses?.name || 'Unnamed Business',
+      id:                    m.id,
+      business_id:           m.business_id,
+      role:                  m.role,
+      name:                  m.name,
+      business_name:         m.businesses?.name || 'Unnamed Business',
+      onboarding_completed:  m.onboarding_completed ?? false,
     }));
 
     // Step 2: If no memberships, try claiming a pending invite by email
@@ -2310,6 +2343,21 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     await initPluginAndUI();
     const now = new Date().toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' });
     setSyncUI('idle', `Synced ${now} · ${savedQuotes.length} jobs`);
+
+    // Trigger onboarding if not completed yet
+    if (!m.onboarding_completed) {
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('crewhub:start-onboarding', {
+          detail: {
+            role:                 m.role,
+            isNewBusiness:        wasJustCreated,
+            hasOtherMemberships:  (memberships || []).length > 1,
+            memberId:             m.id,
+            businessId:           m.business_id,
+          }
+        }));
+      }, 500); // Small delay so the UI finishes rendering
+    }
   }
 
   async function loadFromSupabase() {

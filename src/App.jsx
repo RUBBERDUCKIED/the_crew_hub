@@ -10,6 +10,7 @@ import CrmTab from './pages/CrmTab.jsx';
 import PipelineTab from './pages/PipelineTab.jsx';
 import ReportsTab from './pages/ReportsTab.jsx';
 import LeadsTab from './pages/LeadsTab.jsx';
+import OnboardingOrchestrator from './components/OnboardingOrchestrator.jsx';
 
 // ─────────────────────────────────────────────────────────────
 // App Shell — React root component.
@@ -38,6 +39,7 @@ export default function App() {
   return (
     <>
       <AlphaBanner />
+      {isSignedIn && <OnboardingOrchestrator />}
       {isSignedIn && roots.today      && createPortal(<ErrorBoundary name="Today">      <TodayTab />      </ErrorBoundary>, roots.today)}
       {isSignedIn && roots.team       && createPortal(<ErrorBoundary name="Team">       <TeamTab />       </ErrorBoundary>, roots.team)}
       {isSignedIn && roots.timesheets && createPortal(<ErrorBoundary name="Timesheets"> <TimesheetsTab /> </ErrorBoundary>, roots.timesheets)}
