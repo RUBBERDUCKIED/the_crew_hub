@@ -2053,10 +2053,25 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     try {
       if (!sbUser) throw new Error('Not signed in. Please sign out and sign back in.');
       const result = await dbBootstrapBusiness(bizName, ownerName, sbUser.email, _pendingNewBizServiceType);
-      // Ensure business name is saved (RPC may not set it reliably)
-      if (result?.businessId || result?.business_id) {
-        const newBizId = result.businessId || result.business_id;
-        try { await _sb.from('businesses').update({ name: bizName }).eq('id', newBizId); } catch(_e) {}
+      console.log('[CrewHub] bootstrap result:', JSON.stringify(result));
+      // Ensure business name is saved — try every possible key format from the RPC result
+      const newBizId = result?.businessId || result?.business_id || result?.id
+                    || (typeof result === 'string' ? result : null);
+      if (newBizId) {
+        const { error: nameErr } = await _sb.from('businesses').update({ name: bizName }).eq('id', newBizId);
+        if (nameErr) console.warn('[CrewHub] Failed to set biz name via result ID:', nameErr);
+      }
+      // Fallback: find the most recently created unnamed business and set its name
+      if (!newBizId) {
+        const { data: unnamed } = await _sb
+          .from('businesses')
+          .select('id')
+          .or('name.is.null,name.eq.')
+          .order('created_at', { ascending: false })
+          .limit(1);
+        if (unnamed?.[0]) {
+          await _sb.from('businesses').update({ name: bizName }).eq('id', unnamed[0].id);
+        }
       }
       hideAuthModal();
       hideNoBizModal();
