@@ -137,8 +137,9 @@ export default function OnboardingWalkthrough({ role, onComplete }) {
     const el = document.querySelector(step.selector);
     if (!el) {
       // Element not found — position tooltip in center
+      const tw = Math.min(350, window.innerWidth - 32);
       setSpotlightRect(null);
-      setTooltipPos({ top: window.innerHeight / 2 - 100, left: window.innerWidth / 2 - 175 });
+      setTooltipPos({ top: window.innerHeight / 2 - 100, left: window.innerWidth / 2 - tw / 2, width: tw });
       return;
     }
 
@@ -151,21 +152,26 @@ export default function OnboardingWalkthrough({ role, onComplete }) {
       height: rect.height + pad * 2,
     });
 
+    // Scroll the highlighted tab button into view on mobile
+    el.scrollIntoView?.({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+
     // Position tooltip below the element, centered horizontally
-    const tooltipW = 350;
-    let left = rect.left + rect.width / 2 - tooltipW / 2;
-    let top = rect.bottom + 16;
+    const vw = window.innerWidth;
+    const tooltipW = Math.min(350, vw - 32); // shrink on small screens
+    const freshRect = el.getBoundingClientRect(); // re-read after scroll
+    let left = freshRect.left + freshRect.width / 2 - tooltipW / 2;
+    let top = freshRect.bottom + 16;
 
     // Keep tooltip on screen
     if (left < 16) left = 16;
-    if (left + tooltipW > window.innerWidth - 16) left = window.innerWidth - tooltipW - 16;
+    if (left + tooltipW > vw - 16) left = vw - tooltipW - 16;
     // If tooltip would go below viewport, show above
     if (top + 200 > window.innerHeight) {
-      top = rect.top - 200 - 16;
+      top = freshRect.top - 200 - 16;
       if (top < 16) top = 16;
     }
 
-    setTooltipPos({ top, left });
+    setTooltipPos({ top, left, width: tooltipW });
   }, [step]);
 
   // Switch tab and update position when step changes
@@ -247,7 +253,7 @@ export default function OnboardingWalkthrough({ role, onComplete }) {
         position: 'fixed',
         top:  tooltipPos.top,
         left: tooltipPos.left,
-        width: 350,
+        width: tooltipPos.width || Math.min(350, window.innerWidth - 32),
         zIndex: 99999,
         transition: 'top 0.35s ease, left 0.35s ease',
       }}>
