@@ -472,7 +472,7 @@ export default function TimesheetsTab() {
 
                 {/* ── Expanded entry list ── */}
                 {isExpanded && (
-                  <div className="customer-body" style={{ borderTop: '2px solid var(--gray)' }}>
+                  <div className="customer-body" style={{ display: 'block', borderTop: '2px solid var(--gray)' }}>
                     <div style={{ padding: '16px 20px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                         <div className="notes-label" style={{ margin: 0 }}>
