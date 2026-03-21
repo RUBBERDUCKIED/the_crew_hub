@@ -143,6 +143,10 @@ export default function OnboardingWalkthrough({ role, onComplete }) {
       return;
     }
 
+    // Scroll the highlighted tab button into view on mobile (instant so position reads are accurate)
+    el.scrollIntoView?.({ inline: 'center', block: 'nearest', behavior: 'instant' });
+
+    // Read position after scroll completes
     const rect = el.getBoundingClientRect();
     const pad = 6;
     setSpotlightRect({
@@ -152,22 +156,17 @@ export default function OnboardingWalkthrough({ role, onComplete }) {
       height: rect.height + pad * 2,
     });
 
-    // Scroll the highlighted tab button into view on mobile
-    el.scrollIntoView?.({ inline: 'center', block: 'nearest', behavior: 'smooth' });
-
     // Position tooltip below the element, centered horizontally
     const vw = window.innerWidth;
-    const tooltipW = Math.min(350, vw - 32); // shrink on small screens
-    const freshRect = el.getBoundingClientRect(); // re-read after scroll
-    let left = freshRect.left + freshRect.width / 2 - tooltipW / 2;
-    let top = freshRect.bottom + 16;
+    const tooltipW = Math.min(350, vw - 32);
+    let left = rect.left + rect.width / 2 - tooltipW / 2;
+    let top = rect.bottom + 16;
 
     // Keep tooltip on screen
     if (left < 16) left = 16;
     if (left + tooltipW > vw - 16) left = vw - tooltipW - 16;
-    // If tooltip would go below viewport, show above
     if (top + 200 > window.innerHeight) {
-      top = freshRect.top - 200 - 16;
+      top = rect.top - 200 - 16;
       if (top < 16) top = 16;
     }
 
@@ -188,12 +187,15 @@ export default function OnboardingWalkthrough({ role, onComplete }) {
     rafRef.current = requestAnimationFrame(() => {
       rafRef.current = requestAnimationFrame(updatePosition);
     });
+    // Second update after 150ms to catch any layout shifts from scroll/tab switch
+    const timer = setTimeout(updatePosition, 150);
 
-    // Also update on resize
+    // Also update on resize and scroll (tab bar can scroll on mobile)
     window.addEventListener('resize', updatePosition);
     return () => {
       window.removeEventListener('resize', updatePosition);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      clearTimeout(timer);
     };
   }, [step, updatePosition]);
 
