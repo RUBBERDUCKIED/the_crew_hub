@@ -113,7 +113,7 @@ function initLegacyApp() {
 
   // ── EmailJS init (moved here from inline <script> in index.html) ──
   if (typeof emailjs !== 'undefined') emailjs.init(CONFIG.EMAILJS_USER_ID);
-  const GOOG_SCOPES       = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/calendar.events';
+  const GOOG_SCOPES       = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/calendar';
   const PHOTO_FOLDER_NAME = 'CrewHub Photos';
   // ── Auth & Identity ──
   let sbUser            = null;
@@ -1345,10 +1345,13 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const time = document.getElementById('schedModal-time').value || '08:00';
     if (!date) { alert('Please pick a date.'); return; }
 
-    // Google Calendar requires OAuth
-    if (mode === 'google' && !gAccessToken) {
-      if (confirm('Google Calendar access is needed.\n\nClick OK to connect.')) signIn();
-      return;
+    // 'auto' mode: check if calendar is connected and token is valid
+    if (mode === 'auto' && window._businessCalendarId) {
+      if (!gAccessToken || Date.now() > (gTokenExpiry || 0)) {
+        // Token expired or missing — prompt re-auth
+        if (confirm('Your Google Calendar session expired. Click OK to reconnect.')) signIn();
+        return;
+      }
     }
 
     // Check assignment
@@ -1361,7 +1364,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       }
     }
 
-    const btn = mode === 'google' ? document.getElementById('schedModal-confirm') : document.getElementById('schedModal-ics');
+    const btn = document.getElementById('schedModal-confirm');
     const origText = btn.textContent;
     btn.textContent = 'Saving...'; btn.disabled = true;
 
@@ -1380,12 +1383,18 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     };
 
     try {
-      if (mode === 'google') {
-        const result = await createCalendarEvent(gAccessToken, calendarData);
-        if (!result.id) throw new Error(result.error?.message || 'Calendar API error');
-      } else {
+      let calendarSynced = false;
+
+      if (mode === 'ics') {
+        // Download .ics file
         downloadIcsFile(calendarData);
+      } else if (mode === 'auto' && window._businessCalendarId && gAccessToken) {
+        // Auto-sync to connected business calendar
+        const result = await createCalendarEvent(gAccessToken, calendarData, window._businessCalendarId);
+        if (!result.id) throw new Error(result.error?.message || 'Calendar API error');
+        calendarSynced = true;
       }
+      // If mode === 'auto' but no calendar connected, just save the schedule (no calendar event)
 
       // ── Persist schedule + assignment ──
       savedQuotes[i].scheduled       = true;
@@ -1399,19 +1408,17 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       // ── Update UI ──
       closeScheduleModal();
       syncDataToStore({ savedQuotes });
-      if (mode === 'google') {
-        alert('📅 Job scheduled! Event added to your Google Calendar.');
+      if (mode === 'ics') {
+        alert('📅 Job scheduled! Open the downloaded .ics file to add it to your calendar.');
+      } else if (calendarSynced) {
+        alert('📅 Job scheduled and added to your Google Calendar!');
       } else {
-        alert('📅 Job scheduled! The .ics file has been downloaded — open it to add to your calendar app.');
+        alert('📅 Job scheduled! Connect Google Calendar in Team settings to auto-sync events.');
       }
       if (q.customerId) stampLastContact(q.customerId);
     } catch(e) {
       console.error(e);
-      if (mode === 'google') {
-        alert('Could not connect to Google Calendar. ' + (e.message || ''));
-      } else {
-        alert('Failed to generate calendar file. ' + (e.message || ''));
-      }
+      alert('Failed to schedule: ' + (e.message || ''));
     }
     btn.textContent = origText; btn.disabled = false;
   }
@@ -2291,6 +2298,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
         if (data?.service_type) serviceType = data.service_type;
         // Always cache-bust logo URL so CDN/email clients fetch the latest version
         window._currentLogoUrl = data?.logo_url ? data.logo_url.split('?')[0] + '?t=' + Date.now() : null;
+        window._businessCalendarId = data?.calendar_id || null;
         // Populate hidden business-info fields used by quote/invoice generators
         const _set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
         _set('bizName',    data?.name);

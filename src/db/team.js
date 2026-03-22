@@ -84,6 +84,19 @@ export async function dbUpdateBusiness(updates, businessId) {
   return dbLoadBusinessInfo(businessId);
 }
 
+export async function dbUpdateCalendarSettings(businessId, { calendar_provider, calendar_id }) {
+  if (!businessId) return null;
+  const { error } = await _sb
+    .from('businesses')
+    .update({ calendar_provider, calendar_id })
+    .eq('id', businessId);
+  if (error) {
+    console.error('[CrewHub] dbUpdateCalendarSettings error:', error);
+    throw error;
+  }
+  return dbLoadBusinessInfo(businessId);
+}
+
 export async function dbUploadLogo(file, businessId) {
   const ext  = file.name.split('.').pop().toLowerCase();
   const path = `${businessId}/logo.${ext}`;

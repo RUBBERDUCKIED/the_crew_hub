@@ -1,6 +1,45 @@
-// Google Calendar API — creates events on the user's primary calendar
+// Google Calendar API — manages business calendars and events
 
-export async function createCalendarEvent(accessToken, { jobName, address, contact, quoteNum, grandTotal, startISO, endISO, timeZone, serviceLabel }) {
+import { CONFIG } from '../config.js';
+
+/**
+ * Create a dedicated secondary calendar for a business.
+ * Returns the new calendar object (includes .id which is the calendarId).
+ */
+export async function createBusinessCalendar(accessToken, businessName) {
+  const resp = await fetch('https://www.googleapis.com/calendar/v3/calendars', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      summary:  `${businessName} - Jobs`,
+      timeZone: CONFIG.DEFAULT_TIMEZONE || 'America/Vancouver',
+    }),
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error?.message || `Failed to create calendar (${resp.status})`);
+  }
+  return resp.json();
+}
+
+/**
+ * Delete a secondary calendar (used when disconnecting).
+ * Silently ignores errors — the calendar may already be deleted.
+ */
+export async function deleteBusinessCalendar(accessToken, calendarId) {
+  try {
+    await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+  } catch (_e) { /* ignore — calendar may not exist */ }
+}
+
+/**
+ * Create an event on a calendar.
+ * @param {string} calendarId  The calendar to add to (defaults to 'primary')
+ */
+export async function createCalendarEvent(accessToken, { jobName, address, contact, quoteNum, grandTotal, startISO, endISO, timeZone, serviceLabel }, calendarId = 'primary') {
   const event = {
     summary:     `${serviceLabel || 'Job'} — ${jobName}`,
     location:    address || '',
@@ -9,7 +48,7 @@ export async function createCalendarEvent(accessToken, { jobName, address, conta
     end:         { dateTime: endISO, timeZone },
     reminders:   { useDefault: false, overrides: [{ method: 'popup', minutes: 1440 }] },
   };
-  const resp = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+  const resp = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(event),

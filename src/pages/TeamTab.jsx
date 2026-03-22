@@ -9,7 +9,10 @@ import {
   dbUpdateBusiness,
   dbUploadLogo,
   dbRemoveLogo,
+  dbUpdateCalendarSettings,
 } from '../db/team.js';
+import { createBusinessCalendar, deleteBusinessCalendar } from '../services/googleCalendar.js';
+import { CONFIG } from '../config.js';
 import { sendInviteEmail } from '../services/emailService.js';
 import { ModalShell, labelStyle, inputStyle } from '../components/shared.jsx';
 
@@ -56,6 +59,10 @@ export default function TeamTab() {
   const [logoRemoved,  setLogoRemoved]  = useState(false);   // flag: user wants logo removed
   const [brandColor,   setBrandColor]   = useState('#2a9db5');
 
+  // ── Calendar integration state ─────────────────────────────
+  const [calConnecting,    setCalConnecting]    = useState(false);
+  const [calDisconnecting, setCalDisconnecting] = useState(false);
+
   // ── Load data ────────────────────────────────────────────────
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -74,7 +81,10 @@ export default function TeamTab() {
       });
       const freshLogo = biz.logo_url ? biz.logo_url.split('?')[0] + '?t=' + Date.now() : '';
       setLogoUrl(freshLogo);
-      if (typeof window !== 'undefined') window._currentLogoUrl = freshLogo || null;
+      if (typeof window !== 'undefined') {
+        window._currentLogoUrl = freshLogo || null;
+        window._businessCalendarId = biz.calendar_id || null;
+      }
       setBrandColor(biz.brand_color || '#2a9db5');
     }
     setLoading(false);
@@ -457,6 +467,106 @@ export default function TeamTab() {
           )}
         </div>
       </div>
+
+      {/* Calendar Integration */}
+        {canManageTeam && bizInfo && (
+          <div className="stat-card" style={{ marginTop: 24 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--teal-dark)', marginBottom: 14 }}>🗓️ Calendar Integration</div>
+
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 16 }}>
+              Connect your Google Calendar to automatically add scheduled jobs as calendar events.
+              A dedicated <strong>"{bizEdit.name || bizInfo.name} - Jobs"</strong> calendar will be created.
+              Share it with your crew from Google Calendar so everyone can see the schedule.
+            </p>
+
+            {bizInfo.calendar_id ? (
+              /* ── Connected state ── */
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+                  <span style={{ fontSize: 13, fontWeight: 800, color: '#065f46' }}>Connected to Google Calendar</span>
+                </div>
+                <div style={{ background: 'var(--offwhite)', borderRadius: 10, padding: '12px 16px', marginBottom: 12 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Calendar</div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{bizEdit.name || bizInfo.name} - Jobs</div>
+                </div>
+                <div style={{ background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 12, fontWeight: 600, color: '#059669', lineHeight: 1.5 }}>
+                  💡 Share this calendar with your crew: open Google Calendar → find "{bizEdit.name || bizInfo.name} - Jobs" → Settings → Share with specific people.
+                </div>
+                <button
+                  onClick={async () => {
+                    if (!confirm('Disconnect Google Calendar? Scheduled jobs will no longer auto-sync. Existing events stay in Google Calendar.')) return;
+                    setCalDisconnecting(true);
+                    try {
+                      // Try to delete the calendar from Google (optional — may fail if token expired)
+                      if (window.gAccessToken) {
+                        await deleteBusinessCalendar(window.gAccessToken, bizInfo.calendar_id).catch(() => {});
+                      }
+                      await dbUpdateCalendarSettings(currentBusinessId, { calendar_provider: null, calendar_id: null });
+                      window._businessCalendarId = null;
+                      await loadData();
+                    } catch (e) {
+                      alert('Failed to disconnect: ' + (e.message || ''));
+                    }
+                    setCalDisconnecting(false);
+                  }}
+                  disabled={calDisconnecting}
+                  style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 30, padding: '10px 20px', fontFamily: "'Nunito',sans-serif", fontSize: 13, fontWeight: 800, cursor: 'pointer' }}
+                >
+                  {calDisconnecting ? '⏳ Disconnecting…' : '🔌 Disconnect Calendar'}
+                </button>
+              </div>
+            ) : (
+              /* ── Not connected state ── */
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#d1d5db', display: 'inline-block' }} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)' }}>Not Connected</span>
+                </div>
+                <button
+                  onClick={() => {
+                    if (typeof google === 'undefined' || !google?.accounts?.oauth2) {
+                      alert('Google API not loaded. Please refresh the page and try again.');
+                      return;
+                    }
+                    setCalConnecting(true);
+                    const client = google.accounts.oauth2.initTokenClient({
+                      client_id: CONFIG.GOOGLE_CLIENT_ID,
+                      scope: 'https://www.googleapis.com/auth/calendar',
+                      callback: async (resp) => {
+                        if (resp.error) {
+                          alert('Google sign-in failed: ' + resp.error);
+                          setCalConnecting(false);
+                          return;
+                        }
+                        try {
+                          window.gAccessToken = resp.access_token;
+                          window.gTokenExpiry = Date.now() + 55 * 60 * 1000;
+                          const cal = await createBusinessCalendar(resp.access_token, bizEdit.name || bizInfo.name || 'My Business');
+                          await dbUpdateCalendarSettings(currentBusinessId, { calendar_provider: 'google', calendar_id: cal.id });
+                          window._businessCalendarId = cal.id;
+                          await loadData();
+                          alert('✅ Connected! Calendar "' + (bizEdit.name || bizInfo.name) + ' - Jobs" has been created in your Google Calendar.');
+                        } catch (e) {
+                          alert('Failed to create calendar: ' + (e.message || ''));
+                        }
+                        setCalConnecting(false);
+                      },
+                    });
+                    client.requestAccessToken({ prompt: 'consent' });
+                  }}
+                  disabled={calConnecting}
+                  style={{ width: '100%', background: 'linear-gradient(135deg, var(--teal), var(--teal-dark))', color: 'white', border: 'none', borderRadius: 30, padding: '14px', fontFamily: "'Nunito',sans-serif", fontSize: 14, fontWeight: 800, cursor: 'pointer', marginBottom: 12 }}
+                >
+                  {calConnecting ? '⏳ Connecting…' : '🔗 Connect Google Calendar'}
+                </button>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', textAlign: 'center' }}>
+                  Coming soon: Microsoft Outlook
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
       {/* ── Add Member Modal ── */}
       {showModal && (

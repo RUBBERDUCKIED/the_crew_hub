@@ -316,11 +316,11 @@
       </div>
       <input type="hidden" id="schedModal-idx">
       <div style="display:flex; flex-direction:column; gap:8px; margin-top:4px;">
-        <div style="display:flex; gap:10px;">
-          <button id="schedModal-confirm" onclick="confirmSchedule('google')" style="flex:1;background:#1a6ea8;color:white;border:none;border-radius:30px;padding:12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;cursor:pointer;">📅 Google Calendar</button>
-          <button id="schedModal-ics" onclick="confirmSchedule('ics')" style="flex:1;background:#059669;color:white;border:none;border-radius:30px;padding:12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;cursor:pointer;">📥 Download .ics</button>
+        <button id="schedModal-confirm" onclick="confirmSchedule('auto')" style="width:100%;background:#1a6ea8;color:white;border:none;border-radius:30px;padding:14px;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;cursor:pointer;">📅 Schedule Job</button>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <button onclick="confirmSchedule('ics')" style="background:none;border:none;color:#6b9aaa;font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;cursor:pointer;padding:4px 0;">📥 Download .ics file</button>
+          <button onclick="closeScheduleModal()" style="background:none;border:none;color:#6b9aaa;font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;cursor:pointer;padding:4px 0;">Cancel</button>
         </div>
-        <button onclick="closeScheduleModal()" style="width:100%;background:#f1f5f9;color:#1a3a4a;border:none;border-radius:30px;padding:12px;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;cursor:pointer;">Cancel</button>
       </div>
     </div>
   </div>
