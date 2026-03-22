@@ -606,6 +606,7 @@ export default function TeamTab() {
               >
                 <option value="crew">🔧 Crew — Can see their assigned jobs only</option>
                 <option value="dispatcher">📋 Dispatcher — Can manage all jobs and team schedule</option>
+                <option value="admin">🛡️ Admin — Full access, can manage team</option>
                 <option value="owner">👑 Owner — Full access to everything</option>
               </select>
             </div>
