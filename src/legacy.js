@@ -25,6 +25,7 @@ import { safeGet, esc, formatPhone } from './helpers/formatting.js';
 import { parseQuoteDate, getAgingBadge } from './helpers/quoteHelpers.js';
 import { resolveQuotePlugin, getAvailableServiceTypes } from './quotePlugins/pluginRegistry.js';
 import { createCalendarEvent } from './services/googleCalendar.js';
+import { downloadIcsFile } from './services/icsCalendar.js';
 import { driveSearchFiles, driveCreateFolder, driveUploadFile, driveDownloadBlob, driveDeleteFile } from './services/googleDrive.js';
 import { sendEmail } from './services/emailService.js';
 import useAppStore from './state/useAppStore.js';
@@ -1338,12 +1339,14 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     closeAssignModal();
   }
 
-  async function confirmSchedule() {
+  async function confirmSchedule(mode) {
     const i    = parseInt(document.getElementById('schedModal-idx').value);
     const date = document.getElementById('schedModal-date').value;
     const time = document.getElementById('schedModal-time').value || '08:00';
     if (!date) { alert('Please pick a date.'); return; }
-    if (!gAccessToken) {
+
+    // Google Calendar requires OAuth
+    if (mode === 'google' && !gAccessToken) {
       if (confirm('Google Calendar access is needed.\n\nClick OK to connect.')) signIn();
       return;
     }
@@ -1358,7 +1361,8 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       }
     }
 
-    const btn = document.getElementById('schedModal-confirm');
+    const btn = mode === 'google' ? document.getElementById('schedModal-confirm') : document.getElementById('schedModal-ics');
+    const origText = btn.textContent;
     btn.textContent = 'Saving...'; btn.disabled = true;
 
     const q = savedQuotes[i];
@@ -1368,14 +1372,20 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const startISO = `${date}T${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:00`;
     const endISO   = `${date}T${String(Math.floor(endTotalMins/60)%24).padStart(2,'0')}:${String(endTotalMins%60).padStart(2,'0')}:00`;
 
+    const calendarData = {
+      jobName: q.name, address: q.address, contact: q.contact,
+      quoteNum: q.quoteNum, grandTotal: q.grand,
+      startISO, endISO, timeZone: CONFIG.DEFAULT_TIMEZONE,
+      serviceLabel: activePlugin?.label || 'Job'
+    };
+
     try {
-      const result = await createCalendarEvent(gAccessToken, {
-        jobName: q.name, address: q.address, contact: q.contact,
-        quoteNum: q.quoteNum, grandTotal: q.grand,
-        startISO, endISO, timeZone: CONFIG.DEFAULT_TIMEZONE,
-        serviceLabel: activePlugin?.label || 'Job'
-      });
-      if (!result.id) throw new Error(result.error?.message || 'Calendar API error');
+      if (mode === 'google') {
+        const result = await createCalendarEvent(gAccessToken, calendarData);
+        if (!result.id) throw new Error(result.error?.message || 'Calendar API error');
+      } else {
+        downloadIcsFile(calendarData);
+      }
 
       // ── Persist schedule + assignment ──
       savedQuotes[i].scheduled       = true;
@@ -1388,13 +1398,22 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
 
       // ── Update UI ──
       closeScheduleModal();
-      alert('📅 Job scheduled! Event added to your Google Calendar.');
+      syncDataToStore({ savedQuotes });
+      if (mode === 'google') {
+        alert('📅 Job scheduled! Event added to your Google Calendar.');
+      } else {
+        alert('📅 Job scheduled! The .ics file has been downloaded — open it to add to your calendar app.');
+      }
       if (q.customerId) stampLastContact(q.customerId);
     } catch(e) {
       console.error(e);
-      alert('Could not connect to Google Calendar. ' + (e.message || ''));
+      if (mode === 'google') {
+        alert('Could not connect to Google Calendar. ' + (e.message || ''));
+      } else {
+        alert('Failed to generate calendar file. ' + (e.message || ''));
+      }
     }
-    btn.textContent = 'Add to Calendar'; btn.disabled = false;
+    btn.textContent = origText; btn.disabled = false;
   }
 
   function generateQuoteFromSaved(i) {
