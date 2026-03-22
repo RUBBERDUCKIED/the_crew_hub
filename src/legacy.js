@@ -1382,6 +1382,7 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
       startISO, endISO, timeZone: CONFIG.DEFAULT_TIMEZONE,
       serviceLabel: activePlugin?.label || 'Job',
       assignedName: assignedMemberObj?.name || null,
+      notes: q.notes || null,
     };
 
     try {

@@ -39,7 +39,7 @@ export async function deleteBusinessCalendar(accessToken, calendarId) {
  * Create an event on a calendar.
  * @param {string} calendarId  The calendar to add to (defaults to 'primary')
  */
-export async function createCalendarEvent(accessToken, { jobName, address, contact, quoteNum, grandTotal, startISO, endISO, timeZone, serviceLabel, assignedName }, calendarId = 'primary') {
+export async function createCalendarEvent(accessToken, { jobName, address, contact, quoteNum, grandTotal, startISO, endISO, timeZone, serviceLabel, assignedName, notes }, calendarId = 'primary') {
   const descLines = [
     `Customer: ${jobName}`,
     `Address: ${address || 'N/A'}`,
@@ -48,6 +48,7 @@ export async function createCalendarEvent(accessToken, { jobName, address, conta
     `Total: $${grandTotal ? grandTotal.toFixed(2) : 'N/A'}`,
   ];
   if (assignedName) descLines.push(`Assigned to: ${assignedName}`);
+  if (notes) descLines.push(`\nNotes: ${notes}`);
   const event = {
     summary:     `${serviceLabel || 'Job'} — ${jobName}${assignedName ? ` (${assignedName})` : ''}`,
     location:    address || '',
