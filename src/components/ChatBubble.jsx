@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import useAppStore from '../state/useAppStore.js';
 import { dbLoadMessages, dbSendMessage, subscribeToMessages } from '../db/chat.js';
+import { _sb } from '../db/supabaseClient.js';
 
 // ─────────────────────────────────────────────────────────────
 // ChatBubble — Floating draggable chat bubble + expandable panel
@@ -33,10 +34,25 @@ export default function ChatBubble() {
   const isSignedIn        = useAppStore(s => s.isSignedIn);
 
   // Get current member name from window._teamMembers
+  // Get current member name — try _teamMembers first, then query DB directly
   const memberName = useRef('');
   useEffect(() => {
+    if (!currentMemberId) return;
+    // Try local cache first
     const me = (window._teamMembers || []).find(m => m.id === currentMemberId);
-    memberName.current = me?.name || 'Team Member';
+    if (me?.name) { memberName.current = me.name; return; }
+    // Fallback: query Supabase directly for this member's name
+    _sb.from('team_members').select('name').eq('id', currentMemberId).limit(1)
+      .then(({ data }) => {
+        if (data?.[0]?.name) memberName.current = data[0].name;
+      })
+      .catch(() => {});
+    // Also retry from _teamMembers after a delay
+    const t = setTimeout(() => {
+      const m = (window._teamMembers || []).find(m => m.id === currentMemberId);
+      if (m?.name) memberName.current = m.name;
+    }, 3000);
+    return () => clearTimeout(t);
   }, [currentMemberId]);
 
   const [isOpen, setIsOpen]         = useState(false);
