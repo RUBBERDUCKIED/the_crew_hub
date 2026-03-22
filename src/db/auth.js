@@ -35,10 +35,10 @@ export async function dbClaimInvite() {
 
 export function canAccess(feature, userRole) {
   const permissions = {
-    owner:      ['quotes', 'pipeline', 'today', 'crm', 'reports', 'leads', 'team', 'timesheets', 'settings'],
-    admin:      ['quotes', 'pipeline', 'today', 'crm', 'reports', 'leads', 'team', 'timesheets', 'settings'],
-    dispatcher: ['quotes', 'pipeline', 'today', 'crm', 'reports', 'leads', 'timesheets'],
-    crew:       ['today', 'my-timesheet'],
+    owner:      ['quotes', 'pipeline', 'today', 'crm', 'reports', 'leads', 'team', 'timesheets', 'settings', 'chat'],
+    admin:      ['quotes', 'pipeline', 'today', 'crm', 'reports', 'leads', 'team', 'timesheets', 'settings', 'chat'],
+    dispatcher: ['quotes', 'pipeline', 'today', 'crm', 'reports', 'leads', 'timesheets', 'chat'],
+    crew:       ['today', 'my-timesheet', 'chat'],
   };
   return (permissions[userRole] || []).includes(feature);
 }

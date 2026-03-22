@@ -11,6 +11,7 @@ import PipelineTab from './pages/PipelineTab.jsx';
 import ReportsTab from './pages/ReportsTab.jsx';
 import LeadsTab from './pages/LeadsTab.jsx';
 import OnboardingOrchestrator from './components/OnboardingOrchestrator.jsx';
+import ChatBubble from './components/ChatBubble.jsx';
 
 // ─────────────────────────────────────────────────────────────
 // App Shell — React root component.
@@ -47,6 +48,7 @@ export default function App() {
       {isSignedIn && roots.pipeline   && createPortal(<ErrorBoundary name="Pipeline">   <PipelineTab />   </ErrorBoundary>, roots.pipeline)}
       {isSignedIn && roots.reports    && createPortal(<ErrorBoundary name="Reports">    <ReportsTab />    </ErrorBoundary>, roots.reports)}
       {isSignedIn && roots.leads      && createPortal(<ErrorBoundary name="Leads">      <LeadsTab />      </ErrorBoundary>, roots.leads)}
+      {isSignedIn && <ChatBubble />}
     </>
   );
 }
