@@ -39,11 +39,19 @@ export async function deleteBusinessCalendar(accessToken, calendarId) {
  * Create an event on a calendar.
  * @param {string} calendarId  The calendar to add to (defaults to 'primary')
  */
-export async function createCalendarEvent(accessToken, { jobName, address, contact, quoteNum, grandTotal, startISO, endISO, timeZone, serviceLabel }, calendarId = 'primary') {
+export async function createCalendarEvent(accessToken, { jobName, address, contact, quoteNum, grandTotal, startISO, endISO, timeZone, serviceLabel, assignedName }, calendarId = 'primary') {
+  const descLines = [
+    `Customer: ${jobName}`,
+    `Address: ${address || 'N/A'}`,
+    `Contact: ${contact || 'N/A'}`,
+    `Quote #: ${quoteNum || 'N/A'}`,
+    `Total: $${grandTotal ? grandTotal.toFixed(2) : 'N/A'}`,
+  ];
+  if (assignedName) descLines.push(`Assigned to: ${assignedName}`);
   const event = {
-    summary:     `${serviceLabel || 'Job'} — ${jobName}`,
+    summary:     `${serviceLabel || 'Job'} — ${jobName}${assignedName ? ` (${assignedName})` : ''}`,
     location:    address || '',
-    description: `Customer: ${jobName}\nAddress: ${address || 'N/A'}\nContact: ${contact || 'N/A'}\nQuote #: ${quoteNum || 'N/A'}\nTotal: $${grandTotal ? grandTotal.toFixed(2) : 'N/A'}`,
+    description: descLines.join('\n'),
     start:       { dateTime: startISO, timeZone },
     end:         { dateTime: endISO, timeZone },
     reminders:   { useDefault: false, overrides: [{ method: 'popup', minutes: 1440 }] },

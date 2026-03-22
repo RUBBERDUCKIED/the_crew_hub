@@ -14,16 +14,18 @@
  * @param {string} opts.timeZone    IANA timezone (e.g. America/Vancouver)
  * @param {string} opts.serviceLabel  Service type label
  */
-export function downloadIcsFile({ jobName, address, contact, quoteNum, grandTotal, startISO, endISO, timeZone, serviceLabel }) {
-  const summary  = `${serviceLabel || 'Job'} — ${jobName}`;
+export function downloadIcsFile({ jobName, address, contact, quoteNum, grandTotal, startISO, endISO, timeZone, serviceLabel, assignedName }) {
+  const summary  = `${serviceLabel || 'Job'} — ${jobName}${assignedName ? ` (${assignedName})` : ''}`;
   const location = (address || '').replace(/,/g, '\\,');
-  const desc     = [
+  const descLines = [
     `Customer: ${jobName}`,
     `Address: ${address || 'N/A'}`,
     `Contact: ${contact || 'N/A'}`,
     `Quote #: ${quoteNum || 'N/A'}`,
     `Total: $${grandTotal ? grandTotal.toFixed(2) : 'N/A'}`,
-  ].join('\\n');
+  ];
+  if (assignedName) descLines.push(`Assigned to: ${assignedName}`);
+  const desc = descLines.join('\\n');
 
   // Convert ISO strings to iCal format (remove dashes/colons)
   const toIcal = iso => iso.replace(/[-:]/g, '');

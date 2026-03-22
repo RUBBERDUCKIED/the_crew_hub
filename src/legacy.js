@@ -1375,11 +1375,13 @@ body { font-family: 'Nunito', sans-serif; background: #e8f4f7; padding: 30px 16p
     const startISO = `${date}T${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:00`;
     const endISO   = `${date}T${String(Math.floor(endTotalMins/60)%24).padStart(2,'0')}:${String(endTotalMins%60).padStart(2,'0')}:00`;
 
+    const assignedMemberObj = assignVal ? (window._teamMembers || []).find(m => m.id === assignVal) : null;
     const calendarData = {
       jobName: q.name, address: q.address, contact: q.contact,
       quoteNum: q.quoteNum, grandTotal: q.grand,
       startISO, endISO, timeZone: CONFIG.DEFAULT_TIMEZONE,
-      serviceLabel: activePlugin?.label || 'Job'
+      serviceLabel: activePlugin?.label || 'Job',
+      assignedName: assignedMemberObj?.name || null,
     };
 
     try {
