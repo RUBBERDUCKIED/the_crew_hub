@@ -184,8 +184,9 @@ function CustomerCard({ customer, notes, jobs, role, onEdit, onArchive, onDelete
   const [addingNote,  setAddingNote]  = useState(false);
   const [noteText,    setNoteText]    = useState('');
   const [customTag,   setCustomTag]   = useState('');
-  const [tagSaving,   setTagSaving]   = useState(false);
-  const [showMenu,    setShowMenu]    = useState(false);
+  const [tagSaving,         setTagSaving]         = useState(false);
+  const [showTagSuggestions, setShowTagSuggestions] = useState(false);
+  const [showMenu,           setShowMenu]           = useState(false);
   const menuRef = useRef(null);
 
   // Close 3-dot menu on outside click
@@ -338,37 +339,6 @@ function CustomerCard({ customer, notes, jobs, role, onEdit, onArchive, onDelete
       {expanded && (
         <div style={{ borderTop: '1px solid #e2e8f0', padding: '18px 18px 16px' }}>
 
-          {/* Prominent Add Note button */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-            <button
-              onClick={() => setAddingNote(a => !a)}
-              style={{
-                background: addingNote ? '#059669' : '#1a6ea8',
-                color: 'white', border: 'none', borderRadius: 30,
-                padding: '10px 28px', fontFamily: "'Nunito',sans-serif",
-                fontWeight: 800, fontSize: 14, cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(26,110,168,0.25)',
-                transition: 'all 0.15s',
-              }}
-            >{addingNote ? '✏️ Adding Note…' : '📝 + Add Note'}</button>
-          </div>
-
-          {/* Inline note input */}
-          {addingNote && (
-            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-              <input
-                value={noteText}
-                onChange={e => setNoteText(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && submitNote()}
-                placeholder="Enter note..."
-                style={{ ...inputStyle, flex: 1 }}
-                autoFocus
-              />
-              <ActionButton bg="#059669" onClick={submitNote} style={{ padding: '8px 14px' }}>Save</ActionButton>
-              <ActionButton bg="#f1f5f9" color="#1a3a4a" onClick={() => setAddingNote(false)} style={{ padding: '8px 14px' }}>Cancel</ActionButton>
-            </div>
-          )}
-
           {/* Contact detail row */}
           <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 14 }}>
             {customer.email && (
@@ -411,18 +381,24 @@ function CustomerCard({ customer, notes, jobs, role, onEdit, onArchive, onDelete
                 </span>
               ))}
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-              {CRM_TAG_PRESETS.filter(t => !currentTags.includes(t)).map(t => (
-                <span
-                  key={t}
-                  onClick={() => toggleTagInline(t)}
-                  title="Click to add"
-                  style={{ background: '#f1f5f9', color: '#64748b', borderRadius: 20, padding: '3px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer', border: '1px dashed #cbd5e1' }}
-                >
-                  + {t}
-                </span>
-              ))}
-            </div>
+            <button
+              onClick={() => setShowTagSuggestions(s => !s)}
+              style={{ background: 'none', border: 'none', color: '#1a6ea8', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: '0 0 6px', fontFamily: "'Nunito',sans-serif" }}
+            >{showTagSuggestions ? '▲ Hide suggestions' : '▼ Show tag suggestions'}</button>
+            {showTagSuggestions && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                {CRM_TAG_PRESETS.filter(t => !currentTags.includes(t)).map(t => (
+                  <span
+                    key={t}
+                    onClick={() => { toggleTagInline(t); setShowTagSuggestions(false); }}
+                    title="Click to add"
+                    style={{ background: '#f1f5f9', color: '#64748b', borderRadius: 20, padding: '3px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer', border: '1px dashed #cbd5e1' }}
+                  >
+                    + {t}
+                  </span>
+                ))}
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 8 }}>
               <input
                 value={customTag}
@@ -458,12 +434,19 @@ function CustomerCard({ customer, notes, jobs, role, onEdit, onArchive, onDelete
                     display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
                   }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ fontWeight: 700, color: '#1a3a4a', fontSize: 13 }}>
-                        #{job.quoteNum || i + 1}
-                      </span>
-                      <span style={{ marginLeft: 8, color: '#64748b', fontSize: 12 }}>
-                        {job.plan || 'Custom'} — {fmtMoney(job.grand)}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 700, color: '#1a3a4a', fontSize: 13 }}>
+                          #{job.quoteNum || i + 1}
+                        </span>
+                        <span style={{ color: '#64748b', fontSize: 12 }}>
+                          {job.plan || 'Custom'} — {fmtMoney(job.grand)}
+                        </span>
+                        {(job.date || job.createdAt) && (
+                          <span style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600 }}>
+                            {fmtDate(job.date || job.createdAt)}
+                          </span>
+                        )}
+                      </div>
                       {job.won      && <span style={{ marginLeft: 6, background: '#dcfce7', color: '#166534', borderRadius: 20, padding: '1px 7px', fontSize: 11, fontWeight: 700 }}>WON</span>}
                       {job.invoiced && <span style={{ marginLeft: 4, background: '#dbeafe', color: '#1e40af', borderRadius: 20, padding: '1px 7px', fontSize: 11, fontWeight: 700 }}>INVOICED</span>}
                       {job.receipted && <span style={{ marginLeft: 4, background: '#fef9c3', color: '#713f12', borderRadius: 20, padding: '1px 7px', fontSize: 11, fontWeight: 700 }}>PAID</span>}
@@ -485,7 +468,26 @@ function CustomerCard({ customer, notes, jobs, role, onEdit, onArchive, onDelete
 
           {/* Notes */}
           <div>
-            <div style={sectionLabelSt}>📝 Notes</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, marginTop: 4 }}>
+              <div style={sectionLabelSt}>📝 Notes</div>
+              <button
+                onClick={() => setAddingNote(a => !a)}
+                style={{ background: 'none', border: '2px solid #1a6ea8', color: '#1a6ea8', borderRadius: 20, padding: '3px 12px', fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: "'Nunito',sans-serif" }}
+              >{addingNote ? '✕ Cancel' : '+ Add Note'}</button>
+            </div>
+            {addingNote && (
+              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                <input
+                  value={noteText}
+                  onChange={e => setNoteText(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && submitNote()}
+                  placeholder="Enter note..."
+                  style={{ ...inputStyle, flex: 1 }}
+                  autoFocus
+                />
+                <ActionButton bg="#059669" onClick={submitNote} style={{ padding: '8px 14px' }}>Save</ActionButton>
+              </div>
+            )}
             {notes.length === 0 && !addingNote ? (
               <div style={{ color: '#94a3b8', fontSize: 13, fontStyle: 'italic' }}>No notes yet.</div>
             ) : notes.map(note => (
