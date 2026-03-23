@@ -149,8 +149,16 @@ export default function TodayTab() {
     }).addTo(map);
     mapRef.current = map;
 
-    // Force Leaflet to recalculate container size after render
+    // Force Leaflet to recalculate size whenever the container becomes visible
+    // (fixes top-left rendering when map re-inits while tab is hidden)
+    const ro = new ResizeObserver(() => {
+      if (mapRef.current) mapRef.current.invalidateSize();
+    });
+    ro.observe(mapElRef.current);
+
+    // Also fire a few staggered invalidations as a safety net
     setTimeout(() => { if (mapRef.current) mapRef.current.invalidateSize(); }, 200);
+    setTimeout(() => { if (mapRef.current) mapRef.current.invalidateSize(); }, 800);
 
     if (!todayJobs.length) return;
 
@@ -178,7 +186,7 @@ export default function TodayTab() {
       }
     })();
 
-    return () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } };
+    return () => { ro.disconnect(); if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } };
   }, [todayJobs.length]); // re-init when job count changes
 
   // ── Geocode helper — with localStorage cache (cap 200 entries) ──
