@@ -9,7 +9,7 @@ import { _sb } from '../db/supabaseClient.js';
 // shows unread badge, opens a chat panel on click.
 // ─────────────────────────────────────────────────────────────
 
-const BUBBLE_SIZE = 56;
+const BUBBLE_SIZE = 68;
 const PANEL_W = 360;
 const PANEL_H = 480;
 const STORAGE_KEY = 'twc_chat_pos';
@@ -371,7 +371,12 @@ export default function ChatBubble() {
           transition: dragging.current ? 'none' : 'box-shadow 0.2s',
         }}
       >
-        <span style={{ fontSize: 26, lineHeight: 1 }}>💬</span>
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2C6.477 2 2 6.145 2 11.243c0 2.836 1.37 5.373 3.528 7.063L4.5 22l4.217-1.687A10.7 10.7 0 0 0 12 20.486c5.523 0 10-4.145 10-9.243S17.523 2 12 2Z" fill="white" fillOpacity="0.95"/>
+          <circle cx="8" cy="11" r="1.2" fill="var(--teal, #1e7d93)"/>
+          <circle cx="12" cy="11" r="1.2" fill="var(--teal, #1e7d93)"/>
+          <circle cx="16" cy="11" r="1.2" fill="var(--teal, #1e7d93)"/>
+        </svg>
         {/* Unread badge */}
         {unreadCount > 0 && !isOpen && (
           <div style={{
