@@ -37,6 +37,7 @@ export function jobToRow(q, businessId) {
     scheduled_mins: q.scheduledMins     || null,
     assigned_to:    q.assignedTo        || null,
     assigned_team:  q.assignedTeam      || null,
+    job_notes:      q.notes             || null,
     updated_at:     new Date().toISOString(),
   };
   if (q.id) row.id = q.id;
@@ -78,6 +79,7 @@ export function rowToJob(row) {
     scheduledMins:     row.scheduled_mins || null,
     assignedTo:        row.assigned_to   || null,
     assignedTeam:      row.assigned_team || null,
+    notes:             row.job_notes     || null,
     date:              row.created_at
       ? new Date(row.created_at).toLocaleDateString('en-CA', { day:'2-digit', month:'short', year:'2-digit' })
       : '',
