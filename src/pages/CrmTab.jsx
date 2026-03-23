@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import useAppStore from '../state/useAppStore.js';
 import { CRM_TAG_PRESETS } from '../helpers/pricing.js';
 import { fmtDate, fmtMoney, daysSince, fmtPhone } from '../helpers/formatting.js';
@@ -185,6 +185,18 @@ function CustomerCard({ customer, notes, jobs, role, onEdit, onArchive, onDelete
   const [noteText,    setNoteText]    = useState('');
   const [customTag,   setCustomTag]   = useState('');
   const [tagSaving,   setTagSaving]   = useState(false);
+  const [showMenu,    setShowMenu]    = useState(false);
+  const menuRef = useRef(null);
+
+  // Close 3-dot menu on outside click
+  useEffect(() => {
+    if (!showMenu) return;
+    function handleOutside(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false);
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [showMenu]);
 
   const currentTags = customer.tags || [];
 
@@ -224,7 +236,7 @@ function CustomerCard({ customer, notes, jobs, role, onEdit, onArchive, onDelete
       background: 'white', borderRadius: 12, marginBottom: 10,
       boxShadow: '0 2px 8px rgba(26,110,168,0.08)',
       border: needsAttention ? '2px solid #fca5a5' : '2px solid transparent',
-      overflow: 'hidden',
+      overflow: 'visible',
     }}>
       {/* ── Card Header ── */}
       <div
@@ -295,6 +307,31 @@ function CustomerCard({ customer, notes, jobs, role, onEdit, onArchive, onDelete
 
         {/* Chevron */}
         <div style={{ color: '#94a3b8', fontSize: 16, flexShrink: 0 }}>{expanded ? '▲' : '▼'}</div>
+
+        {/* 3-dot overflow menu */}
+        <div ref={menuRef} style={{ position: 'relative', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+          <button
+            onClick={() => setShowMenu(m => !m)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, color: '#94a3b8', padding: '0 2px', lineHeight: 1, borderRadius: 6 }}
+            title="More options"
+          >⋯</button>
+          {showMenu && (
+            <div style={{
+              position: 'absolute', right: 0, top: '110%', zIndex: 200,
+              background: 'white', borderRadius: 10,
+              boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
+              border: '1px solid #e2e8f0', minWidth: 160, overflow: 'hidden',
+            }}>
+              {!customer.archived
+                ? <button onClick={() => { onArchive(customer.customerId, true);  setShowMenu(false); }} style={{ display: 'block', width: '100%', padding: '11px 16px', background: 'none', border: 'none', textAlign: 'left', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, color: '#1a3a4a', cursor: 'pointer' }}>📦 Archive</button>
+                : <button onClick={() => { onArchive(customer.customerId, false); setShowMenu(false); }} style={{ display: 'block', width: '100%', padding: '11px 16px', background: 'none', border: 'none', textAlign: 'left', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, color: '#1a3a4a', cursor: 'pointer' }}>📂 Restore</button>
+              }
+              {(role === 'owner' || role === 'admin') && (
+                <button onClick={() => { onDelete(customer.customerId); setShowMenu(false); }} style={{ display: 'block', width: '100%', padding: '11px 16px', background: 'none', border: 'none', textAlign: 'left', fontFamily: "'Nunito',sans-serif", fontWeight: 700, fontSize: 13, color: '#dc2626', cursor: 'pointer', borderTop: '1px solid #fee2e2' }}>🗑️ Delete</button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Expanded Body ── */}
@@ -408,13 +445,6 @@ function CustomerCard({ customer, notes, jobs, role, onEdit, onArchive, onDelete
             >📅 Log Contact Today</ActionButton>
             <ActionButton bg="#7c3aed" onClick={() => window.openPhotoModal?.(customer.customerId, customer.name)}>📷 Photos</ActionButton>
             <ActionButton bg="#d97706" onClick={() => window.preFillFromQuote?.({ name: customer.name, address: customer.address, phone: customer.phone, email: customer.email })}>➕ New Quote</ActionButton>
-            {!customer.archived
-              ? <ActionButton bg="#64748b" onClick={() => onArchive(customer.customerId, true)}>📦 Archive</ActionButton>
-              : <ActionButton bg="#059669" onClick={() => onArchive(customer.customerId, false)}>📂 Restore</ActionButton>
-            }
-            {(role === 'owner' || role === 'admin') && (
-              <ActionButton bg="#dc2626" onClick={() => onDelete(customer.customerId)}>🗑️ Delete</ActionButton>
-            )}
           </div>
 
           {/* Jobs / Quotes */}
