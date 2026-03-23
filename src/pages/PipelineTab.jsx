@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import useAppStore from '../state/useAppStore.js';
 import {
   getJobStage, getQuoteAgeDays,
@@ -492,6 +492,16 @@ export default function PipelineTab() {
   const [stageFilter, setStageFilter] = useState('all');
   const [search,      setSearch]      = useState('');
   const [quickNote,   setQuickNote]   = useState(null); // { jobIdx, job }
+
+  // Allow external navigation (e.g. Reports tab Outstanding click) to set filters
+  useEffect(() => {
+    function handleDeepLink(e) {
+      if (e.detail?.stage) setStageFilter(e.detail.stage);
+      if (e.detail?.type)  setTypeFilter(e.detail.type);
+    }
+    window.addEventListener('pipeline:setFilter', handleDeepLink);
+    return () => window.removeEventListener('pipeline:setFilter', handleDeepLink);
+  }, []);
 
   // ── Filtered + indexed jobs ──
   const filtered = useMemo(() => {

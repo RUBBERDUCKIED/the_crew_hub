@@ -476,12 +476,22 @@ export default function ReportsTab() {
           { label: 'Jobs Complete',  value: rd.completed.length, sub: 'receipted' },
           { label: 'Win Rate',       value: `${rd.winRate}%`, sub: `${rd.won.length} won of ${rd.quoted.length} quoted` },
           { label: 'Avg Job Value',  value: `$${rd.avgJob.toFixed(2)}`, sub: 'per completed job' },
-          { label: 'Outstanding',    value: `$${rd.outstanding.toFixed(2)}`, sub: 'invoiced, not receipted', color: '#b45309', border: '2px solid #fbbf24', labelColor: '#b45309' },
-        ].map(({ label, value, sub, color, subColor, border, labelColor }) => (
-          <div key={label} className="stat-card" style={{ textAlign: 'center', border, overflow: 'hidden' }}>
+          { label: 'Outstanding',    value: `$${rd.outstanding.toFixed(2)}`, sub: 'invoiced, not receipted', color: '#b45309', border: '2px solid #fbbf24', labelColor: '#b45309', clickable: true },
+        ].map(({ label, value, sub, color, subColor, border, labelColor, clickable }) => (
+          <div
+            key={label}
+            className="stat-card"
+            style={{ textAlign: 'center', border, overflow: 'hidden', cursor: clickable ? 'pointer' : 'default' }}
+            title={clickable ? 'View invoiced jobs in pipeline' : undefined}
+            onClick={clickable ? () => {
+              window.dispatchEvent(new CustomEvent('pipeline:setFilter', { detail: { stage: 'invoiced', type: 'all' } }));
+              const btn = document.querySelector('[onclick*="switchTab(\'pipeline\'"]');
+              if (btn && window.switchTab) window.switchTab('pipeline', btn);
+            } : undefined}
+          >
             <div className="stat-label" style={labelColor ? { color: labelColor } : {}}>{label}</div>
             <div className="stat-val" style={{ color: color || 'var(--text)', fontSize: 'clamp(16px, 2.8vw, 26px)', wordBreak: 'break-word', lineHeight: 1.2 }}>{value}</div>
-            <div className="stat-sub" style={subColor ? { color: subColor } : {}}>{sub}</div>
+            <div className="stat-sub" style={subColor ? { color: subColor } : {}}>{sub}{clickable && <span style={{ marginLeft: 6, fontSize: 10, opacity: 0.7 }}>→ view</span>}</div>
           </div>
         ))}
       </div>
