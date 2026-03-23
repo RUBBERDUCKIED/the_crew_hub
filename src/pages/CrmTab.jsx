@@ -235,14 +235,24 @@ function CustomerCard({ customer, notes, jobs, role, onEdit, onArchive, onDelete
           background: expanded ? '#f0f9ff' : 'white',
         }}
       >
-        {/* Avatar */}
-        <div style={{
-          width: 38, height: 38, borderRadius: '50%',
-          background: 'linear-gradient(135deg,#1a6ea8,#0ea5e9)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'white', fontWeight: 800, fontSize: 16, flexShrink: 0,
-        }}>
-          {(customer.name || '?')[0].toUpperCase()}
+        {/* Avatar + recency dot */}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <div style={{
+            width: 38, height: 38, borderRadius: '50%',
+            background: 'linear-gradient(135deg,#1a6ea8,#0ea5e9)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'white', fontWeight: 800, fontSize: 16,
+          }}>
+            {(customer.name || '?')[0].toUpperCase()}
+          </div>
+          {days !== null && (
+            <div title={`Last contact: ${days}d ago`} style={{
+              position: 'absolute', bottom: 0, right: 0,
+              width: 11, height: 11, borderRadius: '50%',
+              background: days < 30 ? '#22c55e' : days < 60 ? '#f59e0b' : '#ef4444',
+              border: '2px solid white',
+            }} />
+          )}
         </div>
 
         {/* Name + contact */}
@@ -257,7 +267,13 @@ function CustomerCard({ customer, notes, jobs, role, onEdit, onArchive, onDelete
           </div>
           <div style={{ fontSize: 12, color: '#64748b', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {customer.address && <span>📍 {customer.address}</span>}
-            {customer.phone   && <span>📞 {fmtPhone(customer.phone)}</span>}
+            {customer.phone   && (
+              <a
+                href={`tel:${customer.phone}`}
+                onClick={e => e.stopPropagation()}
+                style={{ color: '#64748b', textDecoration: 'none' }}
+              >📞 {fmtPhone(customer.phone)}</a>
+            )}
           </div>
         </div>
 
