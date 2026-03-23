@@ -383,6 +383,21 @@ export default function TodayTab() {
                   {q.address && <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)' }}>📍 {q.address}</div>}
                   {phone && <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', marginTop: 2 }}>📞 {phone}</div>}
                 </div>
+                {/* Job notes + payment method */}
+                {(q.notes || q.paymentMethod) && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+                    {q.notes && (
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#1a3a4a', background: '#f0f9ff', borderLeft: '3px solid #1e7d93', borderRadius: '0 8px 8px 0', padding: '6px 12px', flex: 1 }}>
+                        📋 {q.notes}
+                      </div>
+                    )}
+                    {q.paymentMethod && (
+                      <div style={{ fontSize: 12, fontWeight: 800, color: '#059669', background: '#d1fae5', borderRadius: 20, padding: '5px 12px', alignSelf: 'center', whiteSpace: 'nowrap' }}>
+                        {q.paymentMethod === 'Cash' ? '💵' : q.paymentMethod === 'Cheque' ? '📝' : '💳'} {q.paymentMethod}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {/* Action buttons */}
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
                   {q.address && (

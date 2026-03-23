@@ -78,6 +78,22 @@ function JobCard({ q, jobIdx, onQuickNote }) {
         >×</button>
       </div>
 
+      {/* Job notes + payment method */}
+      {(q.notes || q.paymentMethod) && (
+        <div style={{ padding: '6px 10px 2px', display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+          {q.notes && (
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', background: '#f0f9ff', borderLeft: '3px solid #1e7d93', borderRadius: '0 6px 6px 0', padding: '4px 10px', flex: 1, minWidth: 0 }}>
+              📋 {q.notes}
+            </div>
+          )}
+          {q.paymentMethod && (
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#059669', background: '#d1fae5', borderRadius: 20, padding: '3px 10px', flexShrink: 0, whiteSpace: 'nowrap' }}>
+              {q.paymentMethod === 'Cash' ? '💵' : q.paymentMethod === 'Cheque' ? '📝' : '💳'} {q.paymentMethod}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="si-btn-row">
         <button
           className="si-gen"
